@@ -12,6 +12,7 @@ class ApiConstants {
   static const String usersByTypePath = '/projects/api/usersByType';
   static const String projectListByTypePath =
       '/projects/api/getProjectListByType';
+  static const String executionProgressPath = '/execution/progress';
 
   static const Duration connectTimeout = Duration(seconds: 20);
   static const Duration receiveTimeout = Duration(seconds: 45);

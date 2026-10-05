@@ -16,6 +16,8 @@ import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.d
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/settings_page.dart';
 import 'package:swr_pmis_mobile/src/features/shell/presentation/app_shell.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/execution_progress_page.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/works_page.dart';
 
 final goRouterRefreshProvider = Provider<GoRouterRefresh>((ref) {
   final GoRouterRefresh notifier = GoRouterRefresh();
@@ -54,10 +56,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: LoginPage.routePath,
         name: LoginPage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return fadeSlidePage(
-            key: state.pageKey,
-            child: const LoginPage(),
-          );
+          return fadeSlidePage(key: state.pageKey, child: const LoginPage());
         },
       ),
       GoRoute(
@@ -71,13 +70,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       StatefulShellRoute.indexedStack(
-        builder: (
-          BuildContext context,
-          GoRouterState state,
-          StatefulNavigationShell navigationShell,
-        ) {
-          return AppShell(navigationShell: navigationShell);
-        },
+        builder:
+            (
+              BuildContext context,
+              GoRouterState state,
+              StatefulNavigationShell navigationShell,
+            ) {
+              return AppShell(navigationShell: navigationShell);
+            },
         branches: <StatefulShellBranch>[
           StatefulShellBranch(
             routes: <RouteBase>[
@@ -93,13 +93,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: '/works',
-                name: 'works',
+                path: WorksPage.routePath,
+                name: WorksPage.routeName,
                 builder: (BuildContext context, GoRouterState state) {
-                  return const ModuleGridPage(
-                    title: 'Works',
-                    group: ModuleGroup.works,
-                  );
+                  return const WorksPage();
                 },
               ),
             ],
@@ -146,23 +143,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: ExecutionProgressPage.routePath,
+        name: ExecutionProgressPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String projectId = state.pathParameters['projectId'] ?? '';
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ExecutionProgressPage(
+              projectId: projectId,
+              fallbackName: name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: ProfilePage.routePath,
         name: ProfilePage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return fadeSlidePage(
-            key: state.pageKey,
-            child: const ProfilePage(),
-          );
+          return fadeSlidePage(key: state.pageKey, child: const ProfilePage());
         },
       ),
       GoRoute(
         path: SettingsPage.routePath,
         name: SettingsPage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return fadeSlidePage(
-            key: state.pageKey,
-            child: const SettingsPage(),
-          );
+          return fadeSlidePage(key: state.pageKey, child: const SettingsPage());
         },
       ),
       ...ModuleCatalog.all.map((AppModule module) {
