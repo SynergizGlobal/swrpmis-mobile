@@ -10,11 +10,12 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
-import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_grid_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_forms_page.dart';
 import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/reports_page.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/settings_page.dart';
 import 'package:swr_pmis_mobile/src/features/shell/presentation/app_shell.dart';
 import 'package:swr_pmis_mobile/src/features/works/presentation/pages/execution_progress_page.dart';
@@ -116,13 +117,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: '/reports',
-                name: 'reports',
+                path: ReportsPage.routePath,
+                name: ReportsPage.routeName,
                 builder: (BuildContext context, GoRouterState state) {
-                  return const ModuleGridPage(
-                    title: 'Reports',
-                    group: ModuleGroup.reports,
-                  );
+                  return const ReportsPage();
                 },
               ),
             ],
@@ -139,6 +137,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: ReportPlaceholderPage.routePath,
+        name: ReportPlaceholderPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String formId = state.pathParameters['formId'] ?? '';
+          final String name = state.uri.queryParameters['name'] ?? '';
+          final String url = state.uri.queryParameters['url'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ReportPlaceholderPage(
+              formId: formId,
+              formName: name,
+              webFormUrl: url,
+            ),
+          );
+        },
       ),
       GoRoute(
         path: ExecutionProgressPage.routePath,

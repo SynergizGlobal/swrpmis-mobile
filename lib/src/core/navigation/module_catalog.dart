@@ -180,15 +180,6 @@ class ModuleCatalog {
       group: ModuleGroup.reports,
     ),
     AppModule(
-      id: 'documents',
-      title: 'Documents',
-      subtitle: 'Repository, drafts and files',
-      icon: Icons.folder_rounded,
-      routeName: 'more-documents',
-      routePath: '/module/documents',
-      group: ModuleGroup.more,
-    ),
-    AppModule(
       id: 'rdso',
       title: 'RDSO drawings',
       subtitle: 'Digital library and search',
