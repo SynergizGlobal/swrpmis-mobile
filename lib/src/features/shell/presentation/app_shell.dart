@@ -16,7 +16,7 @@ class AppShell extends StatelessWidget {
     final String title = switch (navigationShell.currentIndex) {
       0 => AppConstants.appName,
       1 => 'Works',
-      2 => 'Update forms',
+      2 => 'Update Forms',
       3 => 'Reports',
       _ => 'More',
     };
@@ -84,7 +84,7 @@ class AppShell extends StatelessWidget {
                 NavigationDestination(
                   icon: Icon(Icons.edit_note_outlined),
                   selectedIcon: Icon(Icons.edit_note_rounded),
-                  label: 'Forms',
+                  label: 'Update Forms',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.insights_outlined),

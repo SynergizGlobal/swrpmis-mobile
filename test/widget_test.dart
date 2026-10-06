@@ -12,7 +12,24 @@ void main() {
 
   test('module catalog covers sidebar groups', () {
     expect(ModuleCatalog.byGroup(ModuleGroup.works), isNotEmpty);
-    expect(ModuleCatalog.byGroup(ModuleGroup.updateForms).length, greaterThan(5));
+    expect(
+      ModuleCatalog.byGroup(ModuleGroup.updateForms)
+          .map((AppModule module) => module.title)
+          .toList(),
+      <String>[
+        'Projects',
+        'Works',
+        'Contracts/Tenders',
+        'Execution & Monitoring',
+        'Design & Drawing',
+        'Issues',
+        'DMS',
+        'Quality Inspections',
+        'Land Acquisition',
+        'Utility Shifting',
+        'Validate data',
+      ],
+    );
     expect(
       ModuleCatalog.all.map((AppModule m) => m.routePath).toSet().length,
       ModuleCatalog.all.length,

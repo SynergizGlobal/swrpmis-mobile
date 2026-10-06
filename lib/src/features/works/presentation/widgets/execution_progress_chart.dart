@@ -534,20 +534,22 @@ class _SegmentBar extends StatelessWidget {
       status: segment.status,
       progress: segment.progress,
     );
-    final double start = (segment.plotFromKm - data.fromKm) * ppk;
-    final double end = (segment.plotToKm - data.fromKm) * ppk;
-    final double rawWidth = (end - start).abs();
-    final double left = math.min(start, end);
+    final SegmentFrame frame = segmentFrame(
+      plotFromKm: segment.plotFromKm,
+      plotToKm: segment.plotToKm,
+      rangeFromKm: data.fromKm,
+      rangeKm: data.rangeKm,
+      chartWidth: data.rangeKm * ppk,
+    );
     final double top = tallTick
         ? 6
         : 8 + plotted.layer * _ExecutionProgressChartState._layerPitch;
     final double barHeight = tallTick ? math.max(20, rowHeight - 12) : 14;
-    final double barWidth = segment.isPoint ? 6 : math.max(rawWidth, 3);
 
     return Positioned(
-      left: segment.isPoint ? left - 8 : left,
+      left: frame.left,
       top: top,
-      width: segment.isPoint ? 22 : math.max(barWidth, 18),
+      width: math.max(frame.width, 12),
       height: math.max(barHeight, 24),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -556,7 +558,7 @@ class _SegmentBar extends StatelessWidget {
         child: Align(
           alignment: Alignment.centerLeft,
           child: Container(
-            width: barWidth,
+            width: frame.width,
             height: barHeight,
             decoration: BoxDecoration(
               color: color,

@@ -275,6 +275,54 @@ class _SectionSpan {
   }
 }
 
+class SegmentFrame {
+  const SegmentFrame({required this.left, required this.width});
+
+  final double left;
+  final double width;
+}
+
+SegmentFrame segmentFrame({
+  required double plotFromKm,
+  required double plotToKm,
+  required double rangeFromKm,
+  required double rangeKm,
+  required double chartWidth,
+}) {
+  final bool point = (plotToKm - plotFromKm).abs() < 0.001;
+  final double spanPercent = rangeKm <= 0
+      ? 0
+      : (plotToKm - plotFromKm).abs() / rangeKm * 100;
+  final double width = point
+      ? 8
+      : math.max(chartWidth * _webWidthPercent(spanPercent) / 100, 2);
+  final double endKm = rangeFromKm + math.max(rangeKm, 0);
+  final double clamped = plotFromKm.clamp(rangeFromKm, endKm).toDouble();
+  final double left = rangeKm <= 0
+      ? 0
+      : (clamped - rangeFromKm) / rangeKm * chartWidth;
+  return SegmentFrame(left: left, width: width);
+}
+
+double _webWidthPercent(double spanPercent) {
+  if (spanPercent == 0) {
+    return 0.12;
+  }
+  if (spanPercent > 0 && spanPercent < 0.08) {
+    return 0.18;
+  }
+  if (spanPercent >= 0.08 && spanPercent < 0.15) {
+    return 0.25;
+  }
+  if (spanPercent >= 0.15 && spanPercent < 0.3) {
+    return 0.4;
+  }
+  if (spanPercent >= 0.3 && spanPercent < 0.6) {
+    return 0.6;
+  }
+  return spanPercent;
+}
+
 String formatAsOnDate(DateTime date) {
   final String day = date.day.toString().padLeft(2, '0');
   final String month = date.month.toString().padLeft(2, '0');

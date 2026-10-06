@@ -45,11 +45,21 @@ Color executionSegmentColor({
   required String status,
   required double progress,
 }) {
-  final Color? named = _namedColor(barColor);
-  if (named != null) {
-    return named;
+  if (!_isGenericGrey(barColor)) {
+    final Color? named = _namedColor(barColor);
+    if (named != null) {
+      return named;
+    }
   }
   return _statusColor(status, progress);
+}
+
+bool _isGenericGrey(String raw) {
+  final String key = raw.trim().toLowerCase().replaceAll(
+    RegExp(r'[\s_-]+'),
+    '',
+  );
+  return key.isEmpty || key == 'grey' || key == 'gray';
 }
 
 Color? _namedColor(String raw) {

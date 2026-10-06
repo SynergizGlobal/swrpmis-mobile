@@ -12,6 +12,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_grid_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
+import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_forms_page.dart';
 import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/settings_page.dart';
@@ -104,13 +105,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: '/update-forms',
-                name: 'update-forms',
+                path: UpdateFormsPage.routePath,
+                name: UpdateFormsPage.routeName,
                 builder: (BuildContext context, GoRouterState state) {
-                  return const ModuleGridPage(
-                    title: 'Update forms',
-                    group: ModuleGroup.updateForms,
-                  );
+                  return const UpdateFormsPage();
                 },
               ),
             ],

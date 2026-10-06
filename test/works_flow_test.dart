@@ -142,7 +142,7 @@ void main() {
         status: segment.status,
         progress: segment.progress,
       ),
-      ExecutionBarColors.notStarted,
+      ExecutionBarColors.notAwarded,
     );
     expect(
       executionSegmentColor(
@@ -171,6 +171,160 @@ void main() {
     );
     expect(chart.asOnLabel, '01-10-2026');
   });
+
+  test(
+    'P02-like rows use status colors and keep bars before project start',
+    () {
+      final List<ExecutionProgressSegment> segments =
+          <ExecutionProgressSegment>[
+            _p02(
+              structureType: 'Land Acquisition - Core',
+              fromKm: 144.478,
+              toKm: 146.126,
+              status: 'COMPLETED',
+              progress: 100,
+            ),
+            _p02(
+              structureType: 'Formation',
+              fromKm: 136.25,
+              toKm: 146.126,
+              status: 'IN PROGRESS',
+              progress: 68.71,
+            ),
+            _p02(
+              structureType: 'Track Work',
+              fromKm: 105,
+              toKm: 110,
+              status: 'NOT STARTED',
+              progress: 0,
+            ),
+            _p02(
+              structureType: 'Important Bridge',
+              fromKm: 125.65725,
+              toKm: 126.34275,
+              status: 'IN PROGRESS',
+              progress: 17.13,
+            ),
+            _p02(
+              structureType: 'Minor Bridge',
+              fromKm: 140,
+              toKm: 140.01,
+              status: 'IN PROGRESS',
+              progress: 95,
+            ),
+            _p02(
+              structureType: 'Land Acquisition - testing government land',
+              fromKm: 0.067,
+              toKm: 0.89,
+              status: 'NOT AWARDED',
+              progress: 100,
+            ),
+            _p02(
+              structureType: 'Land Acquisition - testing private lans',
+              fromKm: 2.345,
+              toKm: 23.45,
+              status: 'NOT AWARDED',
+              progress: 100,
+            ),
+          ];
+
+      expect(
+        executionSegmentColor(
+          barColor: 'Grey',
+          status: 'COMPLETED',
+          progress: 100,
+        ),
+        ExecutionBarColors.completed,
+      );
+      expect(
+        executionSegmentColor(
+          barColor: 'Grey',
+          status: 'IN PROGRESS',
+          progress: 68.71,
+        ),
+        ExecutionBarColors.inProgress,
+      );
+      expect(
+        executionSegmentColor(
+          barColor: 'Grey',
+          status: 'IN PROGRESS',
+          progress: 95,
+        ),
+        ExecutionBarColors.almostCompleted,
+      );
+      expect(
+        executionSegmentColor(
+          barColor: 'Grey',
+          status: 'NOT STARTED',
+          progress: 0,
+        ),
+        ExecutionBarColors.notStarted,
+      );
+      expect(
+        executionSegmentColor(
+          barColor: 'Grey',
+          status: 'NOT AWARDED',
+          progress: 100,
+        ),
+        ExecutionBarColors.notAwarded,
+      );
+
+      final ExecutionChartData chart = ExecutionChartData.fromSegments(
+        segments,
+      );
+      expect(chart.fromKm, 74.55);
+      expect(chart.toKm, closeTo(146.126, 0.001));
+      expect(
+        chart.rows.map((ExecutionChartRow row) => row.structureType),
+        containsAll(<String>[
+          'Land Acquisition - testing government land',
+          'Land Acquisition - testing private lans',
+        ]),
+      );
+
+      final SegmentFrame tiny = segmentFrame(
+        plotFromKm: 0.067,
+        plotToKm: 0.89,
+        rangeFromKm: chart.fromKm,
+        rangeKm: chart.rangeKm,
+        chartWidth: 300,
+      );
+      final SegmentFrame longer = segmentFrame(
+        plotFromKm: 2.345,
+        plotToKm: 23.45,
+        rangeFromKm: chart.fromKm,
+        rangeKm: chart.rangeKm,
+        chartWidth: 300,
+      );
+      expect(tiny.left, 0);
+      expect(tiny.width, greaterThan(2));
+      expect(longer.left, 0);
+      expect(longer.width, greaterThan(tiny.width));
+      expect(longer.width, lessThan(300));
+    },
+  );
+}
+
+ExecutionProgressSegment _p02({
+  required String structureType,
+  required double fromKm,
+  required double toKm,
+  required String status,
+  required double progress,
+}) {
+  return ExecutionProgressSegment.tryParse(<String, dynamic>{
+    'project': 'Panna - Kajuraho Section New B.G. Line Project',
+    'projectFromKm': 74.55,
+    'projectToKm': 146.126,
+    'fromKm': fromKm,
+    'toKm': toKm,
+    'status': status,
+    'progress': progress,
+    'barColor': 'Grey',
+    'structureType': structureType,
+    'subStructure': 'sample',
+    'projectSection': null,
+  })!;
 }
 
 ExecutionProgressSegment _segment({
