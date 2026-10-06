@@ -11,6 +11,7 @@ class AppModule {
     required this.routeName,
     required this.routePath,
     required this.group,
+    this.children = const <AppModule>[],
   });
 
   final String id;
@@ -20,6 +21,9 @@ class AppModule {
   final String routeName;
   final String routePath;
   final ModuleGroup group;
+  final List<AppModule> children;
+
+  bool get isExpandable => children.isNotEmpty;
 }
 
 class ModuleCatalog {
@@ -181,39 +185,32 @@ class ModuleCatalog {
     ),
     AppModule(
       id: 'rdso',
-      title: 'RDSO drawings',
-      subtitle: 'Digital library and search',
-      icon: Icons.menu_book_rounded,
-      routeName: 'more-rdso',
-      routePath: '/module/rdso',
+      title: 'RDSO Drawings',
+      subtitle: 'Digital library and revision monitor',
+      icon: Icons.description_rounded,
+      routeName: 'more-rdso-drawings',
+      routePath: '/module/rdso-drawings',
       group: ModuleGroup.more,
-    ),
-    AppModule(
-      id: 'rdso-revision',
-      title: 'RDSO revision monitor',
-      subtitle: 'Track drawing revision status',
-      icon: Icons.update_rounded,
-      routeName: 'more-rdso-revision',
-      routePath: '/module/rdso-revision',
-      group: ModuleGroup.more,
-    ),
-    AppModule(
-      id: 'admin',
-      title: 'Admin',
-      subtitle: 'Users, roles and access',
-      icon: Icons.admin_panel_settings_rounded,
-      routeName: 'more-admin',
-      routePath: '/module/admin',
-      group: ModuleGroup.more,
-    ),
-    AppModule(
-      id: 'rfi',
-      title: 'RFI',
-      subtitle: 'Inspections, logs and validation',
-      icon: Icons.fact_check_rounded,
-      routeName: 'more-rfi',
-      routePath: '/module/rfi',
-      group: ModuleGroup.more,
+      children: <AppModule>[
+        AppModule(
+          id: 'rdso-library',
+          title: 'RDSO Digital Library',
+          subtitle: 'Digital library and search',
+          icon: Icons.menu_book_rounded,
+          routeName: 'more-rdso',
+          routePath: '/module/rdso',
+          group: ModuleGroup.more,
+        ),
+        AppModule(
+          id: 'rdso-revision',
+          title: 'Revision Monitor',
+          subtitle: 'Track drawing revision status',
+          icon: Icons.update_rounded,
+          routeName: 'more-rdso-revision',
+          routePath: '/module/rdso-revision',
+          group: ModuleGroup.more,
+        ),
+      ],
     ),
     AppModule(
       id: 'mail',
@@ -235,7 +232,29 @@ class ModuleCatalog {
     ),
   ];
 
+  static const AppModule rfi = AppModule(
+    id: 'rfi',
+    title: 'RFI',
+    subtitle: 'Inspections, logs and validation',
+    icon: Icons.fact_check_rounded,
+    routeName: 'rfi',
+    routePath: '/rfi',
+    group: ModuleGroup.more,
+  );
+
   static List<AppModule> byGroup(ModuleGroup group) {
     return all.where((AppModule module) => module.group == group).toList();
+  }
+
+  static List<AppModule> get routable {
+    final List<AppModule> modules = <AppModule>[];
+    for (final AppModule module in all) {
+      if (module.children.isNotEmpty) {
+        modules.addAll(module.children);
+      } else {
+        modules.add(module);
+      }
+    }
+    return modules;
   }
 }

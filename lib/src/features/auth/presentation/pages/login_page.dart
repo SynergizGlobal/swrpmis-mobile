@@ -388,17 +388,92 @@ class _LoginCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppPalette palette = AppPalette.of(context);
+    const Color fieldError = Color(0xFFFFD0D6);
+    final Color fieldFill = Colors.white.withValues(alpha: 0.14);
+    final Color fieldBorder = Colors.white.withValues(alpha: 0.7);
+    final TextStyle fieldStyle = TextStyle(
+      color: palette.loginTitle,
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      height: 1.2,
+    );
+
+    OutlineInputBorder fieldOutline(Color color, {double width = 1.2}) {
+      return OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: color, width: width),
+      );
+    }
+
     final InputDecorationTheme inputTheme = InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.12),
-      hintStyle: TextStyle(color: palette.loginSecondaryText),
-      labelStyle: TextStyle(color: palette.loginSecondaryText),
-      enabledBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.white54),
+      fillColor: fieldFill,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      prefixIconColor: WidgetStateColor.resolveWith((Set<WidgetState> states) {
+        if (states.contains(WidgetState.focused)) {
+          return Colors.white;
+        }
+        return Colors.white70;
+      }),
+      suffixIconColor: WidgetStateColor.resolveWith((Set<WidgetState> states) {
+        if (states.contains(WidgetState.error)) {
+          return fieldError;
+        }
+        if (states.contains(WidgetState.focused)) {
+          return Colors.white;
+        }
+        return Colors.white70;
+      }),
+      labelStyle: WidgetStateTextStyle.resolveWith((Set<WidgetState> states) {
+        if (states.contains(WidgetState.error)) {
+          return const TextStyle(
+            color: fieldError,
+            fontWeight: FontWeight.w600,
+          );
+        }
+        return TextStyle(
+          color: palette.loginSecondaryText,
+          fontWeight: FontWeight.w500,
+        );
+      }),
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith(
+        (Set<WidgetState> states) {
+          if (states.contains(WidgetState.error)) {
+            return const TextStyle(
+              color: fieldError,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          if (states.contains(WidgetState.focused)) {
+            return TextStyle(
+              color: palette.loginTitle,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          return TextStyle(
+            color: palette.loginSecondaryText,
+            fontWeight: FontWeight.w500,
+          );
+        },
       ),
-      focusedBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.white, width: 1.6),
+      helperStyle: const TextStyle(
+        color: Colors.white70,
+        fontSize: 12,
+        height: 1.3,
       ),
+      helperMaxLines: 2,
+      errorStyle: const TextStyle(
+        color: fieldError,
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w500,
+      ),
+      errorMaxLines: 2,
+      border: fieldOutline(fieldBorder),
+      enabledBorder: fieldOutline(fieldBorder),
+      focusedBorder: fieldOutline(Colors.white, width: 1.8),
+      errorBorder: fieldOutline(fieldError),
+      focusedErrorBorder: fieldOutline(fieldError, width: 1.8),
     );
 
     return Container(
@@ -416,7 +491,15 @@ class _LoginCard extends StatelessWidget {
         ],
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(inputDecorationTheme: inputTheme),
+        data: Theme.of(context).copyWith(
+          inputDecorationTheme: inputTheme,
+          textSelectionTheme: TextSelectionThemeData(
+            cursorColor: palette.loginTitle,
+            selectionColor: palette.loginTitle.withValues(alpha: 0.35),
+            selectionHandleColor: palette.loginTitle,
+          ),
+          colorScheme: Theme.of(context).colorScheme.copyWith(error: fieldError),
+        ),
         child: AutofillGroup(
           child: Form(
             key: formKey,
@@ -443,11 +526,16 @@ class _LoginCard extends StatelessWidget {
                 enableSuggestions: false,
                 smartDashesType: SmartDashesType.disabled,
                 smartQuotesType: SmartQuotesType.disabled,
-                style: const TextStyle(color: Colors.white),
+                cursorColor: palette.loginTitle,
+                cursorErrorColor: fieldError,
+                style: fieldStyle,
                 decoration: const InputDecoration(
                   labelText: 'Username',
                   helperText: 'Case-sensitive, e.g. PMIS_IT_001',
-                  helperStyle: TextStyle(color: Colors.white70, fontSize: 11),
+                  prefixIcon: Icon(
+                    Icons.person_outline_rounded,
+                    color: Colors.white70,
+                  ),
                 ),
                 validator: (String? value) {
                   if (value == null || value.trim().isEmpty) {
@@ -461,9 +549,15 @@ class _LoginCard extends StatelessWidget {
                 controller: passwordController,
                 obscureText: obscure,
                 autofillHints: const <String>[AutofillHints.password],
-                style: const TextStyle(color: Colors.white),
+                cursorColor: palette.loginTitle,
+                cursorErrorColor: fieldError,
+                style: fieldStyle,
                 decoration: InputDecoration(
                   labelText: 'Password',
+                  prefixIcon: const Icon(
+                    Icons.lock_outline_rounded,
+                    color: Colors.white70,
+                  ),
                   suffixIcon: IconButton(
                     onPressed: onToggleObscure,
                     icon: Icon(

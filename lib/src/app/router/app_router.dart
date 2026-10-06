@@ -117,10 +117,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: ReportsPage.routePath,
-                name: ReportsPage.routeName,
+                path: ModuleCatalog.rfi.routePath,
+                name: ModuleCatalog.rfi.routeName,
                 builder: (BuildContext context, GoRouterState state) {
-                  return const ReportsPage();
+                  return ModulePlaceholderPage(
+                    module: ModuleCatalog.rfi,
+                    showAppBar: false,
+                  );
                 },
               ),
             ],
@@ -137,6 +140,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: ReportsPage.routePath,
+        name: ReportsPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: Scaffold(
+              appBar: AppBar(title: const Text('Reports')),
+              body: const ReportsPage(),
+            ),
+          );
+        },
       ),
       GoRoute(
         path: ReportPlaceholderPage.routePath,
@@ -184,7 +200,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return fadeSlidePage(key: state.pageKey, child: const SettingsPage());
         },
       ),
-      ...ModuleCatalog.all.map((AppModule module) {
+      ...ModuleCatalog.routable.map((AppModule module) {
         return GoRoute(
           path: module.routePath,
           name: module.routeName,

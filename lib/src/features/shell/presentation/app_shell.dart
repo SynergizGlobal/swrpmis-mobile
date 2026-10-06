@@ -17,7 +17,7 @@ class AppShell extends StatelessWidget {
       0 => AppConstants.appName,
       1 => 'Works',
       2 => 'Update Forms',
-      3 => 'Reports',
+      3 => 'RFI',
       _ => 'More',
     };
 
@@ -28,12 +28,7 @@ class AppShell extends StatelessWidget {
           children: <Widget>[
             const SwrLogo(size: 36),
             const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            Expanded(child: Text(title, overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: <Widget>[
@@ -87,9 +82,9 @@ class AppShell extends StatelessWidget {
                   label: 'Update Forms',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.insights_outlined),
-                  selectedIcon: Icon(Icons.insights_rounded),
-                  label: 'Reports',
+                  icon: Icon(Icons.fact_check_outlined),
+                  selectedIcon: Icon(Icons.fact_check_rounded),
+                  label: 'RFI',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.grid_view_outlined),
