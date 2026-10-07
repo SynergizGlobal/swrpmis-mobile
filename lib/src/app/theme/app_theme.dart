@@ -48,13 +48,13 @@ class AppPalette extends ThemeExtension<AppPalette> {
     loginButton: Color(0xFFC1121F),
     avatarFill: Color(0xFFD6E4F5),
     avatarText: Color(0xFF0B2F63),
-    cardSurface: Color(0xFFFFFFFF),
+    cardSurface: AppTheme.surfaceLight,
     mapScrim: Color(0xE6F7F9FC),
-    kpiFill: Color(0xFFFFFFFF),
+    kpiFill: AppTheme.surfaceLight,
     mutedText: Color(0xFF475569),
     borderSubtle: Color(0x1A0B2F63),
     success: Color(0xFF198754),
-    navBarFill: Color(0xFFFFFFFF),
+    navBarFill: AppTheme.surfaceLight,
   );
 
   static const AppPalette dark = AppPalette(
@@ -156,7 +156,8 @@ class AppTheme {
   static const Color brandPrimary = Color(0xFF0B2F63);
   static const Color brandSecondary = Color(0xFF1E4F8A);
   static const Color railwayRed = Color(0xFFC1121F);
-  static const Color scaffoldLight = Color(0xFFF7F9FC);
+  static const Color scaffoldLight = Color(0xFFF3F5F8);
+  static const Color surfaceLight = Color(0xFFF8FAFC);
   static const Color scaffoldDark = Color(0xFF071422);
 
   static ThemeData get light {
@@ -168,7 +169,10 @@ class AppTheme {
       secondary: brandSecondary,
       onSecondary: Colors.white,
       tertiary: railwayRed,
-      surface: Colors.white,
+      surface: surfaceLight,
+      surfaceBright: surfaceLight,
+      surfaceContainerLowest: surfaceLight,
+      surfaceContainerLow: surfaceLight,
       onSurface: const Color(0xFF0F172A),
       surfaceContainerHighest: const Color(0xFFE8EEF7),
       outlineVariant: const Color(0xFFD5DEEB),
@@ -223,7 +227,7 @@ class AppTheme {
       visualDensity: VisualDensity.standard,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? const Color(0xFF122844) : Colors.white,
+        fillColor: isDark ? const Color(0xFF122844) : surfaceLight,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -260,7 +264,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: isDark ? 0 : 0,
-        color: isDark ? const Color(0xFF122844) : Colors.white,
+        color: isDark ? const Color(0xFF122844) : surfaceLight,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
@@ -276,6 +280,18 @@ class AppTheme {
           fontWeight: FontWeight.w700,
         ),
       ),
+      bottomSheetTheme: isDark
+          ? null
+          : const BottomSheetThemeData(
+              backgroundColor: surfaceLight,
+              surfaceTintColor: Colors.transparent,
+            ),
+      dialogTheme: isDark
+          ? null
+          : const DialogThemeData(
+              backgroundColor: surfaceLight,
+              surfaceTintColor: Colors.transparent,
+            ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.transparent,
         elevation: 0,

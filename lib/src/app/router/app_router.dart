@@ -15,6 +15,8 @@ import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_f
 import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_page.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_section_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/reports_page.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/settings_page.dart';
 import 'package:swr_pmis_mobile/src/features/shell/presentation/app_shell.dart';
@@ -120,10 +122,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: ModuleCatalog.rfi.routePath,
                 name: ModuleCatalog.rfi.routeName,
                 builder: (BuildContext context, GoRouterState state) {
-                  return ModulePlaceholderPage(
-                    module: ModuleCatalog.rfi,
-                    showAppBar: false,
-                  );
+                  return const RfiPage();
                 },
               ),
             ],
@@ -182,6 +181,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             child: ExecutionProgressPage(
               projectId: projectId,
               fallbackName: name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: RfiSectionPage.routePath,
+        name: RfiSectionPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: RfiSectionPage(
+              section: state.pathParameters['section'] ?? '',
             ),
           );
         },
