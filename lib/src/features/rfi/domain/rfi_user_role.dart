@@ -78,4 +78,153 @@ extension RfiUserRolePermissions on RfiUserRole {
       this == RfiUserRole.itAdmin;
 
   bool get canViewInspectionReferenceForm => this == RfiUserRole.itAdmin;
+
+  bool canDeleteRfi(String status) {
+    if (this == RfiUserRole.itAdmin) {
+      return true;
+    }
+    if (this != RfiUserRole.contractor) {
+      return false;
+    }
+    final String s = status.trim().toUpperCase();
+    return s == 'CREATED' ||
+        s == 'OPEN' ||
+        s == 'UPDATED' ||
+        s == 'RESCHEDULED' ||
+        s == 'REASSIGNED';
+  }
+
+  bool canStartInspection(String status) {
+    final String s = status.toUpperCase();
+    if (this == RfiUserRole.contractorRep) {
+      return s == 'CREATED' ||
+          s == 'UPDATED' ||
+          s == 'RESCHEDULED' ||
+          s == 'REASSIGNED' ||
+          s == 'CON_INSP_ONGOING' ||
+          s == 'UNDER_CON_RECTIFICATION';
+    }
+    if (this == RfiUserRole.engineer || this == RfiUserRole.dyHodEngineer) {
+      return s == 'INSPECTED_BY_CON' ||
+          s == 'AE_INSP_ONGOING' ||
+          s == 'UNDER_ENGG_RECTIFICATION';
+    }
+    return false;
+  }
+
+  bool canSubmitInspection(String status) {
+    final String s = status.toUpperCase();
+    if (this == RfiUserRole.contractorRep) {
+      return s == 'CREATED' ||
+          s == 'UPDATED' ||
+          s == 'RESCHEDULED' ||
+          s == 'REASSIGNED' ||
+          s == 'CON_INSP_ONGOING' ||
+          s == 'UNDER_CON_RECTIFICATION';
+    }
+    if (this == RfiUserRole.engineer || this == RfiUserRole.dyHodEngineer) {
+      return s == 'INSPECTED_BY_CON' ||
+          s == 'AE_INSP_ONGOING' ||
+          s == 'INSPECTED_BY_AE' ||
+          s == 'UNDER_ENGG_RECTIFICATION';
+    }
+    return false;
+  }
+
+  bool canUploadAttachments(String status) {
+    final String s = status.toUpperCase();
+    if (this == RfiUserRole.contractorRep) {
+      return s == 'INSPECTED_BY_CON' ||
+          s == 'AE_INSP_ONGOING' ||
+          s == 'INSPECTED_BY_AE' ||
+          s == 'UNDER_CON_RECTIFICATION' ||
+          s == 'VALIDATION_PENDING' ||
+          s == 'VALIDATION PENDING' ||
+          s == 'INSPECTION_DONE' ||
+          s == 'INSPECTION DONE';
+    }
+    if (this != RfiUserRole.engineer && this != RfiUserRole.dyHodEngineer) {
+      return false;
+    }
+    return s == 'AE_INSP_ONGOING' ||
+        s == 'INSPECTED_BY_AE' ||
+        s == 'UNDER_ENGG_RECTIFICATION' ||
+        s == 'VALIDATION_PENDING' ||
+        s == 'VALIDATION PENDING' ||
+        s == 'INSPECTION_DONE' ||
+        s == 'INSPECTION DONE';
+  }
+
+  bool canUploadTestResults(String status) {
+    final String s = status.toUpperCase();
+    if (this == RfiUserRole.contractorRep) {
+      return s == 'INSPECTED_BY_CON' ||
+          s == 'AE_INSP_ONGOING' ||
+          s == 'INSPECTED_BY_AE' ||
+          s == 'UNDER_CON_RECTIFICATION' ||
+          s == 'VALIDATION_PENDING' ||
+          s == 'VALIDATION PENDING' ||
+          s == 'INSPECTION_DONE' ||
+          s == 'INSPECTION DONE';
+    }
+    if (this != RfiUserRole.engineer && this != RfiUserRole.dyHodEngineer) {
+      return false;
+    }
+    return s == 'AE_INSP_ONGOING' ||
+        s == 'INSPECTED_BY_AE' ||
+        s == 'UNDER_ENGG_RECTIFICATION' ||
+        s == 'VALIDATION_PENDING' ||
+        s == 'VALIDATION PENDING' ||
+        s == 'INSPECTION_DONE' ||
+        s == 'INSPECTION DONE';
+  }
+
+  bool canSendForValidation(String status) {
+    final String s = status.toUpperCase();
+    if ((this == RfiUserRole.engineer || this == RfiUserRole.dyHodEngineer) &&
+        (s == 'INSPECTED_BY_AE' || s == 'INSPECTION BY AE')) {
+      return true;
+    }
+    return false;
+  }
+
+  bool canRejectOrClose(String status) {
+    final String s = status.toUpperCase();
+    if ((this == RfiUserRole.dyHod ||
+            this == RfiUserRole.dyHodEngineer ||
+            this == RfiUserRole.hod) &&
+        (s == 'VALIDATION_PENDING' || s == 'VALIDATION PENDING')) {
+      return true;
+    } else if ((this == RfiUserRole.engineer ||
+            this == RfiUserRole.dyHodEngineer) &&
+        (s == 'INSPECTED_BY_AE' ||
+            s == 'INSPECTION BY AE' ||
+            s == 'VALIDATION_PENDING' ||
+            s == 'VALIDATION PENDING')) {
+      return true;
+    }
+    return false;
+  }
+
+  bool canViewRfi(String status) {
+    return true;
+  }
+
+  bool canChangeExecutive(String status) {
+    final String s = status.toUpperCase();
+    if (this == RfiUserRole.engineer ||
+        this == RfiUserRole.dyHodEngineer ||
+        this == RfiUserRole.hod ||
+        this == RfiUserRole.dyHod ||
+        this == RfiUserRole.itAdmin) {
+      return s.isEmpty ||
+          s == 'CREATED' ||
+          s == 'UPDATED' ||
+          s == 'RESCHEDULED' ||
+          s == 'REASSIGNED' ||
+          s == 'CON_INSP_ONGOING' ||
+          s == 'INSPECTED_BY_CON';
+    }
+    return false;
+  }
 }

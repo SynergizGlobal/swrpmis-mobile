@@ -17,6 +17,17 @@ class ApiConstants {
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String qualityRfiListPath = '/rfi/api/qualityRfi/list';
+  static const String rfiFilterCategoryPath = '/rfi/filter-rfi-category';
+  static const String rfiFilterProjectPath = '/rfi/filter-project';
+  static const String rfiFilterContractPath = '/rfi/filter-contract';
+  static const String rfiFilterStructureTypePath = '/rfi/filter-structure-type';
+  static const String rfiFilterStructurePath = '/rfi/filter-structure';
+  static const String rfiFilterItemPath = '/rfi/filter-item';
+  static const String rfiFilterMaterialPath = '/rfi/filter-material';
+  static const String rfiFilterQualitySafetyPath = '/rfi/filter-quality-safety';
+  static const String rfiDetailsPath = '/rfi/rfi-details';
+  static const String rfiBulkSubmitNoRfiRequiredPath =
+      '/rfi/bulkSubmitNoRfiRequired';
 
   static const Duration connectTimeout = Duration(seconds: 20);
   static const Duration receiveTimeout = Duration(seconds: 45);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_inspection_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
 
 class RfiSectionPage extends StatelessWidget {
@@ -15,6 +16,12 @@ class RfiSectionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final RfiMenuItem? item = RfiMenuItem.byId(section);
     final RfiListKind? listKind = RfiListKind.fromMenuId(item?.id);
+    if (item?.id == RfiMenuId.inspection) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Inspection')),
+        body: const RfiInspectionView(showTitle: false),
+      );
+    }
     if (listKind != null) {
       return Scaffold(
         appBar: AppBar(title: Text(listKind.title)),

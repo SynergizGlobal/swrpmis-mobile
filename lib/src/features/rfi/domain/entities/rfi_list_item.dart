@@ -19,6 +19,9 @@ class RfiListItem {
     required this.timeOfInspection,
     required this.contractorSubmittedOn,
     required this.rfiStatus,
+    this.rfiDescription = '',
+    this.measurementType = '',
+    this.inspectionQty = '',
   });
 
   final int? id;
@@ -40,6 +43,9 @@ class RfiListItem {
   final String timeOfInspection;
   final String contractorSubmittedOn;
   final String rfiStatus;
+  final String rfiDescription;
+  final String measurementType;
+  final String inspectionQty;
 
   String get scheduledText {
     final String date = dateOfInspection.trim();

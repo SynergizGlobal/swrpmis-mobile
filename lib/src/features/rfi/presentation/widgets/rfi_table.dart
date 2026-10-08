@@ -11,12 +11,14 @@ class RfiTableColumn {
     required this.minWidth,
     required this.read,
     this.status = false,
+    this.buildCell,
   });
 
   final String label;
   final double minWidth;
   final String Function(RfiListItem item) read;
   final bool status;
+  final Widget Function(BuildContext context, RfiListItem item)? buildCell;
 }
 
 List<RfiTableColumn> rfiTableColumns(RfiListKind kind) {
@@ -353,6 +355,9 @@ class _DataRow extends StatelessWidget {
     bool dark,
     bool isId,
   ) {
+    if (column.buildCell != null) {
+      return column.buildCell!(context, item);
+    }
     final String raw = column.read(item).trim();
     final TextStyle style =
         Theme.of(context).textTheme.bodySmall?.copyWith(
