@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
 
 class RfiPage extends ConsumerStatefulWidget {
   const RfiPage({super.key});
@@ -58,6 +60,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
         RfiMenuItem.navBarFor(role);
     final List<RfiMenuItem> creates = RfiMenuItem.createItemsFor(role);
     final RfiMenuItem? section = RfiMenuItem.byId(_section.name);
+    final RfiListKind? listKind = RfiListKind.fromMenuId(section?.id);
     final bool interceptBack = _interceptSystemBack;
 
     return PopScope(
@@ -88,7 +91,9 @@ class _RfiPageState extends ConsumerState<RfiPage> {
                   setState(() => _section = id);
                 },
               ),
-        body: section == null || section.id == RfiMenuId.home
+        body: listKind != null
+            ? RfiListView(key: ValueKey<RfiListKind>(listKind), kind: listKind)
+            : section == null || section.id == RfiMenuId.home
             ? const _RfiDashboard()
             : _RfiSectionBody(item: section),
       ),

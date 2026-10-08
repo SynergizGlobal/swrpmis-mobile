@@ -5,7 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_constants.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_action_card.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/global_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
@@ -88,40 +88,61 @@ class ProfilePage extends ConsumerWidget {
             icon: Icons.settings_outlined,
             onTap: () => context.pushNamed(SettingsPage.routeName),
           ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: () async {
-              final bool ok = await GlobalDialog.confirm(
-                title: 'Log out',
-                message: 'Sign out of ${AppConstants.appName}?',
-                confirmLabel: 'Log out',
-              );
-              if (!ok) {
-                return;
-              }
-              await ref.read(authControllerProvider.notifier).logout();
-              if (context.mounted) {
-                context.goNamed(LoginPage.routeName);
-              }
-            },
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Log out'),
-          ),
-          const SizedBox(height: 16),
-          FutureBuilder<PackageInfo>(
-            future: PackageInfo.fromPlatform(),
-            builder: (BuildContext context, AsyncSnapshot<PackageInfo> snap) {
-              final String version = snap.data == null
-                  ? AppConstants.appName
-                  : '${AppConstants.appName}  ${snap.data!.version} (${snap.data!.buildNumber})';
-              return Text(
-                version,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              );
-            },
-          ),
         ],
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: palette.navBarFill,
+          border: Border(top: BorderSide(color: palette.borderSubtle)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                FilledButton.icon(
+                  onPressed: () async {
+                    final bool ok = await AppDialog.confirm(
+                      context,
+                      title: 'Log out',
+                      message: 'Sign out of ${AppConstants.appName}?',
+                      primaryLabel: 'Log out',
+                      icon: Icons.logout_rounded,
+                      destructive: true,
+                    );
+                    if (!ok) {
+                      return;
+                    }
+                    await ref.read(authControllerProvider.notifier).logout();
+                    if (context.mounted) {
+                      context.goNamed(LoginPage.routeName);
+                    }
+                  },
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Log out'),
+                ),
+                const SizedBox(height: 8),
+                FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (BuildContext context, AsyncSnapshot<PackageInfo> snap) {
+                    final String version = snap.data == null
+                        ? AppConstants.appName
+                        : '${AppConstants.appName}  ${snap.data!.version} (${snap.data!.buildNumber})';
+                    return Text(
+                      version,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: palette.mutedText),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -134,10 +155,7 @@ class ProfilePage extends ConsumerWidget {
         children: <Widget>[
           SizedBox(
             width: 110,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(
             child: Text(

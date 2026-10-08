@@ -5,11 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
-import 'package:swr_pmis_mobile/src/app/theme/theme_mode_provider.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_assets.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_constants.dart';
 import 'package:swr_pmis_mobile/src/core/result/failure.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/global_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/swr_logo.dart';
 import 'package:swr_pmis_mobile/src/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
@@ -42,8 +41,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _bootstrapRemembered() async {
-    final AuthLocalSnapshot snap =
-        await ref.read(authLocalDataSourceProvider).readSnapshot();
+    final AuthLocalSnapshot snap = await ref
+        .read(authLocalDataSourceProvider)
+        .readSnapshot();
     if (!mounted) {
       return;
     }
@@ -52,7 +52,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
     setState(() => _rememberMe = snap.rememberMe);
 
-    final bool shouldAutoLogin = snap.rememberMe &&
+    final bool shouldAutoLogin =
+        snap.rememberMe &&
         (snap.userId?.trim().isNotEmpty ?? false) &&
         (snap.password?.isNotEmpty ?? false);
     if (!shouldAutoLogin) {
@@ -60,8 +61,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
 
     setState(() => _autoLoggingIn = true);
-    final Failure? failure =
-        await ref.read(authControllerProvider.notifier).tryAutoLoginIfRemembered();
+    final Failure? failure = await ref
+        .read(authControllerProvider.notifier)
+        .tryAutoLoginIfRemembered();
     if (!mounted) {
       return;
     }
@@ -78,18 +80,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
     setState(() => _submitting = true);
-    final Failure? failure =
-        await ref.read(authControllerProvider.notifier).login(
-              userId: _userIdController.text.trim(),
-              password: _passwordController.text,
-              rememberMe: _rememberMe,
-            );
+    final Failure? failure = await ref
+        .read(authControllerProvider.notifier)
+        .login(
+          userId: _userIdController.text.trim(),
+          password: _passwordController.text,
+          rememberMe: _rememberMe,
+        );
     if (!mounted) {
       return;
     }
     setState(() => _submitting = false);
     if (failure != null) {
-      await GlobalDialog.error(failure.message, title: 'Login Failed');
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Login Failed',
+        message: failure.message,
+      );
       return;
     }
     context.goNamed(HomePage.routeName);
@@ -105,7 +113,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final AppPalette palette = AppPalette.of(context);
-    final ThemeMode themeMode = ref.watch(themeModeProvider);
     final double topInset = MediaQuery.paddingOf(context).top;
     final bool busy = _submitting || _autoLoggingIn;
 
@@ -133,105 +140,82 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 width: double.infinity,
                 padding: EdgeInsets.fromLTRB(12, topInset + 12, 8, 14),
                 color: AppTheme.brandPrimary,
-                child: Row(
-                  children: <Widget>[
-                    const SizedBox(width: 40),
-                    const Expanded(
-                      child: Text(
-                        AppConstants.welcomeTitle,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Appearance',
-                      onPressed: () {
-                        final ThemeMode next = switch (themeMode) {
-                          ThemeMode.system => ThemeMode.light,
-                          ThemeMode.light => ThemeMode.dark,
-                          ThemeMode.dark => ThemeMode.system,
-                        };
-                        ref.read(themeModeProvider.notifier).setMode(next);
-                      },
-                      icon: Icon(
-                        switch (themeMode) {
-                          ThemeMode.system => Icons.brightness_auto_rounded,
-                          ThemeMode.light => Icons.light_mode_rounded,
-                          ThemeMode.dark => Icons.dark_mode_rounded,
-                        },
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+                child: const Text(
+                  AppConstants.welcomeTitle,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Expanded(
                 child: SafeArea(
                   top: false,
                   child: LayoutBuilder(
-                    builder: (BuildContext context, BoxConstraints constraints) {
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight - 24,
-                          ),
-                          child: Column(
-                            children: <Widget>[
-                              const SwrLogo(size: 86),
-                              const SizedBox(height: 12),
-                              Text(
-                                AppConstants.orgName,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.w800),
+                    builder:
+                        (BuildContext context, BoxConstraints constraints) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight - 24,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Project Management Information System',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(color: palette.mutedText),
+                              child: Column(
+                                children: <Widget>[
+                                  const SwrLogo(size: 86),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    AppConstants.orgName,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Project Management Information System',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: palette.mutedText),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  const _LoginCarousel(),
+                                  const SizedBox(height: 18),
+                                  _LoginCard(
+                                    formKey: _formKey,
+                                    userIdController: _userIdController,
+                                    passwordController: _passwordController,
+                                    obscure: _obscure,
+                                    rememberMe: _rememberMe,
+                                    busy: busy,
+                                    onToggleObscure: () =>
+                                        setState(() => _obscure = !_obscure),
+                                    onRememberChanged: (bool? value) {
+                                      setState(
+                                        () => _rememberMe = value ?? false,
+                                      );
+                                    },
+                                    onSubmit: busy ? null : _submit,
+                                    onForgot: () => context.pushNamed(
+                                      ForgotPasswordPage.routeName,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    AppConstants.publisherLine,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(color: palette.mutedText),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 18),
-                              const _LoginCarousel(),
-                              const SizedBox(height: 18),
-                              _LoginCard(
-                                formKey: _formKey,
-                                userIdController: _userIdController,
-                                passwordController: _passwordController,
-                                obscure: _obscure,
-                                rememberMe: _rememberMe,
-                                busy: busy,
-                                onToggleObscure: () =>
-                                    setState(() => _obscure = !_obscure),
-                                onRememberChanged: (bool? value) {
-                                  setState(() => _rememberMe = value ?? false);
-                                },
-                                onSubmit: busy ? null : _submit,
-                                onForgot: () => context.pushNamed(
-                                  ForgotPasswordPage.routeName,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              Text(
-                                AppConstants.publisherLine,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium
-                                    ?.copyWith(color: palette.mutedText),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                            ),
+                          );
+                        },
                   ),
                 ),
               ),
@@ -337,25 +321,42 @@ class _LoginCarouselState extends State<_LoginCarousel> {
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List<Widget>.generate(_slideCount, (int i) {
-            final bool selected = i == _index;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: selected ? 18 : 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppTheme.brandPrimary
-                    : AppTheme.brandPrimary.withValues(alpha: 0.28),
-                borderRadius: BorderRadius.circular(99),
-              ),
-            );
-          }),
-        ),
+        _LoginSlideIndicator(count: _slideCount, index: _index),
       ],
+    );
+  }
+}
+
+class _LoginSlideIndicator extends StatelessWidget {
+  const _LoginSlideIndicator({required this.count, required this.index});
+
+  final int count;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool onDark = Theme.of(context).brightness == Brightness.dark;
+    final Color active = onDark ? Colors.white : AppTheme.brandPrimary;
+    final Color inactive = onDark
+        ? Colors.white.withValues(alpha: 0.38)
+        : AppTheme.brandPrimary.withValues(alpha: 0.28);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List<Widget>.generate(count, (int i) {
+        final bool selected = i == index;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: selected ? 20 : 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: selected ? active : inactive,
+            borderRadius: BorderRadius.circular(99),
+          ),
+        );
+      }),
     );
   }
 }
@@ -436,26 +437,26 @@ class _LoginCard extends StatelessWidget {
           fontWeight: FontWeight.w500,
         );
       }),
-      floatingLabelStyle: WidgetStateTextStyle.resolveWith(
-        (Set<WidgetState> states) {
-          if (states.contains(WidgetState.error)) {
-            return const TextStyle(
-              color: fieldError,
-              fontWeight: FontWeight.w600,
-            );
-          }
-          if (states.contains(WidgetState.focused)) {
-            return TextStyle(
-              color: palette.loginTitle,
-              fontWeight: FontWeight.w600,
-            );
-          }
-          return TextStyle(
-            color: palette.loginSecondaryText,
-            fontWeight: FontWeight.w500,
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith((
+        Set<WidgetState> states,
+      ) {
+        if (states.contains(WidgetState.error)) {
+          return const TextStyle(
+            color: fieldError,
+            fontWeight: FontWeight.w600,
           );
-        },
-      ),
+        }
+        if (states.contains(WidgetState.focused)) {
+          return TextStyle(
+            color: palette.loginTitle,
+            fontWeight: FontWeight.w600,
+          );
+        }
+        return TextStyle(
+          color: palette.loginSecondaryText,
+          fontWeight: FontWeight.w500,
+        );
+      }),
       helperStyle: const TextStyle(
         color: Colors.white70,
         fontSize: 12,
@@ -498,137 +499,139 @@ class _LoginCard extends StatelessWidget {
             selectionColor: palette.loginTitle.withValues(alpha: 0.35),
             selectionHandleColor: palette.loginTitle,
           ),
-          colorScheme: Theme.of(context).colorScheme.copyWith(error: fieldError),
+          colorScheme: Theme.of(
+            context,
+          ).colorScheme.copyWith(error: fieldError),
         ),
         child: AutofillGroup(
           child: Form(
             key: formKey,
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text(
-                'SIGN IN',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: palette.loginSecondaryText,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4,
-                ),
-              ),
-              const SizedBox(height: 18),
-              TextFormField(
-                controller: userIdController,
-                textInputAction: TextInputAction.next,
-                autofillHints: const <String>[AutofillHints.username],
-                keyboardType: TextInputType.text,
-                textCapitalization: TextCapitalization.characters,
-                autocorrect: false,
-                enableSuggestions: false,
-                smartDashesType: SmartDashesType.disabled,
-                smartQuotesType: SmartQuotesType.disabled,
-                cursorColor: palette.loginTitle,
-                cursorErrorColor: fieldError,
-                style: fieldStyle,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  helperText: 'Case-sensitive, e.g. PMIS_IT_001',
-                  prefixIcon: Icon(
-                    Icons.person_outline_rounded,
-                    color: Colors.white70,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  'SIGN IN',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: palette.loginSecondaryText,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.4,
                   ),
                 ),
-                validator: (String? value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter username';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: passwordController,
-                obscureText: obscure,
-                autofillHints: const <String>[AutofillHints.password],
-                cursorColor: palette.loginTitle,
-                cursorErrorColor: fieldError,
-                style: fieldStyle,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(
-                    Icons.lock_outline_rounded,
-                    color: Colors.white70,
-                  ),
-                  suffixIcon: IconButton(
-                    onPressed: onToggleObscure,
-                    icon: Icon(
-                      obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
+                const SizedBox(height: 18),
+                TextFormField(
+                  controller: userIdController,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const <String>[AutofillHints.username],
+                  keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.characters,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  smartDashesType: SmartDashesType.disabled,
+                  smartQuotesType: SmartQuotesType.disabled,
+                  cursorColor: palette.loginTitle,
+                  cursorErrorColor: fieldError,
+                  style: fieldStyle,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    prefixIcon: Icon(
+                      Icons.person_outline_rounded,
                       color: Colors.white70,
                     ),
                   ),
+                  validator: (String? value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter username';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (String? value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Enter password';
-                  }
-                  return null;
-                },
-                onFieldSubmitted: (_) => onSubmit?.call(),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: <Widget>[
-                  Checkbox(
-                    value: rememberMe,
-                    onChanged: onRememberChanged,
-                    side: const BorderSide(color: Colors.white70),
-                    checkColor: AppTheme.brandPrimary,
-                    fillColor: WidgetStateProperty.resolveWith<Color>(
-                      (Set<WidgetState> states) {
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: obscure,
+                  autofillHints: const <String>[AutofillHints.password],
+                  cursorColor: palette.loginTitle,
+                  cursorErrorColor: fieldError,
+                  style: fieldStyle,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(
+                      Icons.lock_outline_rounded,
+                      color: Colors.white70,
+                    ),
+                    suffixIcon: IconButton(
+                      onPressed: onToggleObscure,
+                      icon: Icon(
+                        obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                  validator: (String? value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Enter password';
+                    }
+                    return null;
+                  },
+                  onFieldSubmitted: (_) => onSubmit?.call(),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: <Widget>[
+                    Checkbox(
+                      value: rememberMe,
+                      onChanged: onRememberChanged,
+                      side: const BorderSide(color: Colors.white70),
+                      checkColor: AppTheme.brandPrimary,
+                      fillColor: WidgetStateProperty.resolveWith<Color>((
+                        Set<WidgetState> states,
+                      ) {
                         if (states.contains(WidgetState.selected)) {
                           return Colors.white;
                         }
                         return Colors.transparent;
-                      },
+                      }),
+                    ),
+                    Text(
+                      'Remember Me',
+                      style: TextStyle(color: palette.loginTitle),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: onSubmit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: palette.loginButton,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: palette.loginButton.withValues(
+                      alpha: 0.5,
                     ),
                   ),
-                  Text(
-                    'Remember Me',
-                    style: TextStyle(color: palette.loginTitle),
+                  child: busy
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('LOGIN'),
+                ),
+                TextButton(
+                  onPressed: onForgot,
+                  child: Text(
+                    'Forgot Password?',
+                    style: TextStyle(color: palette.actionLink),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: onSubmit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: palette.loginButton,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor:
-                      palette.loginButton.withValues(alpha: 0.5),
                 ),
-                child: busy
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('LOGIN'),
-              ),
-              TextButton(
-                onPressed: onForgot,
-                child: Text(
-                  'Forgot Password?',
-                  style: TextStyle(color: palette.actionLink),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );

@@ -220,10 +220,17 @@ class _DashboardBody extends StatelessWidget {
               )
               .toList(growable: false);
 
+    final AppPalette palette = AppPalette.of(context);
+    final ColorScheme colors = Theme.of(context).colorScheme;
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
+      backgroundColor: palette.cardSurface,
       builder: (BuildContext context) {
+        final TextStyle? muted = Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: palette.mutedText);
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
@@ -231,37 +238,44 @@ class _DashboardBody extends StatelessWidget {
             children: <Widget>[
               Text(
                 user.designation,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colors.onSurface,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 user.userName.isEmpty ? user.userId : user.userName,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: muted,
               ),
               const SizedBox(height: 8),
               Text(
                 '${user.projectCount} ${user.projectCount == 1 ? 'Project' : 'Projects'}',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colors.onSurface,
+                ),
               ),
               if (assigned.isEmpty) ...<Widget>[
                 const SizedBox(height: 16),
-                const Text('No projects assigned'),
+                Text('No projects assigned', style: muted),
               ] else ...<Widget>[
                 const SizedBox(height: 16),
                 ...assigned.map((DashboardProject project) {
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
+                    iconColor: colors.primary,
                     leading: const Icon(Icons.account_tree_outlined),
-                    title: Text(project.projectName),
+                    title: Text(
+                      project.projectName,
+                      style: TextStyle(color: colors.onSurface),
+                    ),
                     subtitle: Text(
                       <String>[
                         project.projectTypeName,
                         if (project.status.isNotEmpty) project.status,
                       ].join(' · '),
+                      style: muted,
                     ),
                   );
                 }),

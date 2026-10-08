@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/result/failure.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/global_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/forgot_password_controller.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
@@ -56,10 +56,12 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     super.dispose();
   }
 
-  Future<void> _showError(Failure failure) {
-    return GlobalDialog.error(
-      failure.message,
+  Future<void> _showError(Failure failure) async {
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.error,
       title: failure.code ?? 'Request Failed',
+      message: failure.message,
     );
   }
 
@@ -93,11 +95,12 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    final Failure? failure =
-        await ref.read(forgotPasswordControllerProvider.notifier).resetPassword(
-              newPassword: _newPasswordController.text,
-              confirmPassword: _confirmPasswordController.text,
-            );
+    final Failure? failure = await ref
+        .read(forgotPasswordControllerProvider.notifier)
+        .resetPassword(
+          newPassword: _newPasswordController.text,
+          confirmPassword: _confirmPasswordController.text,
+        );
     if (!mounted) {
       return;
     }
@@ -105,9 +108,11 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
       await _showError(failure);
       return;
     }
-    await GlobalDialog.success(
-      'Password updated. Please sign in with your new password.',
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.success,
       title: 'Password reset',
+      message: 'Password updated. Please sign in with your new password.',
     );
     if (mounted) {
       context.goNamed(LoginPage.routeName);
@@ -116,7 +121,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    final ForgotPasswordState state = ref.watch(forgotPasswordControllerProvider);
+    final ForgotPasswordState state = ref.watch(
+      forgotPasswordControllerProvider,
+    );
     final String title = switch (state.step) {
       ForgotPasswordStep.email => 'Forgot password',
       ForgotPasswordStep.otp => 'Verify OTP',
@@ -142,16 +149,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: <Widget>[
-            Text(
-              switch (state.step) {
-                ForgotPasswordStep.email =>
-                  'Enter the email linked to your SWR PMIS account. We will send a one-time code.',
-                ForgotPasswordStep.otp =>
-                  'Enter the OTP sent to ${state.email}.',
-                ForgotPasswordStep.reset =>
-                  'Choose a new password for ${state.email}.',
-              },
-            ),
+            Text(switch (state.step) {
+              ForgotPasswordStep.email =>
+                'Enter the email linked to your SWR PMIS account. We will send a one-time code.',
+              ForgotPasswordStep.otp => 'Enter the OTP sent to ${state.email}.',
+              ForgotPasswordStep.reset =>
+                'Choose a new password for ${state.email}.',
+            }),
             const SizedBox(height: 20),
             if (state.step == ForgotPasswordStep.email)
               TextFormField(
@@ -209,8 +213,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                   labelText: 'Confirm password',
                   suffixIcon: IconButton(
                     onPressed: () => setState(
-                      () =>
-                          _obscureConfirmPassword = !_obscureConfirmPassword,
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
                     ),
                     icon: Icon(
                       _obscureConfirmPassword
@@ -242,13 +245,11 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : Text(
-                      switch (state.step) {
-                        ForgotPasswordStep.email => 'Send OTP',
-                        ForgotPasswordStep.otp => 'Verify',
-                        ForgotPasswordStep.reset => 'Update password',
-                      },
-                    ),
+                  : Text(switch (state.step) {
+                      ForgotPasswordStep.email => 'Send OTP',
+                      ForgotPasswordStep.otp => 'Verify',
+                      ForgotPasswordStep.reset => 'Update password',
+                    }),
             ),
           ],
         ),

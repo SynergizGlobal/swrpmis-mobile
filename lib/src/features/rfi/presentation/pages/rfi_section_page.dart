@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
 
 class RfiSectionPage extends StatelessWidget {
   const RfiSectionPage({super.key, required this.section});
@@ -12,6 +14,13 @@ class RfiSectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final RfiMenuItem? item = RfiMenuItem.byId(section);
+    final RfiListKind? listKind = RfiListKind.fromMenuId(item?.id);
+    if (listKind != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(listKind.title)),
+        body: RfiListView(kind: listKind),
+      );
+    }
     final String title = item?.title ?? 'RFI';
     final String message = switch (item?.id) {
       RfiMenuId.home => 'The RFI dashboard is not ready yet.',

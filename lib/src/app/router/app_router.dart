@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/router/app_page.dart';
 import 'package:swr_pmis_mobile/src/app/router/go_router_refresh.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/global_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
@@ -37,7 +37,7 @@ final goRouterRefreshProvider = Provider<GoRouterRefresh>((ref) {
 final appRouterProvider = Provider<GoRouter>((ref) {
   final GoRouterRefresh refresh = ref.watch(goRouterRefreshProvider);
   return GoRouter(
-    navigatorKey: GlobalDialog.navigatorKey,
+    navigatorKey: AppDialog.navigatorKey,
     initialLocation: LoginPage.routePath,
     refreshListenable: refresh,
     redirect: (BuildContext context, GoRouterState state) {
