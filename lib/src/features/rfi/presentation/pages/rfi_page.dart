@@ -7,8 +7,11 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign_executive_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_inspection_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_log_view.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_validation_view.dart';
 
 class RfiPage extends ConsumerStatefulWidget {
   const RfiPage({super.key});
@@ -96,6 +99,12 @@ class _RfiPageState extends ConsumerState<RfiPage> {
             ? RfiListView(key: ValueKey<RfiListKind>(listKind), kind: listKind)
             : section?.id == RfiMenuId.inspection
             ? const RfiInspectionView()
+            : section?.id == RfiMenuId.validation
+            ? const RfiValidationView()
+            : section?.id == RfiMenuId.log
+            ? const RfiLogView()
+            : section?.id == RfiMenuId.assignExecutive
+            ? const RfiAssignExecutiveView()
             : section == null || section.id == RfiMenuId.home
             ? const _RfiDashboard()
             : _RfiSectionBody(item: section),

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign_executive_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_inspection_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_log_view.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_validation_view.dart';
 
 class RfiSectionPage extends StatelessWidget {
   const RfiSectionPage({super.key, required this.section});
@@ -20,6 +23,24 @@ class RfiSectionPage extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Inspection')),
         body: const RfiInspectionView(showTitle: false),
+      );
+    }
+    if (item?.id == RfiMenuId.validation) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Validation')),
+        body: const RfiValidationView(showTitle: false),
+      );
+    }
+    if (item?.id == RfiMenuId.log) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('RFI Log')),
+        body: const RfiLogView(showTitle: false),
+      );
+    }
+    if (item?.id == RfiMenuId.assignExecutive) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Assign Executive')),
+        body: const RfiAssignExecutiveView(showTitle: false),
       );
     }
     if (listKind != null) {

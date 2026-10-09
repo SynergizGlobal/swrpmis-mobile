@@ -28,6 +28,26 @@ class ApiConstants {
   static const String rfiDetailsPath = '/rfi/rfi-details';
   static const String rfiBulkSubmitNoRfiRequiredPath =
       '/rfi/bulkSubmitNoRfiRequired';
+  static const String rfiLogListPath = '/api/rfiLog/getAllRfiLogDetails';
+  static const String rfiLogReportPath = '/api/rfiLog/getRfiReportDetails';
+  static const String rfiLogPreviewFilesPath = '/api/rfiLog/previewFiles';
+  static const String rfiLogPdfDownloadPath = '/api/rfiLog/pdf/download';
+  static const String validationFilterCategoryPath =
+      '/api/validation/filter-rfi-category';
+  static const String validationFilterProjectPath =
+      '/api/validation/filter-project';
+  static const String validationFilterContractPath =
+      '/api/validation/filter-contract';
+  static const String validationListPath = '/api/validation/getRfiValidations';
+  static const String validationValidatePath = '/api/validation/validate';
+  static const String getRfiReportDetail = '/api/validation/getRfiReportDetail';
+  static const String rfiProjectNamesPath = '/rfi/projectNames';
+  static const String rfiContractNamesPath = '/rfi/contractNames';
+  static const String rfiAssignedExecutiveLogsPath =
+      '/rfi/getAssinedExecutiveLogs';
+
+  static String rfiAssignExecutiveDeletePath(int id) =>
+      '/rfi/assignExecutive/delete/$id';
 
   static const Duration connectTimeout = Duration(seconds: 20);
   static const Duration receiveTimeout = Duration(seconds: 45);

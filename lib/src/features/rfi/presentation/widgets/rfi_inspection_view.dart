@@ -15,6 +15,8 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.d
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_inspection_actions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_provider.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
 
 class RfiInspectionView extends ConsumerStatefulWidget {
@@ -106,12 +108,12 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
         .where((RfiInspectionRow row) => _matches(row, _search.text))
         .toList(growable: false);
     final bool hasError = inspection.error != null;
-    final bool showSearch =
-        !hasError && (loaded.isNotEmpty || !inspection.loading);
+    final bool showSearch = !hasError;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        RfiContentLoader(loading: inspection.loading),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Column(
@@ -143,10 +145,6 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
                 onSubmit: _submitReady,
                 submitting: _submitting,
               ),
-              if (inspection.loading) ...<Widget>[
-                const SizedBox(height: 8),
-                const LinearProgressIndicator(minHeight: 2),
-              ],
               if (showSearch) ...<Widget>[
                 const SizedBox(height: 12),
                 TextField(
@@ -195,10 +193,7 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
     if (inspection.loading && inspection.catalog.rows.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refresh,
-        child: const _FillScroll(
-          minHeight: 240,
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        child: const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
       );
     }
     if (inspection.error != null) {
@@ -601,10 +596,8 @@ class _FilterBar extends StatelessWidget {
         Row(
           children: <Widget>[
             Expanded(
-              child: OutlinedButton(
-                style: buttonStyle,
+              child: RfiFilterClearButton(
                 onPressed: enabled ? onClearFilters : null,
-                child: const Text('Clear'),
               ),
             ),
             const SizedBox(width: 8),

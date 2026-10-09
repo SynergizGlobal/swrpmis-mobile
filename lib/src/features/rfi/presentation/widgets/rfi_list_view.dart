@@ -9,6 +9,7 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_providers.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
 
 class RfiListView extends ConsumerStatefulWidget {
@@ -68,10 +69,12 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
         : loaded
               .where((RfiListItem item) => _matches(item, _search.text))
               .toList(growable: false);
+    final bool showSearch = loaded != null || asyncList.isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        RfiContentLoader(loading: asyncList.isLoading),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Column(
@@ -79,10 +82,10 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
             children: <Widget>[
               _ListHeader(
                 title: widget.kind.title,
-                countLabel: loaded == null ? null : _countLabel(visible.length),
+                countLabel: showSearch ? _countLabel(visible.length) : null,
                 onAdd: _onAdd,
               ),
-              if (loaded != null) ...<Widget>[
+              if (showSearch) ...<Widget>[
                 const SizedBox(height: 12),
                 TextField(
                   controller: _search,
@@ -115,7 +118,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
               onRefresh: _refresh,
               child: const _FillScroll(
                 minHeight: 240,
-                child: Center(child: CircularProgressIndicator()),
+                child: SizedBox.shrink(),
               ),
             ),
             error: (Object error, StackTrace stackTrace) {

@@ -93,6 +93,80 @@ class RfiInspectionRemoteDataSource {
     );
   }
 
+  Future<RfiInspectionCatalog> fetchFilters(RfiInspectionFilter filter) async {
+    final Map<String, dynamic> body = filter.toJson();
+    final List<dynamic> responses =
+        await Future.wait<dynamic>(<Future<dynamic>>[
+          _post(ApiConstants.rfiFilterCategoryPath, body),
+          _post(ApiConstants.rfiFilterProjectPath, body),
+          _post(ApiConstants.rfiFilterContractPath, body),
+          _post(ApiConstants.rfiFilterStructureTypePath, body),
+          _post(ApiConstants.rfiFilterStructurePath, body),
+          _post(ApiConstants.rfiFilterItemPath, body),
+          _post(ApiConstants.rfiFilterMaterialPath, body),
+          _post(ApiConstants.rfiFilterQualitySafetyPath, body),
+        ]);
+    return RfiInspectionCatalog(
+      categories: _textOptions(responses[0], const <String>[
+        'rfiCategory',
+        'category',
+        'name',
+        'label',
+      ]),
+      projects: _namedOptions(
+        responses[1],
+        idKeys: const <String>['projectId', 'id'],
+        labelKeys: const <String>['projectName', 'name', 'label'],
+        numeric: false,
+      ),
+      contracts: _namedOptions(
+        responses[2],
+        idKeys: const <String>['contractId', 'id'],
+        labelKeys: const <String>['contractName', 'name', 'label'],
+        numeric: false,
+      ),
+      structureTypes: _textOptions(responses[3], const <String>[
+        'structureType',
+        'name',
+        'label',
+      ]),
+      structures: _namedOptions(
+        responses[4],
+        idKeys: const <String>['structureId', 'id'],
+        labelKeys: const <String>[
+          'structure',
+          'structureName',
+          'name',
+          'label',
+        ],
+        numeric: true,
+      ),
+      items: _namedOptions(
+        responses[5],
+        idKeys: const <String>['itemId', 'id'],
+        labelKeys: const <String>['item', 'itemName', 'name', 'label'],
+        numeric: true,
+      ),
+      materials: _namedOptions(
+        responses[6],
+        idKeys: const <String>['materialId', 'id'],
+        labelKeys: const <String>['material', 'materialName', 'name', 'label'],
+        numeric: true,
+      ),
+      qualitySafety: _namedOptions(
+        responses[7],
+        idKeys: const <String>['qualityOrSafetyId', 'qualitySafetyId', 'id'],
+        labelKeys: const <String>[
+          'qualityOrSafety',
+          'qualitySafety',
+          'name',
+          'label',
+        ],
+        numeric: true,
+      ),
+    );
+  }
+
   Future<List<RfiInspectionRow>> fetchDetails(
     RfiInspectionFilter filter,
   ) async {
