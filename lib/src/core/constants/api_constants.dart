@@ -41,6 +41,8 @@ class ApiConstants {
   static const String validationListPath = '/api/validation/getRfiValidations';
   static const String validationValidatePath = '/api/validation/validate';
   static const String getRfiReportDetail = '/api/validation/getRfiReportDetail';
+  static const String rfiInspectionCountPath = '/rfi/inspection-count';
+  static const String rfiStatusCountsPath = '/rfi/status-counts';
   static const String rfiProjectNamesPath = '/rfi/projectNames';
   static const String rfiContractNamesPath = '/rfi/contractNames';
   static const String rfiAssignedExecutiveLogsPath =

@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_log_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/rfi_log_print.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_log_row.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_dashboard_card.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_log_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_log_filter_bar.dart';
@@ -27,6 +31,8 @@ class RfiLogView extends ConsumerStatefulWidget {
 class _RfiLogViewState extends ConsumerState<RfiLogView> {
   final TextEditingController _search = TextEditingController();
   RfiLogRow? _downloadingRow;
+  int _pageSize = TablePage.defaultPageSize;
+  int _page = 1;
 
   @override
   void dispose() {
@@ -113,86 +119,116 @@ class _RfiLogViewState extends ConsumerState<RfiLogView> {
         .toList(growable: false);
     final bool hasError = log.error != null;
     final bool showSearch = !hasError;
+    final TablePage<RfiLogRow> tablePage = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
+    if (tablePage.page != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _page != tablePage.page) {
+          setState(() => _page = tablePage.page);
+        }
+      });
+    }
+    final bool showFooter =
+        log.error == null && !(log.loading && log.rows.isEmpty);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        RfiContentLoader(loading: log.loading),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              if (widget.showTitle)
-                Text(
-                  'RFI Log',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              if (showSearch) ...<Widget>[
-                if (widget.showTitle) const SizedBox(height: 2),
-                Text(
-                  _countLabel(visible.length),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppPalette.of(context).mutedText,
+    return PagedTableColumn(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          RfiContentLoader(loading: log.loading),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                if (widget.showTitle)
+                  Text(
+                    'RFI Log',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              RfiLogFilterBar(
-                filter: log.filter,
-                catalog: log.catalog,
-                enabled: !log.loading && _downloadingRow == null,
-                onClear: controller.clearFilters,
-                onCategory: controller.selectCategory,
-                onProject: controller.selectProject,
-                onContract: controller.selectContract,
-                onStructureType: controller.selectStructureType,
-                onStructure: controller.selectStructure,
-                onItem: controller.selectItem,
-                onMaterial: controller.selectMaterial,
-                onQuality: controller.selectQuality,
-              ),
-              if (showSearch) ...<Widget>[
+                if (showSearch) ...<Widget>[
+                  if (widget.showTitle) const SizedBox(height: 2),
+                  Text(
+                    _countLabel(visible.length),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppPalette.of(context).mutedText,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        textInputAction: TextInputAction.search,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Search RFI...',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _search.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Clear',
-                                  onPressed: () {
-                                    _search.clear();
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.close_rounded),
-                                ),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: log.loading ? null : _refresh,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
+                RfiLogFilterBar(
+                  filter: log.filter,
+                  catalog: log.catalog,
+                  enabled: !log.loading && _downloadingRow == null,
+                  onClear: controller.clearFilters,
+                  onCategory: controller.selectCategory,
+                  onProject: controller.selectProject,
+                  onContract: controller.selectContract,
+                  onStructureType: controller.selectStructureType,
+                  onStructure: controller.selectStructure,
+                  onItem: controller.selectItem,
+                  onMaterial: controller.selectMaterial,
+                  onQuality: controller.selectQuality,
                 ),
+                if (rfiDashboardStatusCaption(log.filter.filterStatus)
+                    case final String statusCaption) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text(
+                    statusCaption,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppPalette.of(context).mutedText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (showSearch) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() => _page = 1),
+                    decoration: InputDecoration(
+                      hintText: 'Search RFI...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _page = 1);
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        Expanded(child: _body(log, visible)),
-      ],
+        ],
+      ),
+      body: _body(log, tablePage.items),
+      footer: showFooter
+          ? TablePaginationFooter(
+              label: tablePage.label,
+              total: tablePage.total,
+              page: tablePage.page,
+              pageCount: tablePage.pageCount,
+              pageSize: _pageSize,
+              onPageChanged: (int page) => setState(() => _page = page),
+              onPageSizeChanged: (int size) => setState(() {
+                _pageSize = size;
+                _page = 1;
+              }),
+            )
+          : null,
     );
   }
 

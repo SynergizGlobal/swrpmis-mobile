@@ -67,4 +67,112 @@ void main() {
     expect(data.dyhodsReportingTo('PMIS_CE_001').single.userId, 'PMIS_DY_001');
     expect(data.projectTypes.single.name, 'New Lines');
   });
+
+  test('org child is nested under its parent and is not a sibling of the root', () {
+    final HomeDashboardData data = HomeDashboardData.fromApiLists(
+      projectList: const <Map<String, dynamic>>[],
+      usersByType: <Map<String, dynamic>>[
+        <String, dynamic>{
+          'userId': 'PMIS_SU_001',
+          'designation': 'CAO/CN/BNC',
+          'userTypeFk': 'CAO',
+          'reportingToIdSrfk': 'PMIS_SU_001',
+          'projectCount': 1,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_CE_001',
+          'designation': 'CE/CN/I/BNC',
+          'userTypeFk': 'HOD',
+          'reportingToIdSrfk': 'PMIS_SU_001',
+          'projectCount': 0,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_CE_002',
+          'designation': 'CE/CN/II/BNC',
+          'userTypeFk': 'HOD',
+          'reportingToIdSrfk': 'PMIS_SU_001',
+          'projectCount': 0,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_DY_001',
+          'designation': 'Dy.CE/CE1/CN/BNC',
+          'userTypeFk': 'DYHOD',
+          'reportingToIdSrfk': 'PMIS_CE_001',
+          'projectCount': 0,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_TL_001',
+          'designation': 'TEAM LEADER',
+          'userTypeFk': 'OTHER',
+          'reportingToIdSrfk': 'PMIS_CE_001',
+          'projectCount': 0,
+        },
+      ],
+      projectTypes: const <Map<String, dynamic>>[],
+      projectListByType: const <Map<String, dynamic>>[],
+    );
+
+    final List<OrgChartNode> forest = data.orgForest;
+    expect(
+      forest.map((OrgChartNode node) => node.user.userId),
+      <String>['PMIS_SU_001'],
+    );
+    final OrgChartNode root = forest.single;
+    expect(
+      root.children.map((OrgChartNode node) => node.user.userId).toList(),
+      <String>['PMIS_CE_001', 'PMIS_CE_002'],
+    );
+    expect(
+      root.children.first.children
+          .map((OrgChartNode node) => node.user.userId)
+          .toList(),
+      <String>['PMIS_DY_001', 'PMIS_TL_001'],
+    );
+    expect(root.children.last.children, isEmpty);
+    expect(
+      forest.map((OrgChartNode node) => node.user.userId),
+      isNot(contains('PMIS_DY_001')),
+    );
+    expect(
+      root.children.map((OrgChartNode node) => node.user.userId),
+      isNot(contains('PMIS_DY_001')),
+    );
+  });
+
+  test('missing parent ids follow CAO then HOD then DYHOD', () {
+    final HomeDashboardData data = HomeDashboardData.fromApiLists(
+      projectList: const <Map<String, dynamic>>[],
+      usersByType: const <Map<String, dynamic>>[
+        <String, dynamic>{
+          'userId': 'CAO_1',
+          'designation': 'CAO/CN/BNC',
+          'userTypeFk': 'CAO',
+          'projectCount': 1,
+        },
+        <String, dynamic>{
+          'userId': 'HOD_1',
+          'designation': 'CE/CN/I/BNC',
+          'userTypeFk': 'HOD',
+          'projectCount': 0,
+        },
+        <String, dynamic>{
+          'userId': 'DY_1',
+          'designation': 'Dy. CE',
+          'userTypeFk': 'DYHOD',
+          'projectCount': 0,
+        },
+      ],
+      projectTypes: <Map<String, dynamic>>[],
+      projectListByType: <Map<String, dynamic>>[],
+    );
+
+    final OrgChartNode root = data.orgForest.single;
+    expect(root.user.userId, 'CAO_1');
+    expect(root.children.single.user.userId, 'HOD_1');
+    expect(root.children.single.children.single.user.userId, 'DY_1');
+    expect(
+      root.children.map((OrgChartNode node) => node.user.userId),
+      isNot(contains('DY_1')),
+    );
+  });
 }

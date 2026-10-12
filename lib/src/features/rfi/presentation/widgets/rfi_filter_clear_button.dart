@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 
 class RfiFilterClearButton extends StatelessWidget {
   const RfiFilterClearButton({super.key, required this.onPressed});
@@ -12,9 +13,14 @@ class RfiFilterClearButton extends StatelessWidget {
       style: ButtonStyle(
         visualDensity: VisualDensity.standard,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const WidgetStatePropertyAll<Size>(Size(72, 40)),
+        minimumSize: const WidgetStatePropertyAll<Size>(
+          Size(0, AppTheme.fieldHeight),
+        ),
+        maximumSize: const WidgetStatePropertyAll<Size>(
+          Size(double.infinity, AppTheme.fieldHeight),
+        ),
         padding: const WidgetStatePropertyAll<EdgeInsets>(
-          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          EdgeInsets.symmetric(horizontal: 12),
         ),
         foregroundColor: WidgetStateProperty.resolveWith<Color>((
           Set<WidgetState> states,
@@ -45,12 +51,14 @@ class RfiFilterClearButton extends StatelessWidget {
         ),
         shape: const WidgetStatePropertyAll<OutlinedBorder>(
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(10)),
+            borderRadius: BorderRadius.all(
+              Radius.circular(AppTheme.cardRadius),
+            ),
           ),
         ),
       ),
       onPressed: onPressed,
-      child: const Text('Clear'),
+      child: const Text('Clear', maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }

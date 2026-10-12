@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_assign_executive.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_assign_executive_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign_executive_table.dart';
@@ -234,6 +237,8 @@ class _LogTab extends ConsumerStatefulWidget {
 class _LogTabState extends ConsumerState<_LogTab> {
   final TextEditingController _search = TextEditingController();
   int? _deletingId;
+  int _pageSize = TablePage.compactDefaultPageSize;
+  int _page = 1;
 
   @override
   void dispose() {
@@ -302,60 +307,79 @@ class _LogTabState extends ConsumerState<_LogTab> {
         .where((RfiAssignExecutiveLog row) => _matches(row, _search.text))
         .toList(growable: false);
     final bool showSearch = log.error == null;
+    final TablePage<RfiAssignExecutiveLog> tablePage = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
+    if (tablePage.page != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _page != tablePage.page) {
+          setState(() => _page = tablePage.page);
+        }
+      });
+    }
+    final bool showFooter =
+        log.error == null && !(log.loading && log.rows.isEmpty);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        RfiContentLoader(loading: log.loading),
-        if (showSearch)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  _countLabel(visible.length),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppPalette.of(context).mutedText,
+    return PagedTableColumn(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          RfiContentLoader(loading: log.loading),
+          if (showSearch)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    _countLabel(visible.length),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppPalette.of(context).mutedText,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        textInputAction: TextInputAction.search,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Search...',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _search.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Clear',
-                                  onPressed: () {
-                                    _search.clear();
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.close_rounded),
-                                ),
-                          isDense: true,
-                        ),
-                      ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() => _page = 1),
+                    decoration: InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _page = 1);
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
                     ),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: log.loading ? null : _refresh,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        Expanded(child: _body(log, visible)),
-      ],
+        ],
+      ),
+      body: _body(log, tablePage.items),
+      footer: showFooter
+          ? TablePaginationFooter(
+              label: tablePage.label,
+              total: tablePage.total,
+              page: tablePage.page,
+              pageCount: tablePage.pageCount,
+              pageSize: _pageSize,
+              onPageChanged: (int page) => setState(() => _page = page),
+              onPageSizeChanged: (int size) => setState(() {
+                _pageSize = size;
+                _page = 1;
+              }),
+            )
+          : null,
     );
   }
 

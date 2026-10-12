@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_reference_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_reference.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_reference_provider.dart';
@@ -47,6 +50,8 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
   bool _loadingNames = false;
   int _namesTicket = 0;
   int? _deletingId;
+  int _pageSize = TablePage.defaultPageSize;
+  int _page = 1;
   StateSetter? _sheetSetter;
   BuildContext? _sheetContext;
 
@@ -81,6 +86,7 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
     _enclosureIds = <String>[];
     _clearNameOptions();
     _search.clear();
+    _page = 1;
     _retireChecklistAdds();
   }
 
@@ -128,7 +134,9 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
       isScrollControlled: true,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.cardRadius),
+        ),
       ),
       builder: (BuildContext sheetContext) {
         return Padding(
@@ -241,6 +249,7 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
       _editingId = null;
       _checklistEdit.clear();
       _search.clear();
+      _page = 1;
       _retireChecklistAdds();
     });
     await ref.read(rfiReferenceControllerProvider.notifier).selectEnclosure(id);
@@ -961,117 +970,135 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
         data.form == RfiReferenceForm.enclosureList ||
         data.form == RfiReferenceForm.description;
     final int count = _visibleCount(data);
+    final TablePage<int> tablePage = TablePage.slice(
+      List<int>.generate(count, (int index) => index),
+      page: _page,
+      pageSize: _pageSize,
+    );
+    if (tablePage.page != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _page != tablePage.page) {
+          setState(() => _page = tablePage.page);
+        }
+      });
+    }
+    final bool showFooter = chrome && !(data.loading && _rowsEmpty(data));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        RfiContentLoader(loading: data.loading || _busy || _loadingNames),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              if (widget.showTitle)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Reference',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              _PickerField(
-                label: 'Select Form:',
-                value: data.form?.label,
-                placeholder: '-- Select --',
-                enabled: !_busy,
-                onTap: _pickForm,
-              ),
-              if (data.form == RfiReferenceForm.checklist) ...<Widget>[
-                const SizedBox(height: 12),
-                _PickerField(
-                  label: 'Sub Option:',
-                  value: data.selectedEnclosure?.encloserName,
-                  placeholder: '-- Select Enclosure --',
-                  enabled:
-                      !_busy && (data.subOptions.isNotEmpty || !data.loading),
-                  onTap: () => _pickSubOption(data),
-                ),
-              ],
-              if (canAddRow) ...<Widget>[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _NavyButton(
-                    label: 'Add Row',
-                    onPressed: _busy
-                        ? null
-                        : data.form == RfiReferenceForm.enclosureList
-                        ? _openAddEnclosure
-                        : _openAddDescription,
-                  ),
-                ),
-              ],
-              if (data.form == RfiReferenceForm.checklist &&
-                  data.selectedEnclosureId != null) ...<Widget>[
-                const SizedBox(height: 16),
-                Row(
-                  children: <Widget>[
-                    Expanded(child: _checklistTitle(data)),
-                    _NavyButton(
-                      label: 'Add',
-                      onPressed: _busy ? null : _openAddChecklist,
-                    ),
-                  ],
-                ),
-              ],
-              if (chrome) ...<Widget>[
-                const SizedBox(height: 12),
-                Text(
-                  _countLabel(count),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppPalette.of(context).mutedText,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        textInputAction: TextInputAction.search,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Search...',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _search.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Clear',
-                                  onPressed: () {
-                                    _search.clear();
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.close_rounded),
-                                ),
-                          isDense: true,
-                        ),
+    return PagedTableColumn(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          RfiContentLoader(loading: data.loading || _busy || _loadingNames),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                if (widget.showTitle)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Reference',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: data.loading || _busy ? null : _refresh,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
+                  ),
+                _PickerField(
+                  label: 'Select Form:',
+                  value: data.form?.label,
+                  placeholder: '-- Select --',
+                  enabled: !_busy,
+                  onTap: _pickForm,
                 ),
+                if (data.form == RfiReferenceForm.checklist) ...<Widget>[
+                  const SizedBox(height: 12),
+                  _PickerField(
+                    label: 'Sub Option:',
+                    value: data.selectedEnclosure?.encloserName,
+                    placeholder: '-- Select Enclosure --',
+                    enabled:
+                        !_busy && (data.subOptions.isNotEmpty || !data.loading),
+                    onTap: () => _pickSubOption(data),
+                  ),
+                ],
+                if (canAddRow) ...<Widget>[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: _NavyButton(
+                      label: 'Add Row',
+                      onPressed: _busy
+                          ? null
+                          : data.form == RfiReferenceForm.enclosureList
+                          ? _openAddEnclosure
+                          : _openAddDescription,
+                    ),
+                  ),
+                ],
+                if (data.form == RfiReferenceForm.checklist &&
+                    data.selectedEnclosureId != null) ...<Widget>[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: <Widget>[
+                      Expanded(child: _checklistTitle(data)),
+                      _NavyButton(
+                        label: 'Add',
+                        onPressed: _busy ? null : _openAddChecklist,
+                      ),
+                    ],
+                  ),
+                ],
+                if (chrome) ...<Widget>[
+                  const SizedBox(height: 12),
+                  Text(
+                    _countLabel(count),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppPalette.of(context).mutedText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() => _page = 1),
+                    decoration: InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _page = 1);
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        Expanded(child: _body(data)),
-      ],
+        ],
+      ),
+      body: _body(data),
+      footer: showFooter
+          ? TablePaginationFooter(
+              label: tablePage.label,
+              total: tablePage.total,
+              page: tablePage.page,
+              pageCount: tablePage.pageCount,
+              pageSize: _pageSize,
+              onPageChanged: (int page) => setState(() => _page = page),
+              onPageSizeChanged: (int size) => setState(() {
+                _pageSize = size;
+                _page = 1;
+              }),
+            )
+          : null,
     );
   }
 
@@ -1338,6 +1365,11 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
         onRetry: data.enclosures.isEmpty ? _refresh : null,
       );
     }
+    final TablePage<RfiEnclosure> page = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
     return RfiReferenceTable(
       columns: const <RfiReferenceColumn>[
         RfiReferenceColumn('Sr No', 72),
@@ -1347,16 +1379,16 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
         RfiReferenceColumn('Action', 188),
       ],
       rows: <List<String>>[
-        for (int index = 0; index < visible.length; index++)
+        for (int index = 0; index < page.items.length; index++)
           <String>[
-            '${index + 1}',
-            visible[index].categoryLabel,
-            visible[index].encloserName,
-            visible[index].actionLabel,
+            '${page.serial(index)}',
+            page.items[index].categoryLabel,
+            page.items[index].encloserName,
+            page.items[index].actionLabel,
           ],
       ],
       actionBuilder: (BuildContext context, int index) {
-        final RfiEnclosure row = visible[index];
+        final RfiEnclosure row = page.items[index];
         return Wrap(
           spacing: 6,
           runSpacing: 6,
@@ -1392,6 +1424,11 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
         onRetry: data.checklist.isEmpty ? _refresh : null,
       );
     }
+    final TablePage<RfiChecklistDescription> page = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
     return RfiReferenceTable(
       columns: const <RfiReferenceColumn>[
         RfiReferenceColumn('S. No', 72),
@@ -1399,11 +1436,14 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
         RfiReferenceColumn('Actions', 188),
       ],
       rows: <List<String>>[
-        for (int index = 0; index < visible.length; index++)
-          <String>['${index + 1}', visible[index].checklistDescription],
+        for (int index = 0; index < page.items.length; index++)
+          <String>[
+            '${page.serial(index)}',
+            page.items[index].checklistDescription,
+          ],
       ],
       actionBuilder: (BuildContext context, int index) {
-        final RfiChecklistDescription row = visible[index];
+        final RfiChecklistDescription row = page.items[index];
         return Wrap(
           spacing: 6,
           runSpacing: 6,
@@ -1439,6 +1479,11 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
         onRetry: data.descriptions.isEmpty ? _refresh : null,
       );
     }
+    final TablePage<RfiReferenceDescription> page = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
     return RfiReferenceTable(
       columns: const <RfiReferenceColumn>[
         RfiReferenceColumn('Sr No', 72),
@@ -1449,17 +1494,17 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
         RfiReferenceColumn('Action', 188),
       ],
       rows: <List<String>>[
-        for (int index = 0; index < visible.length; index++)
+        for (int index = 0; index < page.items.length; index++)
           <String>[
-            '${index + 1}',
-            visible[index].categoryLabel,
-            visible[index].activity,
-            visible[index].rfiDescription,
-            visible[index].enclosures,
+            '${page.serial(index)}',
+            page.items[index].categoryLabel,
+            page.items[index].activity,
+            page.items[index].rfiDescription,
+            page.items[index].enclosures,
           ],
       ],
       actionBuilder: (BuildContext context, int index) {
-        final RfiReferenceDescription row = visible[index];
+        final RfiReferenceDescription row = page.items[index];
         return Wrap(
           spacing: 6,
           runSpacing: 6,

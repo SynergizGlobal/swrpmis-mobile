@@ -3,6 +3,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_inspection
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_catalog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_row.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_section_launch.dart';
 
 final rfiInspectionControllerProvider =
     NotifierProvider.autoDispose<RfiInspectionController, RfiInspectionState>(
@@ -71,7 +72,12 @@ class RfiInspectionController extends AutoDisposeNotifier<RfiInspectionState> {
       }
       load();
     });
-    return RfiInspectionState.initial();
+    return RfiInspectionState(
+      filter: ref.read(rfiSectionLaunchProvider).inspection,
+      catalog: const RfiInspectionCatalog(),
+      loading: true,
+      error: null,
+    );
   }
 
   RfiInspectionRemoteDataSource get _source =>
@@ -127,6 +133,7 @@ class RfiInspectionController extends AutoDisposeNotifier<RfiInspectionState> {
   }
 
   void apply(RfiInspectionFilter filter) {
+    ref.read(rfiSectionLaunchProvider.notifier).setInspection(filter);
     state = state.copyWith(filter: filter, clearError: true);
     load();
   }

@@ -11,6 +11,7 @@ class RfiInspectionFilter {
     this.itemId,
     this.materialId,
     this.qualityOrSafetyId,
+    this.filterStatus = const <String>[],
   });
 
   final String? rfiCategory;
@@ -21,6 +22,7 @@ class RfiInspectionFilter {
   final int? itemId;
   final int? materialId;
   final int? qualityOrSafetyId;
+  final List<String> filterStatus;
 
   static const int categoryIndex = 0;
   static const int projectIndex = 1;
@@ -41,6 +43,7 @@ class RfiInspectionFilter {
       'itemId': itemId,
       'materialId': materialId,
       'qualityOrSafetyId': qualityOrSafetyId,
+      'filterStatus': List<String>.of(filterStatus),
     };
   }
 
@@ -54,6 +57,7 @@ class RfiInspectionFilter {
       itemId: _intOrNull(json['itemId']),
       materialId: _intOrNull(json['materialId']),
       qualityOrSafetyId: _intOrNull(json['qualityOrSafetyId']),
+      filterStatus: _stringList(json['filterStatus']),
     );
   }
 
@@ -62,6 +66,7 @@ class RfiInspectionFilter {
       rfiCategory: category,
       projectId: projectId,
       contractId: contractId,
+      filterStatus: filterStatus,
     );
   }
 
@@ -89,6 +94,7 @@ class RfiInspectionFilter {
       qualityOrSafetyId: index > qualityIndex
           ? qualityOrSafetyId
           : (index == qualityIndex ? number : null),
+      filterStatus: filterStatus,
     );
   }
 
@@ -102,6 +108,7 @@ class RfiInspectionFilter {
       itemId: _keepNumber(itemId, catalog.items),
       materialId: _keepNumber(materialId, catalog.materials),
       qualityOrSafetyId: _keepNumber(qualityOrSafetyId, catalog.qualitySafety),
+      filterStatus: filterStatus,
     );
   }
 
@@ -115,7 +122,8 @@ class RfiInspectionFilter {
         other.structureId == structureId &&
         other.itemId == itemId &&
         other.materialId == materialId &&
-        other.qualityOrSafetyId == qualityOrSafetyId;
+        other.qualityOrSafetyId == qualityOrSafetyId &&
+        _sameStrings(other.filterStatus, filterStatus);
   }
 
   @override
@@ -128,6 +136,7 @@ class RfiInspectionFilter {
     itemId,
     materialId,
     qualityOrSafetyId,
+    Object.hashAll(filterStatus),
   );
 }
 
@@ -164,6 +173,31 @@ String? _stringOrNull(Object? value) {
     return null;
   }
   return text;
+}
+
+List<String> _stringList(Object? value) {
+  if (value is! List) {
+    return const <String>[];
+  }
+  return value
+      .map((Object? item) => item.toString().trim())
+      .where((String item) => item.isNotEmpty)
+      .toList(growable: false);
+}
+
+bool _sameStrings(List<String> left, List<String> right) {
+  if (identical(left, right)) {
+    return true;
+  }
+  if (left.length != right.length) {
+    return false;
+  }
+  for (int index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 int? _intOrNull(Object? value) {

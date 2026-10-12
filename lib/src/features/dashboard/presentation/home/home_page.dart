@@ -288,102 +288,149 @@ class _DashboardBody extends StatelessWidget {
   }
 }
 
-class _OrgChart extends StatelessWidget {
+class _OrgChart extends StatefulWidget {
   const _OrgChart({required this.data, required this.onSelect});
 
   final HomeDashboardData data;
   final ValueChanged<DashboardOrgUser> onSelect;
 
   @override
+  State<_OrgChart> createState() => _OrgChartState();
+}
+
+class _OrgChartState extends State<_OrgChart> {
+  final ScrollController _controller = ScrollController(
+    keepScrollOffset: false,
+  );
+  String _pinnedKey = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _schedulePin();
+  }
+
+  @override
+  void didUpdateWidget(_OrgChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_userKey(oldWidget.data) != _userKey(widget.data)) {
+      _schedulePin();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _userKey(HomeDashboardData data) {
+    return data.orgUsers.map((DashboardOrgUser user) => user.userId).join('\n');
+  }
+
+  void _schedulePin() {
+    final String key = _userKey(widget.data);
+    if (_pinnedKey == key) {
+      return;
+    }
+    _pinnedKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pinRoot());
+  }
+
+  void _pinRoot() {
+    if (!mounted || !_controller.hasClients) {
+      return;
+    }
+    final double maxExtent = _controller.position.maxScrollExtent;
+    if (maxExtent <= 0) {
+      return;
+    }
+    _controller.jumpTo(maxExtent / 2);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (data.orgUsers.isEmpty) {
+    final List<OrgChartNode> forest = widget.data.orgForest;
+    if (forest.isEmpty) {
       return const SizedBox.shrink();
     }
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double viewport = constraints.maxWidth;
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+          child: SingleChildScrollView(
+            controller: _controller,
+            scrollDirection: Axis.horizontal,
+            primary: false,
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: viewport.isFinite ? viewport : 0,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  for (
+                    int index = 0;
+                    index < forest.length;
+                    index++
+                  ) ...<Widget>[
+                    if (index > 0) const SizedBox(height: 16),
+                    _OrgRoot(node: forest[index], onSelect: widget.onSelect),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
-    final List<DashboardOrgUser> caoUsers = data.caoUsers;
-    final List<DashboardOrgUser> hodUsers = data.hodUsers;
-    final List<DashboardOrgUser> otherUsers = data.otherUsers;
-    final Set<String> nestedDyhodIds = <String>{
-      for (final DashboardOrgUser hod in hodUsers)
-        ...data
-            .dyhodsReportingTo(hod.userId)
-            .map((DashboardOrgUser user) => user.userId),
-    };
-    final List<DashboardOrgUser> unassignedDyhods = data.dyhodUsers
-        .where((DashboardOrgUser user) => !nestedDyhodIds.contains(user.userId))
-        .toList(growable: false);
+class _OrgRoot extends StatelessWidget {
+  const _OrgRoot({required this.node, required this.onSelect});
 
+  static const double columnWidth = 148;
+  static const double gap = 12;
+
+  final OrgChartNode node;
+  final ValueChanged<DashboardOrgUser> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<OrgChartNode> children = node.children;
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
-        if (caoUsers.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: caoUsers
-                .map(
-                  (DashboardOrgUser user) => _OrgCard(
-                    user: user,
-                    emphasized: true,
-                    onTap: () => onSelect(user),
-                  ),
-                )
-                .toList(),
+        _OrgCard(
+          user: node.user,
+          emphasized: true,
+          width: columnWidth,
+          onTap: () => onSelect(node.user),
+        ),
+        if (children.isNotEmpty) ...<Widget>[
+          _OrgRowLinks(
+            count: children.length,
+            columnWidth: columnWidth,
+            gap: gap,
           ),
-        if (caoUsers.isNotEmpty && hodUsers.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 8),
-          Container(
-            width: 2,
-            height: 16,
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-          ),
-          const SizedBox(height: 8),
-        ],
-        if (hodUsers.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: hodUsers.map((DashboardOrgUser hod) {
-              final List<DashboardOrgUser> dyhods = data.dyhodsReportingTo(
-                hod.userId,
-              );
-              return SizedBox(
-                width: 148,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    _OrgCard(user: hod, onTap: () => onSelect(hod)),
-                    if (dyhods.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 8),
-                      ...dyhods.map((DashboardOrgUser dyhod) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _OrgCard(
-                            user: dyhod,
-                            onTap: () => onSelect(dyhod),
-                          ),
-                        );
-                      }),
-                    ],
-                  ],
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              for (int index = 0; index < children.length; index++) ...<Widget>[
+                if (index > 0) const SizedBox(width: gap),
+                SizedBox(
+                  width: columnWidth,
+                  child: _OrgBranch(node: children[index], onSelect: onSelect),
                 ),
-              );
-            }).toList(),
-          ),
-        if (unassignedDyhods.isNotEmpty || otherUsers.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: <DashboardOrgUser>[...unassignedDyhods, ...otherUsers]
-                .map(
-                  (DashboardOrgUser user) =>
-                      _OrgCard(user: user, onTap: () => onSelect(user)),
-                )
-                .toList(),
+              ],
+            ],
           ),
         ],
       ],
@@ -391,16 +438,160 @@ class _OrgChart extends StatelessWidget {
   }
 }
 
+class _OrgBranch extends StatelessWidget {
+  const _OrgBranch({required this.node, required this.onSelect});
+
+  final OrgChartNode node;
+  final ValueChanged<DashboardOrgUser> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _OrgCard(user: node.user, onTap: () => onSelect(node.user)),
+        if (node.children.isNotEmpty)
+          for (
+            int index = 0;
+            index < node.children.length;
+            index++
+          ) ...<Widget>[
+            const _OrgStem(),
+            _OrgBranch(node: node.children[index], onSelect: onSelect),
+          ],
+      ],
+    );
+  }
+}
+
+class _OrgRowLinks extends StatelessWidget {
+  const _OrgRowLinks({
+    required this.count,
+    required this.columnWidth,
+    required this.gap,
+  });
+
+  final int count;
+  final double columnWidth;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    final double width = count * columnWidth + (count - 1) * gap;
+    return SizedBox(
+      width: width,
+      height: 28,
+      child: CustomPaint(
+        painter: _OrgRowLinksPainter(
+          color: _orgLineColor(context),
+          count: count,
+          columnWidth: columnWidth,
+          gap: gap,
+        ),
+      ),
+    );
+  }
+}
+
+class _OrgRowLinksPainter extends CustomPainter {
+  const _OrgRowLinksPainter({
+    required this.color,
+    required this.count,
+    required this.columnWidth,
+    required this.gap,
+  });
+
+  final Color color;
+  final int count;
+  final double columnWidth;
+  final double gap;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double barY = 12;
+    final double midX = size.width / 2;
+    _paintOrgLine(canvas, Offset(midX, 0), Offset(midX, barY), color);
+    if (count > 1) {
+      final double left = columnWidth / 2;
+      final double right = size.width - columnWidth / 2;
+      _paintOrgLine(canvas, Offset(left, barY), Offset(right, barY), color);
+    }
+    for (int index = 0; index < count; index++) {
+      final double x = index * (columnWidth + gap) + columnWidth / 2;
+      _paintOrgLine(canvas, Offset(x, barY), Offset(x, size.height), color);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_OrgRowLinksPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.count != count ||
+        oldDelegate.columnWidth != columnWidth ||
+        oldDelegate.gap != gap;
+  }
+}
+
+class _OrgStem extends StatelessWidget {
+  const _OrgStem();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 14,
+      child: CustomPaint(painter: _OrgStemPainter(_orgLineColor(context))),
+    );
+  }
+}
+
+class _OrgStemPainter extends CustomPainter {
+  const _OrgStemPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double x = size.width / 2;
+    _paintOrgLine(canvas, Offset(x, 0), Offset(x, size.height), color);
+  }
+
+  @override
+  bool shouldRepaint(_OrgStemPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
+Color _orgLineColor(BuildContext context) {
+  final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  return isDark ? const Color(0xFFF4F7FB) : const Color(0xFF1E3F66);
+}
+
+void _paintOrgLine(Canvas canvas, Offset start, Offset end, Color color) {
+  final bool lightLine = color.computeLuminance() > 0.5;
+  final Paint halo = Paint()
+    ..color = lightLine ? const Color(0x99000000) : const Color(0x99FFFFFF)
+    ..strokeWidth = 5
+    ..strokeCap = StrokeCap.butt;
+  final Paint line = Paint()
+    ..color = color
+    ..strokeWidth = 2.5
+    ..strokeCap = StrokeCap.butt;
+  canvas.drawLine(start, end, halo);
+  canvas.drawLine(start, end, line);
+}
+
 class _OrgCard extends StatelessWidget {
   const _OrgCard({
     required this.user,
     required this.onTap,
     this.emphasized = false,
+    this.width,
   });
 
   final DashboardOrgUser user;
   final VoidCallback onTap;
   final bool emphasized;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
@@ -408,51 +599,54 @@ class _OrgCard extends StatelessWidget {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool hasProjects = user.projectCount > 0;
-    return Material(
-      color: isDark ? const Color(0xFF1E3F66) : palette.cardSurface,
-      elevation: emphasized ? 3 : 1.5,
-      shadowColor: Colors.black54,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: emphasized ? 168 : 148,
-          constraints: const BoxConstraints(minHeight: 68),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: hasProjects
-                  ? colors.primary.withValues(alpha: isDark ? 0.55 : 0.35)
-                  : palette.borderSubtle,
+    final BorderRadius radius = BorderRadius.circular(AppTheme.cardRadius);
+    return SizedBox(
+      width: width ?? double.infinity,
+      height: 96,
+      child: Material(
+        color: palette.cardSurface,
+        elevation: 0,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              border: Border.all(
+                width: emphasized ? 1.5 : 1,
+                color: hasProjects
+                    ? colors.primary.withValues(alpha: isDark ? 0.7 : 0.45)
+                    : colors.outlineVariant,
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                user.designation.isEmpty ? user.userName : user.designation,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: emphasized ? 13 : 12,
-                  height: 1.2,
-                  color: isDark ? colors.onSurface : AppTheme.brandPrimary,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  user.designation.isEmpty ? user.userName : user.designation,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    height: 1.2,
+                    color: isDark ? colors.onSurface : AppTheme.brandPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${user.projectCount} ${user.projectCount == 1 ? 'Project' : 'Projects'}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: palette.mutedText,
+                const SizedBox(height: 6),
+                Text(
+                  '${user.projectCount} ${user.projectCount == 1 ? 'Project' : 'Projects'}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: palette.mutedText,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -477,15 +671,13 @@ class _KpiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppPalette palette = AppPalette.of(context);
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.all(10),
+      height: 120,
+      padding: AppTheme.cardPadding,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E3F66) : palette.kpiFill,
-        borderRadius: BorderRadius.circular(16),
-        border: isDark
-            ? Border.all(color: colors.primary.withValues(alpha: 0.28))
-            : null,
+        color: palette.kpiFill,
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +686,7 @@ class _KpiCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             label.toUpperCase(),
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 9,

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_log_row.dart';
 
 class RfiLogTable extends StatelessWidget {
@@ -41,50 +42,33 @@ class RfiLogTable extends StatelessWidget {
         final double viewport = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : 0;
-        final double height = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : 480;
         final double sum = _columns.fold<double>(
           0,
           (double total, _LogColumn column) => total + column.width,
         );
-        final ScrollBehavior clamp = ScrollConfiguration.of(
-          context,
-        ).copyWith(overscroll: false, physics: const ClampingScrollPhysics());
-        return ScrollConfiguration(
-          behavior: clamp,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            child: SizedBox(
-              width: math.max(sum, viewport),
-              height: height,
-              child: CustomScrollView(
-                physics: const ClampingScrollPhysics(),
-                slivers: <Widget>[
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _LogHeaderDelegate(columns: _columns),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate((
-                      BuildContext context,
-                      int index,
-                    ) {
-                      return _LogDataRow(
-                        row: rows[index],
-                        index: index,
-                        onPreview: onPreview,
-                        onDownload: onDownload,
-                        downloadingRow: downloadingRow,
-                      );
-                    }, childCount: rows.length),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 88)),
-                ],
-              ),
+        return TableScrollFrame(
+          width: math.max(sum, viewport),
+          slivers: <Widget>[
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _LogHeaderDelegate(columns: _columns),
             ),
-          ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate((
+                BuildContext context,
+                int index,
+              ) {
+                return _LogDataRow(
+                  row: rows[index],
+                  index: index,
+                  onPreview: onPreview,
+                  onDownload: onDownload,
+                  downloadingRow: downloadingRow,
+                );
+              }, childCount: rows.length),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          ],
         );
       },
     );

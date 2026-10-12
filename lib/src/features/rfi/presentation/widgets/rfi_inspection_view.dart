@@ -5,18 +5,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_row.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_dashboard_card.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_inspection_actions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
 
 class RfiInspectionView extends ConsumerStatefulWidget {
@@ -31,6 +36,8 @@ class RfiInspectionView extends ConsumerStatefulWidget {
 class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
   final TextEditingController _search = TextEditingController();
   bool _submitting = false;
+  int _pageSize = TablePage.compactDefaultPageSize;
+  int _page = 1;
 
   @override
   void dispose() {
@@ -109,81 +116,112 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
         .toList(growable: false);
     final bool hasError = inspection.error != null;
     final bool showSearch = !hasError;
+    final TablePage<RfiInspectionRow> tablePage = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
+    if (tablePage.page != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _page != tablePage.page) {
+          setState(() => _page = tablePage.page);
+        }
+      });
+    }
+    final bool showFooter =
+        inspection.error == null &&
+        !(inspection.loading && inspection.catalog.rows.isEmpty);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        RfiContentLoader(loading: inspection.loading),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              if (widget.showTitle)
-                Text(
-                  'Inspection',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              if (showSearch) ...<Widget>[
-                if (widget.showTitle) const SizedBox(height: 2),
-                Text(
-                  _countLabel(visible.length),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppPalette.of(context).mutedText,
+    return PagedTableColumn(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          RfiContentLoader(loading: inspection.loading),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                if (widget.showTitle)
+                  Text(
+                    'Inspection',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              _FilterBar(
-                state: inspection,
-                enabled: !inspection.loading && !_submitting,
-                onClearFilters: () => ref
-                    .read(rfiInspectionControllerProvider.notifier)
-                    .clearFilters(),
-                onSubmit: _submitReady,
-                submitting: _submitting,
-              ),
-              if (showSearch) ...<Widget>[
+                if (showSearch) ...<Widget>[
+                  if (widget.showTitle) const SizedBox(height: 2),
+                  Text(
+                    _countLabel(visible.length),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppPalette.of(context).mutedText,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        textInputAction: TextInputAction.search,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Search RFI...',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _search.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Clear',
-                                  onPressed: () {
-                                    _search.clear();
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.close_rounded),
-                                ),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: inspection.loading ? null : _refresh,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
+                _FilterBar(
+                  state: inspection,
+                  enabled: !inspection.loading && !_submitting,
+                  onClearFilters: () => ref
+                      .read(rfiInspectionControllerProvider.notifier)
+                      .clearFilters(),
+                  onSubmit: _submitReady,
+                  submitting: _submitting,
                 ),
+                if (rfiDashboardStatusCaption(inspection.filter.filterStatus)
+                    case final String statusCaption) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text(
+                    statusCaption,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppPalette.of(context).mutedText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (showSearch) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() => _page = 1),
+                    decoration: InputDecoration(
+                      hintText: 'Search RFI...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _page = 1);
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        Expanded(child: _body(context, inspection, visible, role)),
-      ],
+        ],
+      ),
+      body: _body(context, inspection, tablePage.items, role),
+      footer: showFooter
+          ? TablePaginationFooter(
+              label: tablePage.label,
+              total: tablePage.total,
+              page: tablePage.page,
+              pageCount: tablePage.pageCount,
+              pageSize: _pageSize,
+              onPageChanged: (int page) => setState(() => _page = page),
+              onPageSizeChanged: (int size) => setState(() {
+                _pageSize = size;
+                _page = 1;
+              }),
+            )
+          : null,
     );
   }
 
@@ -448,8 +486,7 @@ class _FilterBar extends StatelessWidget {
     final bool categoryChosen =
         filter.rfiCategory != null && filter.rfiCategory!.trim().isNotEmpty;
     final List<Widget> chips = <Widget>[
-      _chip(
-        context,
+      RfiFilterField(
         label: 'RFI Category',
         value: _label(state.catalog.categories, filter.rfiCategory),
         options: state.catalog.categories,
@@ -460,8 +497,7 @@ class _FilterBar extends StatelessWidget {
         onPick: (RfiFilterOption option) =>
             _notifier(context).selectCategory(option.id),
       ),
-      _chip(
-        context,
+      RfiFilterField(
         label: 'Project',
         value: _label(state.catalog.projects, filter.projectId),
         options: state.catalog.projects,
@@ -472,8 +508,7 @@ class _FilterBar extends StatelessWidget {
         onPick: (RfiFilterOption option) =>
             _notifier(context).selectProject(option.id),
       ),
-      _chip(
-        context,
+      RfiFilterField(
         label: 'Contract',
         value: _label(state.catalog.contracts, filter.contractId),
         options: state.catalog.contracts,
@@ -485,8 +520,7 @@ class _FilterBar extends StatelessWidget {
             _notifier(context).selectContract(option.id),
       ),
       if (categoryChosen && state.catalog.structureTypes.isNotEmpty)
-        _chip(
-          context,
+        RfiFilterField(
           label: 'Structure Type',
           value: _label(state.catalog.structureTypes, filter.structureType),
           options: state.catalog.structureTypes,
@@ -498,8 +532,7 @@ class _FilterBar extends StatelessWidget {
               _notifier(context).selectStructureType(option.id),
         ),
       if (categoryChosen && state.catalog.structures.isNotEmpty)
-        _chip(
-          context,
+        RfiFilterField(
           label: 'Structure',
           value: _label(
             state.catalog.structures,
@@ -514,8 +547,7 @@ class _FilterBar extends StatelessWidget {
               _notifier(context).selectStructure(option.numberId),
         ),
       if (categoryChosen && state.catalog.items.isNotEmpty)
-        _chip(
-          context,
+        RfiFilterField(
           label: 'Item',
           value: _label(state.catalog.items, filter.itemId?.toString()),
           options: state.catalog.items,
@@ -527,8 +559,7 @@ class _FilterBar extends StatelessWidget {
               _notifier(context).selectItem(option.numberId),
         ),
       if (categoryChosen && state.catalog.materials.isNotEmpty)
-        _chip(
-          context,
+        RfiFilterField(
           label: 'Material',
           value: _label(state.catalog.materials, filter.materialId?.toString()),
           options: state.catalog.materials,
@@ -540,8 +571,7 @@ class _FilterBar extends StatelessWidget {
               _notifier(context).selectMaterial(option.numberId),
         ),
       if (categoryChosen && state.catalog.qualitySafety.isNotEmpty)
-        _chip(
-          context,
+        RfiFilterField(
           label: 'Quality/Safety',
           value: _label(
             state.catalog.qualitySafety,
@@ -556,196 +586,48 @@ class _FilterBar extends StatelessWidget {
               _notifier(context).selectQuality(option.numberId),
         ),
     ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return RfiFilterGrid(
       children: <Widget>[
-        IgnorePointer(
-          ignoring: !enabled,
-          child: Opacity(
-            opacity: enabled ? 1 : 0.6,
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                const double gap = 8;
-                final double cell = constraints.maxWidth <= gap
-                    ? constraints.maxWidth
-                    : (constraints.maxWidth - gap) / 2;
-                return Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: <Widget>[
-                    for (final Widget chip in chips)
-                      SizedBox(width: cell, child: chip),
-                  ],
-                );
-              },
+        for (final Widget chip in chips)
+          IgnorePointer(
+            ignoring: !enabled,
+            child: Opacity(opacity: enabled ? 1 : 0.6, child: chip),
+          ),
+        RfiFilterClearButton(onPressed: enabled ? onClearFilters : null),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            visualDensity: VisualDensity.standard,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            minimumSize: const Size(0, AppTheme.fieldHeight),
+            maximumSize: const Size(double.infinity, AppTheme.fieldHeight),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            backgroundColor: AppTheme.railwayRed,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: AppTheme.railwayRed,
+            disabledForegroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(
+                Radius.circular(AppTheme.cardRadius),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: RfiFilterClearButton(
-                onPressed: enabled ? onClearFilters : null,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.standard,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  backgroundColor: AppTheme.railwayRed,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppTheme.railwayRed,
-                  disabledForegroundColor: Colors.white,
-                  surfaceTintColor: Colors.transparent,
-                  elevation: 0,
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                  ),
-                ),
-                onPressed: submitting ? null : onSubmit,
-                child: Text(
-                  submitting ? 'Sending' : 'Submit 15',
-                  maxLines: 1,
-                  softWrap: false,
-                ),
-              ),
-            ),
-          ],
+          onPressed: submitting ? null : onSubmit,
+          child: Text(
+            submitting ? 'Sending' : 'Submit 15',
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
-  }
-
-  Widget _chip(
-    BuildContext context, {
-    required String label,
-    required String? value,
-    required List<RfiFilterOption> options,
-    required String? selectedId,
-    required VoidCallback? onClear,
-    required ValueChanged<RfiFilterOption> onPick,
-  }) {
-    final AppPalette palette = AppPalette.of(context);
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: dark ? const Color(0xFF122844) : AppTheme.surfaceLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: palette.borderSubtle),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _pick(context, label, options, selectedId, onPick),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 2, 6),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: palette.mutedText,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      value ?? 'Select',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (onClear != null)
-                IconButton(
-                  tooltip: 'Clear $label',
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                ),
-              const Icon(Icons.arrow_drop_down_rounded, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pick(
-    BuildContext context,
-    String title,
-    List<RfiFilterOption> options,
-    String? selectedId,
-    ValueChanged<RfiFilterOption> onPick,
-  ) async {
-    final RfiFilterOption? picked = await showModalBottomSheet<RfiFilterOption>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (BuildContext sheetContext) {
-        final double maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.6;
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: options.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('No options'),
-                  )
-                : ListView(
-                    shrinkWrap: true,
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Text(
-                          title,
-                          style: Theme.of(sheetContext).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      for (final RfiFilterOption option in options)
-                        ListTile(
-                          title: Text(option.label),
-                          trailing: option.id == selectedId
-                              ? const Icon(Icons.check_rounded)
-                              : null,
-                          onTap: () => Navigator.pop(sheetContext, option),
-                        ),
-                    ],
-                  ),
-          ),
-        );
-      },
-    );
-    if (picked != null) {
-      onPick(picked);
-    }
   }
 }
 

@@ -116,17 +116,19 @@ class _TypeSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppPalette palette = AppPalette.of(context);
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: isDark ? const Color(0xFF122844) : palette.cardSurface,
-      elevation: isDark ? 0 : 1,
+      color: palette.cardSurface,
+      elevation: 0,
       shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        side: BorderSide(color: colors.outlineVariant),
+      ),
       child: AnimatedSize(
         duration: const Duration(milliseconds: 180),
         alignment: Alignment.topCenter,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+          padding: AppTheme.cardPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -153,6 +155,8 @@ class _TypeSection extends StatelessWidget {
                       Expanded(
                         child: Text(
                           section.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
@@ -215,15 +219,16 @@ class _ProjectCard extends StatelessWidget {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: isDark
-          ? const Color(0xFF1A3354)
-          : colors.surfaceContainerHighest.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(14),
+      color: isDark ? AppTheme.cardDark : AppTheme.surfaceLight,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        side: BorderSide(color: colors.outlineVariant),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: AppTheme.cardPadding,
           child: Row(
             children: <Widget>[
               Icon(
@@ -235,6 +240,8 @@ class _ProjectCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   project.name.isEmpty ? project.id : project.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),

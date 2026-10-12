@@ -46,7 +46,7 @@ class ProfilePage extends ConsumerWidget {
           const SizedBox(height: 18),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: AppTheme.cardPadding,
               child: Column(
                 children: <Widget>[
                   _row(context, 'Name', session?.userName ?? '-'),
@@ -160,6 +160,8 @@ class ProfilePage extends ConsumerWidget {
           Expanded(
             child: Text(
               value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),

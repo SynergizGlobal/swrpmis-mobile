@@ -4,10 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_dashboard_card.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_provider.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_log_provider.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_section_launch.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign_executive_view.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_dashboard_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_inspection_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_log_view.dart';
@@ -78,7 +84,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        floatingActionButton: creates.isEmpty
+        floatingActionButton: creates.isEmpty || _section != RfiMenuId.home
             ? null
             : FloatingActionButton(
                 tooltip: 'Create RFI',
@@ -92,9 +98,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
                 items: nav.bar,
                 overflow: nav.overflow,
                 selected: _section,
-                onSelected: (RfiMenuId id) {
-                  setState(() => _section = id);
-                },
+                onSelected: _selectSection,
               ),
         body: listKind != null
             ? RfiListView(key: ValueKey<RfiListKind>(listKind), kind: listKind)
@@ -109,7 +113,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
             : section?.id == RfiMenuId.inspectionReference
             ? const RfiReferenceView()
             : section == null || section.id == RfiMenuId.home
-            ? const _RfiDashboard()
+            ? RfiDashboardView(onOpenCard: _openCard)
             : _RfiSectionBody(item: section),
       ),
     );
@@ -141,99 +145,46 @@ class _RfiPageState extends ConsumerState<RfiPage> {
     }
     setState(() => _section = picked);
   }
-}
 
-class _RfiDashboard extends StatelessWidget {
-  const _RfiDashboard();
+  void _selectSection(RfiMenuId id) {
+    if (id == _section) {
+      return;
+    }
+    if (id == RfiMenuId.inspection) {
+      _showInspection(const RfiInspectionFilter());
+      return;
+    }
+    if (id == RfiMenuId.log) {
+      _showLog(const RfiInspectionFilter());
+      return;
+    }
+    setState(() => _section = id);
+  }
 
-  static const List<({String label, String value})> _samples =
-      <({String label, String value})>[
-        (label: 'RFI Created', value: '5'),
-        (label: 'Under Inspection', value: '3'),
-        (label: 'Validation Pending', value: '2'),
-        (label: 'Approved', value: '4'),
-      ];
+  void _openCard(RfiDashboardCardTarget target) {
+    if (target.section == RfiMenuId.log) {
+      _showLog(target.filter);
+      return;
+    }
+    _showInspection(target.filter);
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette palette = AppPalette.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-      children: <Widget>[
-        Text(
-          'RFI Dashboard',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Sample figures',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: palette.mutedText),
-        ),
-        const SizedBox(height: 16),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _samples.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.7,
-          ),
-          itemBuilder: (BuildContext context, int index) {
-            final ({String label, String value}) sample = _samples[index];
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: <Color>[Color(0xFF1E4F8A), Color(0xFF3A7AB8)],
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Text(
-                          sample.value,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 22,
-                          ),
-                        ),
-                        const Spacer(),
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: Color(0xFF34D399),
-                          size: 22,
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Text(
-                      sample.label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
+  void _showInspection(RfiInspectionFilter filter) {
+    ref.read(rfiSectionLaunchProvider.notifier).setInspection(filter);
+    final bool already = _section == RfiMenuId.inspection;
+    setState(() => _section = RfiMenuId.inspection);
+    if (already) {
+      ref.read(rfiInspectionControllerProvider.notifier).apply(filter);
+    }
+  }
+
+  void _showLog(RfiInspectionFilter filter) {
+    ref.read(rfiSectionLaunchProvider.notifier).setLog(filter);
+    final bool already = _section == RfiMenuId.log;
+    setState(() => _section = RfiMenuId.log);
+    if (already) {
+      ref.read(rfiLogControllerProvider.notifier).apply(filter);
+    }
   }
 }
 

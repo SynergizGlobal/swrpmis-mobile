@@ -41,6 +41,8 @@ class HomeDashboardData {
         .toList(growable: false);
   }
 
+  List<OrgChartNode> get orgForest => buildOrgForest(orgUsers);
+
   List<DashboardOrgUser> _byType(String type) {
     return orgUsers
         .where((DashboardOrgUser user) => user.userTypeFk == type)
@@ -246,4 +248,124 @@ int _toInt(Object? value) {
     return 0;
   }
   return int.tryParse(value.toString().trim().split('.').first) ?? 0;
+}
+
+class OrgChartNode {
+  const OrgChartNode({
+    required this.user,
+    required this.children,
+  });
+
+  final DashboardOrgUser user;
+  final List<OrgChartNode> children;
+}
+
+List<OrgChartNode> buildOrgForest(List<DashboardOrgUser> users) {
+  if (users.isEmpty) {
+    return const <OrgChartNode>[];
+  }
+  final Map<String, DashboardOrgUser> byId = <String, DashboardOrgUser>{
+    for (final DashboardOrgUser user in users) user.userId: user,
+  };
+  final Map<String, String> parentOf = <String, String>{};
+  for (final DashboardOrgUser user in users) {
+    final String? parentId = _parentId(user, byId, users);
+    if (parentId != null) {
+      parentOf[user.userId] = parentId;
+    }
+  }
+  final Map<String, String> linked = _withoutCycles(parentOf);
+  final Map<String, List<DashboardOrgUser>> childrenOf =
+      <String, List<DashboardOrgUser>>{};
+  for (final DashboardOrgUser user in users) {
+    final String? parentId = linked[user.userId];
+    if (parentId == null) {
+      continue;
+    }
+    childrenOf.putIfAbsent(parentId, () => <DashboardOrgUser>[]).add(user);
+  }
+
+  OrgChartNode nodeFor(DashboardOrgUser user, Set<String> stack) {
+    if (!stack.add(user.userId)) {
+      return OrgChartNode(user: user, children: const <OrgChartNode>[]);
+    }
+    final List<OrgChartNode> children = <OrgChartNode>[
+      for (final DashboardOrgUser child
+          in childrenOf[user.userId] ?? const <DashboardOrgUser>[])
+        nodeFor(child, stack),
+    ];
+    stack.remove(user.userId);
+    return OrgChartNode(
+      user: user,
+      children: List<OrgChartNode>.unmodifiable(children),
+    );
+  }
+
+  return <OrgChartNode>[
+    for (final DashboardOrgUser user in users)
+      if (!linked.containsKey(user.userId)) nodeFor(user, <String>{}),
+  ];
+}
+
+String? _parentId(
+  DashboardOrgUser user,
+  Map<String, DashboardOrgUser> byId,
+  List<DashboardOrgUser> users,
+) {
+  final String raw = user.reportingToId;
+  if (raw.isNotEmpty) {
+    if (raw != user.userId && byId.containsKey(raw)) {
+      return raw;
+    }
+    return null;
+  }
+  return _fallbackParentId(user, users);
+}
+
+String? _fallbackParentId(
+  DashboardOrgUser user,
+  List<DashboardOrgUser> users,
+) {
+  String? firstOf(String type) {
+    for (final DashboardOrgUser candidate in users) {
+      if (candidate.userId == user.userId) {
+        continue;
+      }
+      if (candidate.userTypeFk == type) {
+        return candidate.userId;
+      }
+    }
+    return null;
+  }
+
+  switch (user.userTypeFk) {
+    case 'CAO':
+      return null;
+    case 'HOD':
+      return firstOf('CAO');
+    case 'DYHOD':
+      return firstOf('HOD') ?? firstOf('CAO');
+    default:
+      return firstOf('HOD') ?? firstOf('CAO');
+  }
+}
+
+Map<String, String> _withoutCycles(Map<String, String> parentOf) {
+  final Map<String, String> linked = <String, String>{};
+  for (final MapEntry<String, String> entry in parentOf.entries) {
+    final Set<String> seen = <String>{entry.key};
+    String? current = entry.value;
+    var cycle = false;
+    while (current != null) {
+      if (!seen.add(current)) {
+        cycle = true;
+        break;
+      }
+      current = parentOf[current];
+    }
+    if (!cycle) {
+      linked[entry.key] = entry.value;
+    }
+  }
+  return linked;
 }

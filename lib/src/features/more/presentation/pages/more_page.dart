@@ -112,21 +112,21 @@ class _MoreCard extends StatelessWidget {
     return Material(
       color: palette.cardSurface,
       elevation: 0,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         onTap: onTap,
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppTheme.cardRadius),
             border: Border.all(
-              color: expanded ? colors.primary : palette.borderSubtle,
+              color: expanded ? colors.primary : colors.outlineVariant,
             ),
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 132),
+            constraints: const BoxConstraints(minHeight: 148),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              padding: AppTheme.cardPadding,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
@@ -135,6 +135,8 @@ class _MoreCard extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       height: 1.2,
@@ -170,17 +172,14 @@ class _RdsoChildren extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final AppPalette palette = AppPalette.of(context);
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF0E1F36)
-            : colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: palette.borderSubtle),
+        color: palette.cardSurface,
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: AppTheme.cardPadding,
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -206,21 +205,20 @@ class _RdsoChildCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final AppPalette palette = AppPalette.of(context);
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: isDark ? const Color(0xFF1A3354) : palette.cardSurface,
+      color: palette.cardSurface,
       elevation: 0,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         onTap: () => context.pushNamed(module.routeName),
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: palette.borderSubtle),
+            borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+            border: Border.all(color: colors.outlineVariant),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            padding: AppTheme.cardPadding,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
@@ -229,6 +227,8 @@ class _RdsoChildCard extends StatelessWidget {
                 Text(
                   module.title,
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     height: 1.25,

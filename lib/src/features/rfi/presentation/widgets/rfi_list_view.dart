@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_providers.dart';
@@ -23,6 +26,8 @@ class RfiListView extends ConsumerStatefulWidget {
 
 class _RfiListViewState extends ConsumerState<RfiListView> {
   final TextEditingController _search = TextEditingController();
+  int _pageSize = TablePage.defaultPageSize;
+  int _page = 1;
 
   @override
   void dispose() {
@@ -35,15 +40,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.kind != widget.kind) {
       _search.clear();
-    }
-  }
-
-  Future<void> _refresh() async {
-    ref.invalidate(rfiListProvider(widget.kind));
-    try {
-      await ref.read(rfiListProvider(widget.kind).future);
-    } on Object {
-      return;
+      _page = 1;
     }
   }
 
@@ -70,111 +67,125 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
               .where((RfiListItem item) => _matches(item, _search.text))
               .toList(growable: false);
     final bool showSearch = loaded != null || asyncList.isLoading;
+    final TablePage<RfiListItem> tablePage = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
+    if (tablePage.page != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _page != tablePage.page) {
+          setState(() => _page = tablePage.page);
+        }
+      });
+    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        RfiContentLoader(loading: asyncList.isLoading),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              _ListHeader(
-                title: widget.kind.title,
-                countLabel: showSearch ? _countLabel(visible.length) : null,
-                onAdd: _onAdd,
-              ),
-              if (showSearch) ...<Widget>[
-                const SizedBox(height: 12),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        textInputAction: TextInputAction.search,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Search RFI...',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _search.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Clear',
-                                  onPressed: () {
-                                    _search.clear();
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.close_rounded),
-                                ),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: asyncList.isLoading ? null : _refresh,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
+    return PagedTableColumn(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          RfiContentLoader(loading: asyncList.isLoading),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _ListHeader(
+                  title: widget.kind.title,
+                  countLabel: showSearch ? _countLabel(visible.length) : null,
+                  onAdd: _onAdd,
                 ),
-              ],
-            ],
-          ),
-        ),
-        Expanded(
-          child: asyncList.when(
-            skipLoadingOnReload: true,
-            loading: () =>
-                const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
-            error: (Object error, StackTrace stackTrace) {
-              return LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final double minHeight = constraints.hasBoundedHeight
-                      ? constraints.maxHeight
-                      : 0;
-                  return _FillScroll(
-                    minHeight: minHeight,
-                    child: _StatusMessage(
-                      message: error is DioException
-                          ? userFriendlyErrorMessage(error)
-                          : error.toString(),
-                      onRetry: () =>
-                          ref.invalidate(rfiListProvider(widget.kind)),
+                if (showSearch) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() => _page = 1),
+                    decoration: InputDecoration(
+                      hintText: 'Search RFI...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _page = 1);
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
                     ),
-                  );
-                },
-              );
-            },
-            data: (List<RfiListItem> items) {
-              if (visible.isEmpty) {
-                return LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    final double minHeight = constraints.hasBoundedHeight
-                        ? constraints.maxHeight
-                        : 0;
-                    return _FillScroll(
-                      minHeight: minHeight,
-                      child: _StatusMessage(
-                        message: items.isEmpty
-                            ? widget.kind.emptyMessage
-                            : 'No matching RFIs.',
-                        onRetry: items.isEmpty
-                            ? () => ref.invalidate(rfiListProvider(widget.kind))
-                            : null,
-                      ),
-                    );
-                  },
-                );
-              }
-              return RfiTable(
-                columns: rfiTableColumns(widget.kind),
-                items: visible,
-              );
-            },
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
+      body: asyncList.when(
+        skipLoadingOnReload: true,
+        loading: () =>
+            const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
+        error: (Object error, StackTrace stackTrace) {
+          return LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final double minHeight = constraints.hasBoundedHeight
+                  ? constraints.maxHeight
+                  : 0;
+              return _FillScroll(
+                minHeight: minHeight,
+                child: _StatusMessage(
+                  message: error is DioException
+                      ? userFriendlyErrorMessage(error)
+                      : error.toString(),
+                  onRetry: () => ref.invalidate(rfiListProvider(widget.kind)),
+                ),
+              );
+            },
+          );
+        },
+        data: (List<RfiListItem> items) {
+          if (visible.isEmpty) {
+            return LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double minHeight = constraints.hasBoundedHeight
+                    ? constraints.maxHeight
+                    : 0;
+                return _FillScroll(
+                  minHeight: minHeight,
+                  child: _StatusMessage(
+                    message: items.isEmpty
+                        ? widget.kind.emptyMessage
+                        : 'No matching RFIs.',
+                    onRetry: items.isEmpty
+                        ? () => ref.invalidate(rfiListProvider(widget.kind))
+                        : null,
+                  ),
+                );
+              },
+            );
+          }
+          return RfiTable(
+            columns: rfiTableColumns(widget.kind),
+            items: tablePage.items,
+          );
+        },
+      ),
+      footer: loaded != null && !asyncList.hasError
+          ? TablePaginationFooter(
+              label: tablePage.label,
+              total: tablePage.total,
+              page: tablePage.page,
+              pageCount: tablePage.pageCount,
+              pageSize: _pageSize,
+              onPageChanged: (int page) => setState(() => _page = page),
+              onPageSizeChanged: (int size) => setState(() {
+                _pageSize = size;
+                _page = 1;
+              }),
+            )
+          : null,
     );
   }
 

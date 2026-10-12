@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_assign_executive.dart';
 
 class RfiAssignExecutiveTable extends StatelessWidget {
@@ -31,50 +32,33 @@ class RfiAssignExecutiveTable extends StatelessWidget {
         final double viewport = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : 0;
-        final double height = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : 480;
         final _ColumnLayout layout = _ColumnLayout.fit(_columns, viewport);
-        final ScrollBehavior clamp = ScrollConfiguration.of(
-          context,
-        ).copyWith(overscroll: false, physics: const ClampingScrollPhysics());
-        return ScrollConfiguration(
-          behavior: clamp,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            child: SizedBox(
-              width: math.max(layout.total, viewport),
-              height: height,
-              child: CustomScrollView(
-                physics: const ClampingScrollPhysics(),
-                slivers: <Widget>[
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _HeaderDelegate(
-                      columns: _columns,
-                      widths: layout.widths,
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate((
-                      BuildContext context,
-                      int index,
-                    ) {
-                      return _DataRow(
-                        row: rows[index],
-                        widths: layout.widths,
-                        index: index,
-                        deletingId: deletingId,
-                        onDelete: onDelete,
-                      );
-                    }, childCount: rows.length),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 88)),
-                ],
+        return TableScrollFrame(
+          width: math.max(layout.total, viewport),
+          slivers: <Widget>[
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _HeaderDelegate(
+                columns: _columns,
+                widths: layout.widths,
               ),
             ),
-          ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate((
+                BuildContext context,
+                int index,
+              ) {
+                return _DataRow(
+                  row: rows[index],
+                  widths: layout.widths,
+                  index: index,
+                  deletingId: deletingId,
+                  onDelete: onDelete,
+                );
+              }, childCount: rows.length),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          ],
         );
       },
     );

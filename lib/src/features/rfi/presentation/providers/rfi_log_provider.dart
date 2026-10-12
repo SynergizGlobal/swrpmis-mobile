@@ -4,6 +4,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_log_remote
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_catalog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_log_row.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_section_launch.dart';
 
 final rfiLogControllerProvider =
     NotifierProvider.autoDispose<RfiLogController, RfiLogState>(
@@ -77,7 +78,13 @@ class RfiLogController extends AutoDisposeNotifier<RfiLogState> {
       }
       load();
     });
-    return RfiLogState.initial();
+    return RfiLogState(
+      filter: ref.read(rfiSectionLaunchProvider).log,
+      catalog: const RfiInspectionCatalog(),
+      rows: const <RfiLogRow>[],
+      loading: true,
+      error: null,
+    );
   }
 
   void clearFilters() {
@@ -130,6 +137,7 @@ class RfiLogController extends AutoDisposeNotifier<RfiLogState> {
   }
 
   void apply(RfiInspectionFilter filter) {
+    ref.read(rfiSectionLaunchProvider.notifier).setLog(filter);
     state = state.copyWith(filter: filter, clearError: true);
     load();
   }

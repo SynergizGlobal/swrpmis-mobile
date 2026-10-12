@@ -18,7 +18,7 @@ class UpdateFormsPage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 220,
-        mainAxisExtent: 132,
+        mainAxisExtent: 148,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
       ),
@@ -42,17 +42,17 @@ class _UpdateFormCard extends StatelessWidget {
     return Material(
       color: palette.cardSurface,
       elevation: 0,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         onTap: () => context.pushNamed(module.routeName),
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: palette.borderSubtle),
+            borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+            border: Border.all(color: colors.outlineVariant),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            padding: AppTheme.cardPadding,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[

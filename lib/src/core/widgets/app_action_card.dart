@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 
 class AppActionCard extends StatelessWidget {
   const AppActionCard({
@@ -7,7 +8,7 @@ class AppActionCard extends StatelessWidget {
     this.subtitle,
     this.icon,
     this.onTap,
-    this.titleMaxLines = 1,
+    this.titleMaxLines = 2,
   });
 
   final String title;
@@ -19,14 +20,18 @@ class AppActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final BorderRadius radius = BorderRadius.circular(AppTheme.cardRadius);
     return Material(
-      color: Theme.of(context).cardTheme.color ?? colorScheme.surface,
-      borderRadius: BorderRadius.circular(18),
+      color: AppPalette.of(context).cardSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: radius,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: AppTheme.cardPadding,
           child: Row(
             children: <Widget>[
               Container(
@@ -51,8 +56,8 @@ class AppActionCard extends StatelessWidget {
                       maxLines: titleMaxLines,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 2),
@@ -61,8 +66,8 @@ class AppActionCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ],

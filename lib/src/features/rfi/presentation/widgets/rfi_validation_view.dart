@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_validation_filter.dart';
@@ -14,6 +17,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_validation_actions.d
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_validation_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
 
 class RfiValidationView extends ConsumerStatefulWidget {
@@ -32,6 +36,8 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
   int _draftGeneration = -1;
   bool _busy = false;
   String? _busyAction;
+  int _pageSize = TablePage.compactDefaultPageSize;
+  int _page = 1;
 
   @override
   void dispose() {
@@ -172,88 +178,108 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
     }
     final bool hasError = validation.error != null;
     final bool showSearch = !hasError;
+    final TablePage<_VisibleRow> tablePage = TablePage.slice(
+      visible,
+      page: _page,
+      pageSize: _pageSize,
+    );
+    if (tablePage.page != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _page != tablePage.page) {
+          setState(() => _page = tablePage.page);
+        }
+      });
+    }
+    final bool showFooter =
+        validation.error == null &&
+        !(validation.loading && validation.catalog.rows.isEmpty);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        RfiContentLoader(loading: validation.loading),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              if (widget.showTitle)
-                Text(
-                  'Validation',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              if (showSearch) ...<Widget>[
-                if (widget.showTitle) const SizedBox(height: 2),
-                Text(
-                  _countLabel(visible.length),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppPalette.of(context).mutedText,
+    return PagedTableColumn(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          RfiContentLoader(loading: validation.loading),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                if (widget.showTitle)
+                  Text(
+                    'Validation',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              _FilterBar(
-                state: validation,
-                enabled: !validation.loading && !_busy,
-                onClearFilters: () => ref
-                    .read(rfiValidationControllerProvider.notifier)
-                    .clearFilters(),
-                onCategory: (String? value) => ref
-                    .read(rfiValidationControllerProvider.notifier)
-                    .selectCategory(value),
-                onProject: (String? value) => ref
-                    .read(rfiValidationControllerProvider.notifier)
-                    .selectProject(value),
-                onContract: (String? value) => ref
-                    .read(rfiValidationControllerProvider.notifier)
-                    .selectContract(value),
-              ),
-              if (showSearch) ...<Widget>[
+                if (showSearch) ...<Widget>[
+                  if (widget.showTitle) const SizedBox(height: 2),
+                  Text(
+                    _countLabel(visible.length),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppPalette.of(context).mutedText,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        textInputAction: TextInputAction.search,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Search...',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _search.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Clear',
-                                  onPressed: () {
-                                    _search.clear();
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.close_rounded),
-                                ),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: validation.loading ? null : _refresh,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
+                _FilterBar(
+                  state: validation,
+                  enabled: !validation.loading && !_busy,
+                  onClearFilters: () => ref
+                      .read(rfiValidationControllerProvider.notifier)
+                      .clearFilters(),
+                  onCategory: (String? value) => ref
+                      .read(rfiValidationControllerProvider.notifier)
+                      .selectCategory(value),
+                  onProject: (String? value) => ref
+                      .read(rfiValidationControllerProvider.notifier)
+                      .selectProject(value),
+                  onContract: (String? value) => ref
+                      .read(rfiValidationControllerProvider.notifier)
+                      .selectContract(value),
                 ),
+                if (showSearch) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() => _page = 1),
+                    decoration: InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _page = 1);
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        Expanded(child: _body(context, validation, visible)),
-      ],
+        ],
+      ),
+      body: _body(context, validation, tablePage.items),
+      footer: showFooter
+          ? TablePaginationFooter(
+              label: tablePage.label,
+              total: tablePage.total,
+              page: tablePage.page,
+              pageCount: tablePage.pageCount,
+              pageSize: _pageSize,
+              onPageChanged: (int page) => setState(() => _page = page),
+              onPageSizeChanged: (int size) => setState(() {
+                _pageSize = size;
+                _page = 1;
+              }),
+            )
+          : null,
     );
   }
 
@@ -638,8 +664,7 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final RfiValidationFilter filter = state.filter;
     final List<Widget> chips = <Widget>[
-      _chip(
-        context,
+      RfiFilterField(
         label: 'RFI Category',
         emptyLabel: 'Select RFI Category',
         value: _label(state.catalog.categories, filter.rfiCategory),
@@ -648,8 +673,7 @@ class _FilterBar extends StatelessWidget {
         onClear: filter.rfiCategory.isEmpty ? null : () => onCategory(null),
         onPick: (RfiFilterOption option) => onCategory(option.id),
       ),
-      _chip(
-        context,
+      RfiFilterField(
         label: 'Project',
         emptyLabel: 'Select Project',
         value: _label(state.catalog.projects, filter.projectId),
@@ -658,8 +682,7 @@ class _FilterBar extends StatelessWidget {
         onClear: filter.projectId.isEmpty ? null : () => onProject(null),
         onPick: (RfiFilterOption option) => onProject(option.id),
       ),
-      _chip(
-        context,
+      RfiFilterField(
         label: 'Contract',
         emptyLabel: 'Select Contract',
         value: _label(state.catalog.contracts, filter.contractId),
@@ -670,160 +693,16 @@ class _FilterBar extends StatelessWidget {
       ),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return RfiFilterGrid(
       children: <Widget>[
-        IgnorePointer(
-          ignoring: !enabled,
-          child: Opacity(
-            opacity: enabled ? 1 : 0.6,
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                const double gap = 8;
-                final double cell = constraints.maxWidth <= gap
-                    ? constraints.maxWidth
-                    : (constraints.maxWidth - gap) / 2;
-                return Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: <Widget>[
-                    for (final Widget chip in chips)
-                      SizedBox(width: cell, child: chip),
-                  ],
-                );
-              },
-            ),
+        for (final Widget chip in chips)
+          IgnorePointer(
+            ignoring: !enabled,
+            child: Opacity(opacity: enabled ? 1 : 0.6, child: chip),
           ),
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: RfiFilterClearButton(
-            onPressed: enabled ? onClearFilters : null,
-          ),
-        ),
+        RfiFilterClearButton(onPressed: enabled ? onClearFilters : null),
       ],
     );
-  }
-
-  Widget _chip(
-    BuildContext context, {
-    required String label,
-    required String emptyLabel,
-    required String? value,
-    required List<RfiFilterOption> options,
-    required String? selectedId,
-    required VoidCallback? onClear,
-    required ValueChanged<RfiFilterOption> onPick,
-  }) {
-    final AppPalette palette = AppPalette.of(context);
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: dark ? const Color(0xFF122844) : AppTheme.surfaceLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: palette.borderSubtle),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _pick(context, label, options, selectedId, onPick),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 2, 6),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: palette.mutedText,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      value ?? emptyLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (onClear != null)
-                IconButton(
-                  tooltip: 'Clear $label',
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                ),
-              const Icon(Icons.arrow_drop_down_rounded, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pick(
-    BuildContext context,
-    String title,
-    List<RfiFilterOption> options,
-    String? selectedId,
-    ValueChanged<RfiFilterOption> onPick,
-  ) async {
-    final RfiFilterOption? picked = await showModalBottomSheet<RfiFilterOption>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (BuildContext sheetContext) {
-        final double maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.6;
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: options.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('No options'),
-                  )
-                : ListView(
-                    shrinkWrap: true,
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Text(
-                          title,
-                          style: Theme.of(sheetContext).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      for (final RfiFilterOption option in options)
-                        ListTile(
-                          title: Text(option.label),
-                          trailing: option.id == selectedId
-                              ? const Icon(Icons.check_rounded)
-                              : null,
-                          onTap: () => Navigator.pop(sheetContext, option),
-                        ),
-                    ],
-                  ),
-          ),
-        );
-      },
-    );
-    if (picked != null) {
-      onPick(picked);
-    }
   }
 }
 
