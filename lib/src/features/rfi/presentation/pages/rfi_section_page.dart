@@ -5,6 +5,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_inspection_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_log_view.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_reference_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_validation_view.dart';
 
 class RfiSectionPage extends StatelessWidget {
@@ -41,6 +42,12 @@ class RfiSectionPage extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Assign Executive')),
         body: const RfiAssignExecutiveView(showTitle: false),
+      );
+    }
+    if (item?.id == RfiMenuId.inspectionReference) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Reference')),
+        body: const RfiReferenceView(showTitle: false),
       );
     }
     if (listKind != null) {

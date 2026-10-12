@@ -49,6 +49,37 @@ class ApiConstants {
   static String rfiAssignExecutiveDeletePath(int id) =>
       '/rfi/assignExecutive/delete/$id';
 
+  static const String rfiEnclosureListPath = '/api/v1/enclouser/enclosure_list';
+  static const String rfiEnclosureNamesPath = '/api/v1/enclouser/names';
+  static const String rfiEnclosureByActionPath = '/api/v1/enclouser/by-action';
+  static const String rfiEnclosureSubmitPath = '/api/v1/enclouser/submit';
+  static const String rfiDescriptionsPath = '/rfi/get-descriptions';
+  static const String rfiDescriptionSavePath = '/rfi/description-save';
+
+  static String rfiEnclosureChecklistPath(int id) =>
+      '/api/v1/enclouser/get/$id';
+
+  static String rfiEnclosureUpdatePath(int id) =>
+      '/api/v1/enclouser/updateEnclosureName/$id';
+
+  static String rfiEnclosureDeletePath(int id) =>
+      '/api/v1/enclouser/deleteEncloserName/$id';
+
+  static String rfiChecklistDescriptionsPath(int enclosureId) =>
+      '/api/v1/enclouser/addChecklistDescriptions/$enclosureId';
+
+  static String rfiChecklistUpdatePath(int id) =>
+      '/api/v1/enclouser/update/$id';
+
+  static String rfiChecklistDeletePath(int id) =>
+      '/api/v1/enclouser/delete/$id';
+
+  static String rfiDescriptionUpdatePath(int id) =>
+      '/rfi/description-update/$id';
+
+  static String rfiDescriptionDeletePath(int id) =>
+      '/rfi/delete-rfi-description/$id';
+
   static const Duration connectTimeout = Duration(seconds: 20);
   static const Duration receiveTimeout = Duration(seconds: 45);
 }

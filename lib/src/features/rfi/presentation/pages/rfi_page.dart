@@ -11,6 +11,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_inspection_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_list_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_log_view.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_reference_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_validation_view.dart';
 
 class RfiPage extends ConsumerStatefulWidget {
@@ -105,6 +106,8 @@ class _RfiPageState extends ConsumerState<RfiPage> {
             ? const RfiLogView()
             : section?.id == RfiMenuId.assignExecutive
             ? const RfiAssignExecutiveView()
+            : section?.id == RfiMenuId.inspectionReference
+            ? const RfiReferenceView()
             : section == null || section.id == RfiMenuId.home
             ? const _RfiDashboard()
             : _RfiSectionBody(item: section),
