@@ -24,6 +24,31 @@ class WorkRfiRemoteDataSource {
 
   final Dio _dio;
 
+  Future<List<WorkRfiOption>> fetchProjectNames() async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.rfiProjectNamesPath,
+    );
+    return parseWorkRfiProjectNames(response.data);
+  }
+
+  Future<List<WorkRfiContractOption>> fetchContractNames(
+    String projectId,
+  ) async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.rfiContractNamesPath,
+      queryParameters: <String, dynamic>{'projectId': projectId},
+    );
+    return parseWorkRfiContractNames(response.data, projectId: projectId);
+  }
+
+  Future<WorkRfiLayerRange?> fetchLayerRange(String structureType) async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.rfiLayerRangePath,
+      queryParameters: <String, dynamic>{'structure_type': structureType},
+    );
+    return parseWorkRfiLayerRange(response.data);
+  }
+
   Future<WorkRfiProjectCatalog> fetchProjectCatalog() async {
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.newActivitiesUpdatePath,

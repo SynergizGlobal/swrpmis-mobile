@@ -600,6 +600,124 @@ void main() {
     expect(workRfiApiTime('02:30 PM'), '14:30');
   });
 
+  test('earthwork and blanketing detection is case-insensitive', () {
+    expect(workRfiIsEarthworkOrBlanketing('Earthwork'), isTrue);
+    expect(workRfiIsEarthworkOrBlanketing('earthwork'), isTrue);
+    expect(workRfiIsEarthworkOrBlanketing(' EARTHWORK '), isTrue);
+    expect(workRfiIsEarthworkOrBlanketing('Blanketing'), isTrue);
+    expect(workRfiIsEarthworkOrBlanketing('blanketing'), isTrue);
+    expect(workRfiIsEarthworkOrBlanketing('RUB'), isFalse);
+    expect(workRfiIsEarthworkOrBlanketing('Minor Bridge'), isFalse);
+    expect(workRfiIsEarthworkOrBlanketing(''), isFalse);
+  });
+
+  test('layer labels run from min through max', () {
+    expect(
+      workRfiLayerOptions(
+        minLayer: 1,
+        maxLayer: 3,
+      ).map((WorkRfiOption option) => option.id),
+      <String>['Layer 1', 'Layer 2', 'Layer 3'],
+    );
+    expect(workRfiPostedLayer('2'), 'Layer 2');
+    expect(workRfiPostedLayer('Layer 2'), 'Layer 2');
+    final WorkRfiLayerRange? blanketing = parseWorkRfiLayerRange(
+      <String, dynamic>{'maxLayer': 3, 'minLayer': 1},
+    );
+    expect(blanketing?.minLayer, 1);
+    expect(blanketing?.maxLayer, 3);
+    final WorkRfiLayerRange? earthwork = parseWorkRfiLayerRange(
+      <String, dynamic>{'maxLayer': 54, 'minLayer': 1},
+    );
+    expect(
+      workRfiLayerOptions(
+        minLayer: earthwork!.minLayer,
+        maxLayer: earthwork.maxLayer,
+      ),
+      hasLength(54),
+    );
+    expect(
+      workRfiLayerOptions(
+        minLayer: earthwork.minLayer,
+        maxLayer: earthwork.maxLayer,
+      ).first.label,
+      'Layer 1',
+    );
+    expect(
+      workRfiLayerOptions(
+        minLayer: earthwork.minLayer,
+        maxLayer: earthwork.maxLayer,
+      ).last.label,
+      'Layer 54',
+    );
+  });
+
+  test('structure object uses structure id and strip chart label', () {
+    final WorkRfiOption structure = parseWorkRfiStructures(<String, dynamic>{
+      'structure_id': '170',
+      'strip_chart_structure_id_fk': 'CH 25400 to CH 34000',
+      'contract_id_fk': null,
+      'component': null,
+    }).single;
+    expect(structure.id, '170');
+    expect(structure.label, 'CH 25400 to CH 34000');
+  });
+
+  test('chainage posts whole multiples of 10 and rejects plus notation', () {
+    const String fromAlert =
+        'Chainage From must be a whole number divisible by 10. Please re-enter.';
+    const String toAlert =
+        'Chainage To must be a whole number divisible by 10. Please re-enter.';
+    expect(workRfiChainageError('10', fieldLabel: 'Chainage From'), isNull);
+    expect(workRfiChainageError('30', fieldLabel: 'Chainage To'), isNull);
+    expect(workRfiPostedChainage('10'), '10');
+    expect(workRfiPostedChainage('30'), '30');
+    expect(
+      workRfiChainageError('12.5', fieldLabel: 'Chainage From'),
+      fromAlert,
+    );
+    expect(
+      workRfiChainageError('12+501', fieldLabel: 'Chainage From'),
+      fromAlert,
+    );
+    expect(
+      workRfiChainageError('12+000', fieldLabel: 'Chainage From'),
+      fromAlert,
+    );
+    expect(workRfiChainageError('12+500', fieldLabel: 'Chainage To'), toAlert);
+    expect(workRfiPostedChainage('12+000'), isEmpty);
+    expect(workRfiPostedChainage('12+500'), isEmpty);
+    expect(workRfiPostedChainage('12.5'), isEmpty);
+
+    final Map<String, dynamic> body = buildWorkRfiPayload(
+      const WorkRfiSubmitDraft(
+        project: 'P01',
+        contract: 'P01EN01',
+        structureType: 'Blanketing',
+        structure: '55',
+        component: '',
+        element: '',
+        activities: <WorkRfiMeasurementDraft>[],
+        descriptionIds: <String>[],
+        rfiRequired: 'No',
+        typeOfRfi: '',
+        contractorRepresentative: '',
+        progressDate: '2026-10-12',
+        dateOfSubmission: '',
+        timeOfInspection: '',
+        dateOfInspection: '',
+        enclosureIds: <String>[],
+        description: '',
+        chainageFrom: '10',
+        chainageTo: '30',
+        layer: '2',
+      ),
+    );
+    expect(body['chainageFrom'], '10');
+    expect(body['chainageTo'], '30');
+    expect(body['layer'], 'Layer 2');
+  });
+
   test('validation names the first missing location and measurement fields', () {
     expect(
       workRfiValidationMessage(

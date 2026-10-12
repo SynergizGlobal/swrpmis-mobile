@@ -95,6 +95,9 @@ class WorkRfiSubmitDraft {
     required this.dateOfInspection,
     required this.enclosureIds,
     required this.description,
+    this.chainageFrom = '',
+    this.chainageTo = '',
+    this.layer = '',
   });
 
   final String project;
@@ -114,6 +117,9 @@ class WorkRfiSubmitDraft {
   final String dateOfInspection;
   final List<String> enclosureIds;
   final String description;
+  final String chainageFrom;
+  final String chainageTo;
+  final String layer;
 }
 
 class WorkRfiDetail {
@@ -187,6 +193,85 @@ const List<WorkRfiOption> workRfiTypeOptions = <WorkRfiOption>[
 ];
 
 const String workRfiFixedAction = 'Create';
+
+const String workRfiChainageRule =
+    'Chainages From & To shall be multiples of 10 (must be divisible by 10, no decimals).';
+
+class WorkRfiLayerRange {
+  const WorkRfiLayerRange({required this.minLayer, required this.maxLayer});
+
+  final int minLayer;
+  final int maxLayer;
+}
+
+bool workRfiIsEarthworkOrBlanketing(String structureType) {
+  final String key = structureType.trim().toLowerCase();
+  return key == 'earthwork' || key == 'blanketing';
+}
+
+List<WorkRfiOption> workRfiLayerOptions({
+  required int minLayer,
+  required int maxLayer,
+}) {
+  if (minLayer > maxLayer) {
+    return const <WorkRfiOption>[];
+  }
+  return <WorkRfiOption>[
+    for (var layer = minLayer; layer <= maxLayer; layer++)
+      WorkRfiOption(id: 'Layer $layer', label: 'Layer $layer'),
+  ];
+}
+
+String workRfiChainageAlert(String fieldLabel) {
+  return '$fieldLabel must be a whole number divisible by 10. Please re-enter.';
+}
+
+bool workRfiChainageAccepted(String raw) {
+  final String text = raw.trim();
+  if (!RegExp(r'^\d+$').hasMatch(text)) {
+    return false;
+  }
+  final int? value = int.tryParse(text);
+  if (value == null) {
+    return false;
+  }
+  return value % 10 == 0;
+}
+
+String? workRfiChainageError(String raw, {required String fieldLabel}) {
+  final String text = raw.trim();
+  if (text.isEmpty || workRfiChainageAccepted(text)) {
+    return null;
+  }
+  return workRfiChainageAlert(fieldLabel);
+}
+
+String workRfiPostedChainage(String raw) {
+  final String text = raw.trim();
+  if (!workRfiChainageAccepted(text)) {
+    return '';
+  }
+  return int.parse(text).toString();
+}
+
+String workRfiPostedLayer(String raw) {
+  final String text = raw.trim();
+  if (text.isEmpty) {
+    return '';
+  }
+  final RegExpMatch? labeled = RegExp(
+    r'^Layer\s+(\d+)$',
+    caseSensitive: false,
+  ).firstMatch(text);
+  if (labeled != null) {
+    return 'Layer ${int.parse(labeled.group(1)!)}';
+  }
+  final RegExpMatch? bare = RegExp(r'^(\d+)$').firstMatch(text);
+  if (bare != null) {
+    return 'Layer ${int.parse(bare.group(1)!)}';
+  }
+  return '';
+}
 
 WorkRfiMeasureFields workRfiFieldsFor(String type) {
   return switch (type) {
@@ -359,9 +444,9 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
     'structure': draft.structure,
     'component': draft.component,
     'element': draft.element,
-    'chainageFrom': '',
-    'chainageTo': '',
-    'layer': '',
+    'chainageFrom': workRfiPostedChainage(draft.chainageFrom),
+    'chainageTo': workRfiPostedChainage(draft.chainageTo),
+    'layer': workRfiPostedLayer(draft.layer),
     'activity': activityIds.isEmpty ? '' : activityIds.first,
     'selectedActivities': activityIds,
     'rfiDescription': '',
@@ -449,6 +534,73 @@ List<WorkRfiContractOption> workRfiContractsForProject(
         (WorkRfiContractOption contract) => contract.projectId == projectId,
       )
       .toList(growable: false);
+}
+
+List<WorkRfiOption> parseWorkRfiProjectNames(dynamic data) {
+  final List<WorkRfiOption> named = _dedupeOptions(<WorkRfiOption>[
+    for (final Map<String, dynamic> row in _rows(
+      data,
+      isRecord: (Map<String, dynamic> row) =>
+          row.containsKey('projectId') || row.containsKey('projectName'),
+    ))
+      if (_labeledOption(row['projectId'], row['projectName'])
+          case final WorkRfiOption option)
+        option,
+  ]);
+  if (named.isNotEmpty) {
+    return named;
+  }
+  return parseWorkRfiProjectCatalog(<String, dynamic>{
+    'projects': data,
+  }).projects;
+}
+
+List<WorkRfiContractOption> parseWorkRfiContractNames(
+  dynamic data, {
+  String projectId = '',
+}) {
+  final List<Map<String, dynamic>> rows = _rows(
+    data,
+    isRecord: (Map<String, dynamic> row) =>
+        row.containsKey('contractIdFk') || row.containsKey('contractShortName'),
+  );
+  if (rows.isEmpty) {
+    return parseWorkRfiContracts(data, projectId: projectId);
+  }
+  final List<WorkRfiContractOption> contracts = <WorkRfiContractOption>[];
+  final Set<String> seen = <String>{};
+  for (final Map<String, dynamic> row in rows) {
+    final String id = workRfiIdText(row['contractIdFk']);
+    if (id.isEmpty || !seen.add(id)) {
+      continue;
+    }
+    final String shortName = _text(row['contractShortName']);
+    contracts.add(
+      WorkRfiContractOption(
+        id: id,
+        label: shortName.isEmpty ? id : shortName,
+        projectId: projectId,
+      ),
+    );
+  }
+  return contracts;
+}
+
+WorkRfiLayerRange? parseWorkRfiLayerRange(dynamic data) {
+  final List<Map<String, dynamic>> rows = _rows(
+    data,
+    isRecord: (Map<String, dynamic> row) =>
+        row.containsKey('minLayer') || row.containsKey('maxLayer'),
+  );
+  if (rows.isEmpty) {
+    return null;
+  }
+  final int? minLayer = _readId(rows.first['minLayer']);
+  final int? maxLayer = _readId(rows.first['maxLayer']);
+  if (minLayer == null || maxLayer == null) {
+    return null;
+  }
+  return WorkRfiLayerRange(minLayer: minLayer, maxLayer: maxLayer);
 }
 
 List<WorkRfiOption> parseWorkRfiStructureTypes(dynamic data) {

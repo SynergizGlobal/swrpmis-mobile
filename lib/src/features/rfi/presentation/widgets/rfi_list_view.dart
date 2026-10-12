@@ -78,7 +78,6 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     final bool? saved = await Navigator.of(context, rootNavigator: true)
         .push<bool>(
           MaterialPageRoute<bool>(
-            fullscreenDialog: true,
             builder: (BuildContext context) => WorkRfiFormPage(rfiId: id),
           ),
         );

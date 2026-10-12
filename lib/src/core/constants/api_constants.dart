@@ -63,6 +63,8 @@ class ApiConstants {
   static const String rfiStatusCountsPath = '/rfi/status-counts';
   static const String rfiProjectNamesPath = '/rfi/projectNames';
   static const String rfiContractNamesPath = '/rfi/contractNames';
+  static const String rfiLayerRangePath =
+      '/rfi/api/ajax/getLayerRangeForStructureType';
   static const String rfiAssignedExecutiveLogsPath =
       '/rfi/getAssinedExecutiveLogs';
 

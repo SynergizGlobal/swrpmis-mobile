@@ -22,6 +22,8 @@ class WorkRfiFormPage extends ConsumerStatefulWidget {
 
 class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   final TextEditingController _description = TextEditingController();
+  final TextEditingController _chainageFrom = TextEditingController();
+  final TextEditingController _chainageTo = TextEditingController();
   WorkRfiProjectCatalog _catalog = WorkRfiProjectCatalog.empty;
   List<WorkRfiOption> _projects = <WorkRfiOption>[];
   List<WorkRfiContractOption> _contracts = <WorkRfiContractOption>[];
@@ -43,6 +45,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   String _structureId = '';
   String _component = '';
   String _element = '';
+  String? _chainageFromError;
+  String? _chainageToError;
+  List<WorkRfiOption> _layers = <WorkRfiOption>[];
+  String _layerId = '';
   String _rfiRequired = '';
   String _typeOfRfi = '';
   String _representativeId = '';
@@ -61,7 +67,9 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   bool _loadingActivities = false;
   bool _loadingDescriptions = false;
   bool _loadingEnclosures = false;
+  bool _loadingLayers = false;
   int _cascade = 0;
+  int _layerTicket = 0;
   int _descriptionTicket = 0;
   int _enclosureTicket = 0;
 
@@ -77,7 +85,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       _loadingElements ||
       _loadingActivities ||
       _loadingDescriptions ||
-      _loadingEnclosures;
+      _loadingEnclosures ||
+      _loadingLayers;
 
   WorkRfiRemoteDataSource get _source =>
       ref.read(workRfiRemoteDataSourceProvider);
@@ -98,6 +107,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   @override
   void dispose() {
     _description.dispose();
+    _chainageFrom.dispose();
+    _chainageTo.dispose();
     for (final _MeasureRow row in _rows) {
       row.dispose();
     }
@@ -105,15 +116,14 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Future<void> _bootstrap() async {
-    unawaited(_loadRepresentatives());
     if (!_editing) {
       try {
-        _catalog = await _source.fetchProjectCatalog();
+        final List<WorkRfiOption> projects = await _source.fetchProjectNames();
         if (!mounted) {
           return;
         }
         setState(() {
-          _projects = _catalog.projects;
+          _projects = projects;
           _ready = true;
         });
       } on Object catch (error) {
@@ -125,6 +135,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       }
       return;
     }
+    unawaited(_loadRepresentatives());
     final WorkRfiDetail? detail = await _guard(
       _source.fetchDetail(widget.rfiId!),
       'Work RFI unavailable',
@@ -225,6 +236,20 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (detail.structureType.isEmpty) {
       return;
     }
+    if (workRfiIsEarthworkOrBlanketing(detail.structureType)) {
+      final WorkRfiLayerRange? range = await _readLayerRange(
+        detail.structureType,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (range != null) {
+        _layers = workRfiLayerOptions(
+          minLayer: range.minLayer,
+          maxLayer: range.maxLayer,
+        );
+      }
+    }
     final List<WorkRfiOption>? structures = await _guard(
       _source.fetchStructures(
         contractId: detail.contract,
@@ -322,7 +347,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       _loadingContracts = true;
     });
     final List<WorkRfiContractOption>? contracts = await _guard(
-      _contractsFor(id),
+      _editing ? _contractsFor(id) : _source.fetchContractNames(id),
       'Contracts unavailable',
     );
     if (!mounted || ticket != _cascade) {
@@ -369,8 +394,13 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     setState(() {
       _structureType = id;
       _clearStructures();
+      _clearChainageFields();
+      if (!_editing) {
+        _applyCreateActivity(id);
+      }
       _loadingStructures = true;
     });
+    unawaited(_loadLayers(id));
     final List<WorkRfiOption>? options = await _guard(
       _source.fetchStructures(contractId: _contractId, structureType: id),
       'Structures unavailable',
@@ -388,6 +418,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
 
   Future<void> _selectStructure(String id) async {
     if (id == _structureId) {
+      return;
+    }
+    if (!_editing) {
+      setState(() => _structureId = id);
       return;
     }
     final int ticket = _bump();
@@ -670,6 +704,9 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           : workRfiFormatApiDate(_inspectionDate!),
       enclosureIds: _enclosureIds,
       description: _description.text.trim(),
+      chainageFrom: _chainageFrom.text,
+      chainageTo: _chainageTo.text,
+      layer: _layerId,
     );
   }
 
@@ -691,12 +728,12 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                       children: <Widget>[
                         _locationCard(),
                         _activityCard(),
-                        _measurementCard(),
+                        if (_editing) _measurementCard(),
                       ],
                     )
                   : const SizedBox.shrink(),
             ),
-            if (_ready) _actions(),
+            if (_ready && _editing) _actions(),
           ],
         ),
       ),
@@ -704,6 +741,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Widget _locationCard() {
+    final bool chainage = workRfiIsEarthworkOrBlanketing(_structureType);
     return _section(
       title: 'LOCATION',
       children: <Widget>[
@@ -770,41 +808,146 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             ),
           ),
         ),
-        _labeled(
-          'Component',
-          child: _selectBox(
-            hint: 'Select Component...',
-            value: _optionLabel(_components, _component),
-            enabled: _structureId.isNotEmpty && !_submitting,
-            onTap: () => _pickSingle(
-              title: 'Component',
-              options: _components,
-              selectedId: _component,
-              emptyMessage: 'No components',
-              onPicked: _selectComponent,
+        if (_editing)
+          _labeled(
+            'Component',
+            child: _selectBox(
+              hint: 'Select Component...',
+              value: _optionLabel(_components, _component),
+              enabled: _structureId.isNotEmpty && !_submitting,
+              onTap: () => _pickSingle(
+                title: 'Component',
+                options: _components,
+                selectedId: _component,
+                emptyMessage: 'No components',
+                onPicked: _selectComponent,
+              ),
+            ),
+          )
+        else
+          _labeled(
+            'Component',
+            child: _selectBox(
+              hint: 'Select Component...',
+              value: null,
+              enabled: false,
+              onTap: null,
             ),
           ),
-        ),
-        _labeled(
-          'Element',
-          child: _selectBox(
-            hint: 'Select Element...',
-            value: _optionLabel(_elements, _element),
-            enabled: _component.isNotEmpty && !_submitting,
-            onTap: () => _pickSingle(
-              title: 'Element',
-              options: _elements,
-              selectedId: _element,
-              emptyMessage: 'No elements',
-              onPicked: _selectElement,
+        if (_editing)
+          _labeled(
+            'Element',
+            child: _selectBox(
+              hint: 'Select Element...',
+              value: _optionLabel(_elements, _element),
+              enabled: _component.isNotEmpty && !_submitting,
+              onTap: () => _pickSingle(
+                title: 'Element',
+                options: _elements,
+                selectedId: _element,
+                emptyMessage: 'No elements',
+                onPicked: _selectElement,
+              ),
+            ),
+          )
+        else
+          _labeled(
+            'Element',
+            child: _selectBox(
+              hint: 'Select Element...',
+              value: null,
+              enabled: false,
+              onTap: null,
             ),
           ),
-        ),
+        if (chainage) _chainageGroup(),
       ],
     );
   }
 
+  Widget _chainageGroup() {
+    final Color outline = Theme.of(context).colorScheme.outlineVariant;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+          border: Border.all(color: outline),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _labeled(
+                'Chainage From',
+                error: _chainageFromError,
+                child: _WorkRfiTextField(
+                  controller: _chainageFrom,
+                  hint: 'e.g. 12+500',
+                  enabled: !_submitting,
+                  keyboardType: TextInputType.text,
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+.]')),
+                  ],
+                  onChanged: (_) => _onChainageChanged(),
+                  onUnfocus: () =>
+                      _alertChainage('Chainage From', _chainageFrom.text),
+                ),
+              ),
+              _labeled(
+                'Chainage To',
+                error: _chainageToError,
+                child: _WorkRfiTextField(
+                  controller: _chainageTo,
+                  hint: 'e.g. 13+000',
+                  enabled: !_submitting,
+                  keyboardType: TextInputType.text,
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+.]')),
+                  ],
+                  onChanged: (_) => _onChainageChanged(),
+                  onUnfocus: () =>
+                      _alertChainage('Chainage To', _chainageTo.text),
+                ),
+              ),
+              _labeled(
+                'Layer',
+                child: _selectBox(
+                  hint: 'Select Layer...',
+                  value: _optionLabel(_layers, _layerId),
+                  enabled: _layers.isNotEmpty && !_submitting,
+                  onTap: () => _pickSingle(
+                    title: 'Layer',
+                    options: _layers,
+                    selectedId: _layerId,
+                    emptyMessage: 'No layers',
+                    onPicked: (String id) async {
+                      setState(() => _layerId = id);
+                    },
+                  ),
+                ),
+              ),
+              Text(
+                workRfiChainageRule,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _activityCard() {
+    if (!_editing) {
+      return _createActivityCard();
+    }
     final bool yes = _rfiRequired == 'Yes';
     final bool no = _rfiRequired == 'No';
     return _section(
@@ -963,6 +1106,83 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
               ),
             ),
           ),
+        _labeled(
+          'Description',
+          required: false,
+          child: _WorkRfiTextField(
+            controller: _description,
+            hint: 'Add Description',
+            minLines: 3,
+            maxLines: 5,
+            textInputAction: TextInputAction.newline,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _createActivityCard() {
+    final bool chainage = workRfiIsEarthworkOrBlanketing(_structureType);
+    final bool activityChosen = _selectedActivities.isNotEmpty;
+    final String? activityLabel = activityChosen
+        ? _selectedActivities.first.label
+        : null;
+    return _section(
+      title: 'ACTIVITY & DESCRIPTION',
+      children: <Widget>[
+        _labeled(
+          'Activity',
+          child: chainage
+              ? _selectBox(
+                  hint: 'Select activities...',
+                  value: activityLabel,
+                  enabled: activityChosen && !_submitting,
+                  onTap: () => _pickSingle(
+                    title: 'Activity',
+                    options: _activityOptions,
+                    selectedId: activityChosen
+                        ? _selectedActivities.first.id
+                        : '',
+                    emptyMessage: 'No activities',
+                    onPicked: (String id) async {
+                      for (final WorkRfiOption option in _activityOptions) {
+                        if (option.id != id) {
+                          continue;
+                        }
+                        setState(
+                          () => _selectedActivities = <WorkRfiOption>[option],
+                        );
+                        return;
+                      }
+                    },
+                  ),
+                )
+              : _selectBox(
+                  hint: 'Select activities...',
+                  value: null,
+                  enabled: false,
+                  onTap: null,
+                ),
+        ),
+        _labeled(
+          'RFI Description',
+          child: _selectBox(
+            hint: 'Select RFI description(s)...',
+            value: null,
+            enabled: activityChosen && !_submitting,
+            onTap: activityChosen
+                ? () async {
+                    await _pickOne(
+                      title: 'RFI Description',
+                      options: const <WorkRfiOption>[],
+                      selectedId: '',
+                      emptyMessage: 'No RFI descriptions',
+                    );
+                  }
+                : null,
+          ),
+        ),
+        _labeled('RFI Required', child: _requiredRadio()),
         _labeled(
           'Description',
           required: false,
@@ -1334,7 +1554,12 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     );
   }
 
-  Widget _labeled(String label, {bool required = true, required Widget child}) {
+  Widget _labeled(
+    String label, {
+    bool required = true,
+    String? error,
+    required Widget child,
+  }) {
     final AppPalette palette = AppPalette.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1360,6 +1585,17 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           ),
           const SizedBox(height: 6),
           child,
+          if (error != null && error.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              error,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1801,6 +2037,18 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     );
   }
 
+  Future<WorkRfiLayerRange?> _readLayerRange(String structureType) async {
+    try {
+      return await _source.fetchLayerRange(structureType);
+    } on Object catch (error) {
+      if (!mounted) {
+        return null;
+      }
+      await _showError('Layers unavailable', error);
+      return null;
+    }
+  }
+
   Future<T?> _guard<T>(Future<T> future, String title) async {
     try {
       return await future;
@@ -1824,6 +2072,90 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     );
   }
 
+  bool _chainageAlertOpen = false;
+
+  void _onChainageChanged() {
+    final String? fromError = workRfiChainageError(
+      _chainageFrom.text,
+      fieldLabel: 'Chainage From',
+    );
+    final String? toError = workRfiChainageError(
+      _chainageTo.text,
+      fieldLabel: 'Chainage To',
+    );
+    if (fromError == _chainageFromError && toError == _chainageToError) {
+      return;
+    }
+    setState(() {
+      _chainageFromError = fromError;
+      _chainageToError = toError;
+    });
+  }
+
+  Future<void> _alertChainage(String fieldLabel, String raw) async {
+    final String? message = workRfiChainageError(raw, fieldLabel: fieldLabel);
+    if (message == null || _chainageAlertOpen || !mounted) {
+      return;
+    }
+    _chainageAlertOpen = true;
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.warning,
+      title: fieldLabel,
+      message: message,
+    );
+    _chainageAlertOpen = false;
+  }
+
+  void _applyCreateActivity(String structureType) {
+    _descriptionOptions = <WorkRfiOption>[];
+    _descriptionIds = <String>[];
+    if (!workRfiIsEarthworkOrBlanketing(structureType)) {
+      _activityOptions = <WorkRfiOption>[];
+      _selectedActivities = <WorkRfiOption>[];
+      return;
+    }
+    final String label =
+        _optionLabel(_structureTypes, structureType) ?? structureType;
+    final WorkRfiOption option = WorkRfiOption(id: structureType, label: label);
+    _activityOptions = <WorkRfiOption>[option];
+    _selectedActivities = <WorkRfiOption>[option];
+  }
+
+  Future<void> _loadLayers(String structureType) async {
+    final int ticket = ++_layerTicket;
+    if (!workRfiIsEarthworkOrBlanketing(structureType)) {
+      if (!mounted || ticket != _layerTicket) {
+        return;
+      }
+      setState(() {
+        _layers = <WorkRfiOption>[];
+        _layerId = '';
+        _loadingLayers = false;
+      });
+      return;
+    }
+    if (mounted) {
+      setState(() => _loadingLayers = true);
+    }
+    final WorkRfiLayerRange? range = await _readLayerRange(structureType);
+    if (!mounted || ticket != _layerTicket) {
+      return;
+    }
+    setState(() {
+      _loadingLayers = false;
+      _layers = range == null
+          ? <WorkRfiOption>[]
+          : workRfiLayerOptions(
+              minLayer: range.minLayer,
+              maxLayer: range.maxLayer,
+            );
+      if (!_layers.any((WorkRfiOption option) => option.id == _layerId)) {
+        _layerId = '';
+      }
+    });
+  }
+
   int _bump() {
     _descriptionTicket++;
     _enclosureTicket++;
@@ -1842,6 +2174,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     _structureTypes = <WorkRfiOption>[];
     _loadingStructureTypes = false;
     _clearStructures();
+    _clearChainageFields();
   }
 
   void _clearStructures() {
@@ -1849,6 +2182,17 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     _structures = <WorkRfiOption>[];
     _loadingStructures = false;
     _clearComponents();
+  }
+
+  void _clearChainageFields() {
+    _layerTicket++;
+    _chainageFrom.clear();
+    _chainageTo.clear();
+    _chainageFromError = null;
+    _chainageToError = null;
+    _layerId = '';
+    _layers = <WorkRfiOption>[];
+    _loadingLayers = false;
   }
 
   void _clearComponents() {
@@ -2656,6 +3000,7 @@ class _WorkRfiTextField extends StatefulWidget {
     this.keyboardType,
     this.inputFormatters,
     this.onChanged,
+    this.onUnfocus,
     this.prefixIcon,
     this.textInputAction,
   });
@@ -2670,6 +3015,7 @@ class _WorkRfiTextField extends StatefulWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String>? onChanged;
+  final VoidCallback? onUnfocus;
   final IconData? prefixIcon;
   final TextInputAction? textInputAction;
 
@@ -2680,10 +3026,12 @@ class _WorkRfiTextField extends StatefulWidget {
 class _WorkRfiTextFieldState extends State<_WorkRfiTextField> {
   final FocusNode _focus = FocusNode();
 
+  bool _focused = false;
+
   @override
   void initState() {
     super.initState();
-    _focus.addListener(_rebuild);
+    _focus.addListener(_onFocus);
     widget.controller.addListener(_rebuild);
   }
 
@@ -2698,10 +3046,20 @@ class _WorkRfiTextFieldState extends State<_WorkRfiTextField> {
 
   @override
   void dispose() {
-    _focus.removeListener(_rebuild);
+    _focus.removeListener(_onFocus);
     widget.controller.removeListener(_rebuild);
     _focus.dispose();
     super.dispose();
+  }
+
+  void _onFocus() {
+    final bool hasFocus = _focus.hasFocus;
+    final bool lostFocus = _focused && !hasFocus;
+    _focused = hasFocus;
+    _rebuild();
+    if (lostFocus) {
+      widget.onUnfocus?.call();
+    }
   }
 
   void _rebuild() {
