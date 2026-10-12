@@ -87,25 +87,36 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
               ),
               if (showSearch) ...<Widget>[
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _search,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search RFI...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear',
-                            onPressed: () {
-                              _search.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                    isDense: true,
-                  ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Search RFI...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear',
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh',
+                      onPressed: asyncList.isLoading ? null : _refresh,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -114,30 +125,22 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
         Expanded(
           child: asyncList.when(
             skipLoadingOnReload: true,
-            loading: () => RefreshIndicator(
-              onRefresh: _refresh,
-              child: const _FillScroll(
-                minHeight: 240,
-                child: SizedBox.shrink(),
-              ),
-            ),
+            loading: () =>
+                const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
             error: (Object error, StackTrace stackTrace) {
               return LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
                   final double minHeight = constraints.hasBoundedHeight
                       ? constraints.maxHeight
                       : 0;
-                  return RefreshIndicator(
-                    onRefresh: _refresh,
-                    child: _FillScroll(
-                      minHeight: minHeight,
-                      child: _StatusMessage(
-                        message: error is DioException
-                            ? userFriendlyErrorMessage(error)
-                            : error.toString(),
-                        onRetry: () =>
-                            ref.invalidate(rfiListProvider(widget.kind)),
-                      ),
+                  return _FillScroll(
+                    minHeight: minHeight,
+                    child: _StatusMessage(
+                      message: error is DioException
+                          ? userFriendlyErrorMessage(error)
+                          : error.toString(),
+                      onRetry: () =>
+                          ref.invalidate(rfiListProvider(widget.kind)),
                     ),
                   );
                 },
@@ -150,19 +153,15 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
                     final double minHeight = constraints.hasBoundedHeight
                         ? constraints.maxHeight
                         : 0;
-                    return RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: _FillScroll(
-                        minHeight: minHeight,
-                        child: _StatusMessage(
-                          message: items.isEmpty
-                              ? widget.kind.emptyMessage
-                              : 'No matching RFIs.',
-                          onRetry: items.isEmpty
-                              ? () =>
-                                    ref.invalidate(rfiListProvider(widget.kind))
-                              : null,
-                        ),
+                    return _FillScroll(
+                      minHeight: minHeight,
+                      child: _StatusMessage(
+                        message: items.isEmpty
+                            ? widget.kind.emptyMessage
+                            : 'No matching RFIs.',
+                        onRetry: items.isEmpty
+                            ? () => ref.invalidate(rfiListProvider(widget.kind))
+                            : null,
                       ),
                     );
                   },
@@ -171,7 +170,6 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
               return RfiTable(
                 columns: rfiTableColumns(widget.kind),
                 items: visible,
-                onRefresh: _refresh,
               );
             },
           ),
@@ -321,9 +319,14 @@ class _FillScroll extends StatelessWidget {
         final double height = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : minHeight;
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: SizedBox(height: math.max(height, minHeight), child: child),
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(
+            context,
+          ).copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(height: math.max(height, minHeight), child: child),
+          ),
         );
       },
     );

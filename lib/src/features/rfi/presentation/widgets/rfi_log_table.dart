@@ -8,14 +8,12 @@ class RfiLogTable extends StatelessWidget {
   const RfiLogTable({
     super.key,
     required this.rows,
-    required this.onRefresh,
     required this.onPreview,
     required this.onDownload,
     this.downloadingRow,
   });
 
   final List<RfiLogRow> rows;
-  final Future<void> Function() onRefresh;
   final ValueChanged<RfiLogRow> onPreview;
   final ValueChanged<RfiLogRow> onDownload;
   final RfiLogRow? downloadingRow;
@@ -50,16 +48,19 @@ class RfiLogTable extends StatelessWidget {
           0,
           (double total, _LogColumn column) => total + column.width,
         );
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const ClampingScrollPhysics(),
-          child: SizedBox(
-            width: math.max(sum, viewport),
-            height: height,
-            child: RefreshIndicator(
-              onRefresh: onRefresh,
+        final ScrollBehavior clamp = ScrollConfiguration.of(
+          context,
+        ).copyWith(overscroll: false, physics: const ClampingScrollPhysics());
+        return ScrollConfiguration(
+          behavior: clamp,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(
+              width: math.max(sum, viewport),
+              height: height,
               child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 slivers: <Widget>[
                   SliverPersistentHeader(
                     pinned: true,

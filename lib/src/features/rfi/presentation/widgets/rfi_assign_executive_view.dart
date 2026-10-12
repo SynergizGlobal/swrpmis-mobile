@@ -320,25 +320,36 @@ class _LogTabState extends ConsumerState<_LogTab> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _search,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear',
-                            onPressed: () {
-                              _search.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                    isDense: true,
-                  ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear',
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh',
+                      onPressed: log.loading ? null : _refresh,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -352,28 +363,22 @@ class _LogTabState extends ConsumerState<_LogTab> {
     if (log.error != null) {
       return _MessagePane(
         message: _failureMessage(log.error!),
-        onRefresh: _refresh,
         onRetry: _refresh,
       );
     }
     if (log.loading && log.rows.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refresh,
-        child: const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
-      );
+      return const _FillScroll(minHeight: 240, child: SizedBox.shrink());
     }
     if (visible.isEmpty) {
       return _MessagePane(
         message: log.rows.isEmpty
             ? 'No assignments found.'
             : 'No matching assignments.',
-        onRefresh: _refresh,
         onRetry: log.rows.isEmpty ? _refresh : null,
       );
     }
     return RfiAssignExecutiveTable(
       rows: visible,
-      onRefresh: _refresh,
       onDelete: _delete,
       deletingId: _deletingId,
     );
@@ -504,12 +509,12 @@ class _SmallButton extends StatelessWidget {
 class _MessagePane extends StatelessWidget {
   const _MessagePane({
     required this.message,
-    required this.onRefresh,
     required this.onRetry,
+    this.onRefresh,
   });
 
   final String message;
-  final Future<void> Function() onRefresh;
+  final Future<void> Function()? onRefresh;
   final VoidCallback? onRetry;
 
   @override
@@ -519,41 +524,51 @@ class _MessagePane extends StatelessWidget {
         final double minHeight = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : 0;
-        return RefreshIndicator(
-          onRefresh: onRefresh,
-          child: _FillScroll(
-            minHeight: minHeight,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(message, textAlign: TextAlign.center),
-                    if (onRetry != null) ...<Widget>[
-                      const SizedBox(height: 12),
-                      _SmallButton(
-                        label: 'Retry',
-                        filled: true,
-                        onPressed: onRetry,
-                      ),
-                    ],
+        final Future<void> Function()? refresh = onRefresh;
+        final Widget body = _FillScroll(
+          minHeight: minHeight,
+          physics: refresh == null
+              ? const ClampingScrollPhysics()
+              : const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(message, textAlign: TextAlign.center),
+                  if (onRetry != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    _SmallButton(
+                      label: 'Retry',
+                      filled: true,
+                      onPressed: onRetry,
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
         );
+        if (refresh == null) {
+          return body;
+        }
+        return RefreshIndicator(onRefresh: refresh, child: body);
       },
     );
   }
 }
 
 class _FillScroll extends StatelessWidget {
-  const _FillScroll({required this.child, required this.minHeight});
+  const _FillScroll({
+    required this.child,
+    required this.minHeight,
+    this.physics = const ClampingScrollPhysics(),
+  });
 
   final Widget child;
   final double minHeight;
+  final ScrollPhysics physics;
 
   @override
   Widget build(BuildContext context) {
@@ -562,9 +577,18 @@ class _FillScroll extends StatelessWidget {
         final double height = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : minHeight;
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+        final Widget view = SingleChildScrollView(
+          physics: physics,
           child: SizedBox(height: math.max(height, minHeight), child: child),
+        );
+        if (physics is! ClampingScrollPhysics) {
+          return view;
+        }
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(
+            context,
+          ).copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
+          child: view,
         );
       },
     );

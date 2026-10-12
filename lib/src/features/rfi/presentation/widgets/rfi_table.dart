@@ -143,16 +143,10 @@ String _category(RfiListItem item) => item.rfiCategory;
 String _structureType(RfiListItem item) => item.structureType;
 
 class RfiTable extends StatelessWidget {
-  const RfiTable({
-    super.key,
-    required this.columns,
-    required this.items,
-    required this.onRefresh,
-  });
+  const RfiTable({super.key, required this.columns, required this.items});
 
   final List<RfiTableColumn> columns;
   final List<RfiListItem> items;
-  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -165,16 +159,19 @@ class RfiTable extends StatelessWidget {
             ? constraints.maxHeight
             : 480;
         final _ColumnLayout layout = _ColumnLayout.fit(columns, viewport);
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const ClampingScrollPhysics(),
-          child: SizedBox(
-            width: math.max(layout.total, viewport),
-            height: height,
-            child: RefreshIndicator(
-              onRefresh: onRefresh,
+        final ScrollBehavior clamp = ScrollConfiguration.of(
+          context,
+        ).copyWith(overscroll: false, physics: const ClampingScrollPhysics());
+        return ScrollConfiguration(
+          behavior: clamp,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(
+              width: math.max(layout.total, viewport),
+              height: height,
               child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 slivers: <Widget>[
                   SliverPersistentHeader(
                     pinned: true,

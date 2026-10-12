@@ -156,25 +156,36 @@ class _RfiLogViewState extends ConsumerState<RfiLogView> {
               ),
               if (showSearch) ...<Widget>[
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _search,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search RFI...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear',
-                            onPressed: () {
-                              _search.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                    isDense: true,
-                  ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Search RFI...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear',
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh',
+                      onPressed: log.loading ? null : _refresh,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -195,10 +206,7 @@ class _RfiLogViewState extends ConsumerState<RfiLogView> {
       );
     }
     if (log.loading && log.rows.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refresh,
-        child: const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
-      );
+      return const _FillScroll(minHeight: 240, child: SizedBox.shrink());
     }
     if (log.error != null) {
       return _scrollMessage(
@@ -216,7 +224,6 @@ class _RfiLogViewState extends ConsumerState<RfiLogView> {
     }
     return RfiLogTable(
       rows: visible,
-      onRefresh: _refresh,
       onPreview: _preview,
       onDownload: _download,
       downloadingRow: _downloadingRow,
@@ -232,26 +239,23 @@ class _RfiLogViewState extends ConsumerState<RfiLogView> {
         final double minHeight = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : 0;
-        return RefreshIndicator(
-          onRefresh: _refresh,
-          child: _FillScroll(
-            minHeight: minHeight,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(message, textAlign: TextAlign.center),
-                    if (onRetry != null) ...<Widget>[
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: onRetry,
-                        child: const Text('Retry'),
-                      ),
-                    ],
+        return _FillScroll(
+          minHeight: minHeight,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(message, textAlign: TextAlign.center),
+                  if (onRetry != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: onRetry,
+                      child: const Text('Retry'),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -318,9 +322,14 @@ class _FillScroll extends StatelessWidget {
         final double height = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : minHeight;
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: SizedBox(height: math.max(height, minHeight), child: child),
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(
+            context,
+          ).copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(height: math.max(height, minHeight), child: child),
+          ),
         );
       },
     );

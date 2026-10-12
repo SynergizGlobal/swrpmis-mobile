@@ -147,25 +147,36 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
               ),
               if (showSearch) ...<Widget>[
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _search,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search RFI...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear',
-                            onPressed: () {
-                              _search.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                    isDense: true,
-                  ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Search RFI...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear',
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh',
+                      onPressed: inspection.loading ? null : _refresh,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -191,10 +202,7 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
       );
     }
     if (inspection.loading && inspection.catalog.rows.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refresh,
-        child: const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
-      );
+      return const _FillScroll(minHeight: 240, child: SizedBox.shrink());
     }
     if (inspection.error != null) {
       return _scrollMessage(
@@ -220,11 +228,7 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
       lookup[item] = row;
       items.add(item);
     }
-    return RfiTable(
-      columns: _columns(context, role, lookup),
-      items: items,
-      onRefresh: _refresh,
-    );
+    return RfiTable(columns: _columns(context, role, lookup), items: items);
   }
 
   Widget _scrollMessage({
@@ -236,12 +240,9 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
         final double minHeight = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : 0;
-        return RefreshIndicator(
-          onRefresh: _refresh,
-          child: _FillScroll(
-            minHeight: minHeight,
-            child: _StatusMessage(message: message, onRetry: onRetry),
-          ),
+        return _FillScroll(
+          minHeight: minHeight,
+          child: _StatusMessage(message: message, onRetry: onRetry),
         );
       },
     );
@@ -555,18 +556,6 @@ class _FilterBar extends StatelessWidget {
               _notifier(context).selectQuality(option.numberId),
         ),
     ];
-    final ButtonStyle buttonStyle = ButtonStyle(
-      visualDensity: VisualDensity.compact,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      minimumSize: const WidgetStatePropertyAll<Size>(Size(0, 32)),
-      padding: const WidgetStatePropertyAll<EdgeInsets>(
-        EdgeInsets.symmetric(horizontal: 8),
-      ),
-      textStyle: const WidgetStatePropertyAll<TextStyle>(
-        TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-      ),
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -603,9 +592,35 @@ class _FilterBar extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: FilledButton(
-                style: buttonStyle,
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.standard,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  backgroundColor: AppTheme.railwayRed,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppTheme.railwayRed,
+                  disabledForegroundColor: Colors.white,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                ),
                 onPressed: submitting ? null : onSubmit,
-                child: Text(submitting ? 'Sending' : 'Submit 15'),
+                child: Text(
+                  submitting ? 'Sending' : 'Submit 15',
+                  maxLines: 1,
+                  softWrap: false,
+                ),
               ),
             ),
           ],
@@ -791,9 +806,14 @@ class _FillScroll extends StatelessWidget {
         final double height = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : minHeight;
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: SizedBox(height: math.max(height, minHeight), child: child),
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(
+            context,
+          ).copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(height: math.max(height, minHeight), child: child),
+          ),
         );
       },
     );

@@ -217,25 +217,36 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
               ),
               if (showSearch) ...<Widget>[
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _search,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear',
-                            onPressed: () {
-                              _search.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                    isDense: true,
-                  ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear',
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh',
+                      onPressed: validation.loading ? null : _refresh,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -258,10 +269,7 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
       );
     }
     if (validation.loading && validation.catalog.rows.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refresh,
-        child: const _FillScroll(minHeight: 240, child: SizedBox.shrink()),
-      );
+      return const _FillScroll(minHeight: 240, child: SizedBox.shrink());
     }
     if (validation.error != null) {
       return _scrollMessage(
@@ -285,7 +293,6 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
       items: visible
           .map((_VisibleRow entry) => entry.item)
           .toList(growable: false),
-      onRefresh: _refresh,
     );
   }
 
@@ -298,12 +305,9 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
         final double minHeight = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : 0;
-        return RefreshIndicator(
-          onRefresh: _refresh,
-          child: _FillScroll(
-            minHeight: minHeight,
-            child: _StatusMessage(message: message, onRetry: onRetry),
-          ),
+        return _FillScroll(
+          minHeight: minHeight,
+          child: _StatusMessage(message: message, onRetry: onRetry),
         );
       },
     );
@@ -973,9 +977,14 @@ class _FillScroll extends StatelessWidget {
         final double height = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : minHeight;
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: SizedBox(height: math.max(height, minHeight), child: child),
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(
+            context,
+          ).copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(height: math.max(height, minHeight), child: child),
+          ),
         );
       },
     );

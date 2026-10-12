@@ -8,13 +8,11 @@ class RfiAssignExecutiveTable extends StatelessWidget {
   const RfiAssignExecutiveTable({
     super.key,
     required this.rows,
-    required this.onRefresh,
     required this.onDelete,
     required this.deletingId,
   });
 
   final List<RfiAssignExecutiveLog> rows;
-  final Future<void> Function() onRefresh;
   final ValueChanged<RfiAssignExecutiveLog> onDelete;
   final int? deletingId;
 
@@ -37,16 +35,19 @@ class RfiAssignExecutiveTable extends StatelessWidget {
             ? constraints.maxHeight
             : 480;
         final _ColumnLayout layout = _ColumnLayout.fit(_columns, viewport);
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const ClampingScrollPhysics(),
-          child: SizedBox(
-            width: math.max(layout.total, viewport),
-            height: height,
-            child: RefreshIndicator(
-              onRefresh: onRefresh,
+        final ScrollBehavior clamp = ScrollConfiguration.of(
+          context,
+        ).copyWith(overscroll: false, physics: const ClampingScrollPhysics());
+        return ScrollConfiguration(
+          behavior: clamp,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(
+              width: math.max(layout.total, viewport),
+              height: height,
               child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 slivers: <Widget>[
                   SliverPersistentHeader(
                     pinned: true,
