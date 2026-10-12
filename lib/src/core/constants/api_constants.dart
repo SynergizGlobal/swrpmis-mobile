@@ -16,7 +16,25 @@ class ApiConstants {
   static const String reportFormsPath = '/forms/api/getReportForms';
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
+  static const String workRfiCreatePath = '/rfi/api/workRfi/create';
   static const String qualityRfiListPath = '/rfi/api/qualityRfi/list';
+  static const String newActivitiesUpdatePath = '/newActivitiesUpdate';
+  static const String contractListForProjectPath = '/getContractListForProject';
+  static const String structureTypesInActivitiesPath =
+      '/ajax/getStructureTypesInActivitiesUpdate';
+  static const String activitiesUpdateStructuresPath =
+      '/ajax/getNewActivitiesUpdateStructures';
+  static const String activitiesUpdateComponentsPath =
+      '/ajax/getNewActivitiesUpdateComponentsList';
+  static const String activitiesUpdateComponentIdsPath =
+      '/ajax/getNewActivitiesUpdateComponentIdsList';
+  static const String activitiesUpdateActivitiesPath =
+      '/ajax/getNewActivitiesUpdateActivitiesList';
+  static const String rfiTypeDescriptionsPath = '/rfi/rfi-type-descriptions';
+  static const String workRepresentativesPath = '/api/work-representatives';
+  static const String workRfiEnclosuresPath = '/rfi/api/enclosures';
+
+  static String workRfiPath(int id) => '/rfi/api/workRfi/$id';
   static const String rfiFilterCategoryPath = '/rfi/filter-rfi-category';
   static const String rfiFilterProjectPath = '/rfi/filter-project';
   static const String rfiFilterContractPath = '/rfi/filter-contract';

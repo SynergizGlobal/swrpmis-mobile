@@ -22,7 +22,11 @@ class RfiTableColumn {
   final Widget Function(BuildContext context, RfiListItem item)? buildCell;
 }
 
-List<RfiTableColumn> rfiTableColumns(RfiListKind kind) {
+List<RfiTableColumn> rfiTableColumns(
+  RfiListKind kind, {
+  void Function(RfiListItem item)? onEdit,
+  void Function(RfiListItem item)? onDelete,
+}) {
   const RfiTableColumn rfiId = RfiTableColumn(
     label: 'RFI ID',
     minWidth: 196,
@@ -94,6 +98,17 @@ List<RfiTableColumn> rfiTableColumns(RfiListKind kind) {
         read: _submitted,
       ),
       status,
+      RfiTableColumn(
+        label: 'Actions',
+        minWidth: 176,
+        read: _blank,
+        buildCell: (BuildContext context, RfiListItem item) {
+          return _WorkRowActions(
+            onEdit: onEdit == null ? null : () => onEdit(item),
+            onDelete: onDelete == null ? null : () => onDelete(item),
+          );
+        },
+      ),
     ],
     RfiListKind.quality => <RfiTableColumn>[
       rfiId,
@@ -132,6 +147,8 @@ String _scheduled(RfiListItem item) => item.scheduledText;
 String _submitted(RfiListItem item) => item.contractorSubmittedOn;
 
 String _status(RfiListItem item) => item.statusLabel;
+
+String _blank(RfiListItem item) => '';
 
 String _structure(RfiListItem item) => item.structure;
 
@@ -417,4 +434,63 @@ Color _statusColor(String code, bool dark) {
     return dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
   }
   return dark ? const Color(0xFF9DC0F0) : AppTheme.brandSecondary;
+}
+
+class _WorkRowActions extends StatelessWidget {
+  const _WorkRowActions({required this.onEdit, required this.onDelete});
+
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color editColor = dark
+        ? const Color(0xFFF0C36A)
+        : const Color(0xFF8A5A00);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        OutlinedButton(
+          style: ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            minimumSize: const WidgetStatePropertyAll<Size>(Size(64, 32)),
+            padding: const WidgetStatePropertyAll<EdgeInsets>(
+              EdgeInsets.symmetric(horizontal: 10),
+            ),
+            foregroundColor: WidgetStatePropertyAll<Color>(editColor),
+            side: WidgetStatePropertyAll<BorderSide>(
+              BorderSide(color: editColor),
+            ),
+            textStyle: const WidgetStatePropertyAll<TextStyle>(
+              TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+          onPressed: onEdit,
+          child: const Text('Edit'),
+        ),
+        FilledButton(
+          style: ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            minimumSize: const WidgetStatePropertyAll<Size>(Size(72, 32)),
+            padding: const WidgetStatePropertyAll<EdgeInsets>(
+              EdgeInsets.symmetric(horizontal: 10),
+            ),
+            backgroundColor: const WidgetStatePropertyAll<Color>(
+              AppTheme.railwayRed,
+            ),
+            foregroundColor: const WidgetStatePropertyAll<Color>(Colors.white),
+            textStyle: const WidgetStatePropertyAll<TextStyle>(
+              TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+          onPressed: onDelete,
+          child: const Text('Delete'),
+        ),
+      ],
+    );
+  }
 }

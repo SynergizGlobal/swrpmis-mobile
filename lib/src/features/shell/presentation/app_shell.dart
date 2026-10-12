@@ -7,6 +7,7 @@ import 'package:swr_pmis_mobile/src/core/widgets/swr_logo.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_section_launch.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -33,7 +34,11 @@ class AppShell extends ConsumerWidget {
         if (didPop || !onRfi) {
           return;
         }
-        navigationShell.goBranch(0);
+        handleRfiBack(
+          ref,
+          shellIndex: navigationShell.currentIndex,
+          goHome: () => navigationShell.goBranch(0),
+        );
       },
       child: Scaffold(
         appBar: AppBar(
@@ -41,7 +46,11 @@ class AppShell extends ConsumerWidget {
           leading: onRfi
               ? IconButton(
                   tooltip: 'Back',
-                  onPressed: () => navigationShell.goBranch(0),
+                  onPressed: () => handleRfiBack(
+                    ref,
+                    shellIndex: navigationShell.currentIndex,
+                    goHome: () => navigationShell.goBranch(0),
+                  ),
                   icon: const Icon(Icons.arrow_back_rounded),
                 )
               : null,

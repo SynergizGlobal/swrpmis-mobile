@@ -13,6 +13,7 @@ dependencies:
   dio: ^5.9.0
   dio_cookie_manager: ^3.3.0
   equatable: ^2.0.7
+  excel_plus: ^2.27.1
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.6.1

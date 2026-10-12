@@ -34,6 +34,7 @@ void main() {
         'Scheduled on',
         'Contractor submitted on',
         'Status',
+        'Actions',
       ],
     );
     expect(

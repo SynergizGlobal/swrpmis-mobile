@@ -31,7 +31,6 @@ class RfiPage extends ConsumerStatefulWidget {
 }
 
 class _RfiPageState extends ConsumerState<RfiPage> {
-  RfiMenuId _section = RfiMenuId.home;
   GoRouterDelegate? _routerDelegate;
 
   @override
@@ -70,7 +69,8 @@ class _RfiPageState extends ConsumerState<RfiPage> {
     final ({List<RfiMenuItem> bar, List<RfiMenuItem> overflow}) nav =
         RfiMenuItem.navBarFor(role);
     final List<RfiMenuItem> creates = RfiMenuItem.createItemsFor(role);
-    final RfiMenuItem? section = RfiMenuItem.byId(_section.name);
+    final RfiMenuId sectionId = ref.watch(rfiCurrentSectionProvider);
+    final RfiMenuItem? section = RfiMenuItem.byId(sectionId.name);
     final RfiListKind? listKind = RfiListKind.fromMenuId(section?.id);
     final bool interceptBack = _interceptSystemBack;
 
@@ -80,11 +80,15 @@ class _RfiPageState extends ConsumerState<RfiPage> {
         if (didPop || !interceptBack) {
           return;
         }
-        StatefulNavigationShell.of(context).goBranch(0);
+        handleRfiBack(
+          ref,
+          shellIndex: StatefulNavigationShell.of(context).currentIndex,
+          goHome: () => StatefulNavigationShell.of(context).goBranch(0),
+        );
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        floatingActionButton: creates.isEmpty || _section != RfiMenuId.home
+        floatingActionButton: creates.isEmpty || sectionId != RfiMenuId.home
             ? null
             : FloatingActionButton(
                 tooltip: 'Create RFI',
@@ -97,7 +101,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
             : _RfiNavBar(
                 items: nav.bar,
                 overflow: nav.overflow,
-                selected: _section,
+                selected: sectionId,
                 onSelected: _selectSection,
               ),
         body: listKind != null
@@ -143,11 +147,11 @@ class _RfiPageState extends ConsumerState<RfiPage> {
     if (picked == null || !mounted) {
       return;
     }
-    setState(() => _section = picked);
+    ref.read(rfiCurrentSectionProvider.notifier).select(picked);
   }
 
   void _selectSection(RfiMenuId id) {
-    if (id == _section) {
+    if (id == ref.read(rfiCurrentSectionProvider)) {
       return;
     }
     if (id == RfiMenuId.inspection) {
@@ -158,7 +162,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
       _showLog(const RfiInspectionFilter());
       return;
     }
-    setState(() => _section = id);
+    ref.read(rfiCurrentSectionProvider.notifier).select(id);
   }
 
   void _openCard(RfiDashboardCardTarget target) {
@@ -171,8 +175,9 @@ class _RfiPageState extends ConsumerState<RfiPage> {
 
   void _showInspection(RfiInspectionFilter filter) {
     ref.read(rfiSectionLaunchProvider.notifier).setInspection(filter);
-    final bool already = _section == RfiMenuId.inspection;
-    setState(() => _section = RfiMenuId.inspection);
+    final bool already =
+        ref.read(rfiCurrentSectionProvider) == RfiMenuId.inspection;
+    ref.read(rfiCurrentSectionProvider.notifier).select(RfiMenuId.inspection);
     if (already) {
       ref.read(rfiInspectionControllerProvider.notifier).apply(filter);
     }
@@ -180,8 +185,8 @@ class _RfiPageState extends ConsumerState<RfiPage> {
 
   void _showLog(RfiInspectionFilter filter) {
     ref.read(rfiSectionLaunchProvider.notifier).setLog(filter);
-    final bool already = _section == RfiMenuId.log;
-    setState(() => _section = RfiMenuId.log);
+    final bool already = ref.read(rfiCurrentSectionProvider) == RfiMenuId.log;
+    ref.read(rfiCurrentSectionProvider.notifier).select(RfiMenuId.log);
     if (already) {
       ref.read(rfiLogControllerProvider.notifier).apply(filter);
     }

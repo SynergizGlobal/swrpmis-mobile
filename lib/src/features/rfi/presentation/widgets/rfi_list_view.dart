@@ -9,11 +9,13 @@ import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/work_rfi_export_file.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_providers.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/work_rfi_form_page.dart';
 
 class RfiListView extends ConsumerStatefulWidget {
   const RfiListView({super.key, required this.kind});
@@ -28,6 +30,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
   final TextEditingController _search = TextEditingController();
   int _pageSize = TablePage.defaultPageSize;
   int _page = 1;
+  bool _exporting = false;
 
   @override
   void dispose() {
@@ -44,12 +47,119 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     }
   }
 
-  void _onAdd() {
+  Future<void> _onAdd() async {
+    if (widget.kind != RfiListKind.work) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.info,
+        title: 'Create',
+        message: 'Create will be added next.',
+      );
+      return;
+    }
+    await _openWorkForm(null);
+  }
+
+  Future<void> _onEdit(RfiListItem item) async {
+    final int? id = item.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Edit',
+        message: 'This RFI cannot be edited.',
+      );
+      return;
+    }
+    await _openWorkForm(id);
+  }
+
+  Future<void> _openWorkForm(int? id) async {
+    final bool? saved = await Navigator.of(context, rootNavigator: true)
+        .push<bool>(
+          MaterialPageRoute<bool>(
+            fullscreenDialog: true,
+            builder: (BuildContext context) => WorkRfiFormPage(rfiId: id),
+          ),
+        );
+    if (saved != true || !mounted) {
+      return;
+    }
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.success,
+      title: id == null ? 'Created' : 'Updated',
+      message: id == null ? 'Work RFI created.' : 'Work RFI updated.',
+    );
+    if (!mounted) {
+      return;
+    }
+    ref.invalidate(rfiListProvider(RfiListKind.work));
+  }
+
+  Future<void> _onExport(BuildContext origin) async {
+    if (_exporting || widget.kind != RfiListKind.work || !mounted) {
+      return;
+    }
+    final AsyncValue<List<RfiListItem>> asyncList = ref.read(
+      rfiListProvider(widget.kind),
+    );
+    final List<RfiListItem> loaded = asyncList.hasValue && !asyncList.hasError
+        ? asyncList.requireValue
+        : const <RfiListItem>[];
+    final List<RfiListItem> rows = loaded
+        .where((RfiListItem item) => _matches(item, _search.text))
+        .toList(growable: false);
+    if (rows.isEmpty) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.info,
+        title: 'Export',
+        message: 'There are no records to export.',
+      );
+      return;
+    }
+    final Rect originRect = _shareOrigin(origin);
+    setState(() => _exporting = true);
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) {
+        return;
+      }
+      await shareWorkRfiXlsx(items: rows, sharePositionOrigin: originRect);
+    } on Object {
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Export',
+        message: 'Unable to export Work RFI.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
+    }
+  }
+
+  Future<void> _onDelete(RfiListItem item) async {
+    final bool confirmed = await AppDialog.confirm(
+      context,
+      title: 'Delete RFI',
+      message: 'Delete ${item.rfiId.isEmpty ? 'this RFI' : item.rfiId}?',
+      primaryLabel: 'Delete',
+      destructive: true,
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
     AppDialog.show(
       context,
       variant: AppDialogVariant.info,
-      title: 'Create',
-      message: 'Create will be added next.',
+      title: 'Delete',
+      message: 'Delete will be added next.',
     );
   }
 
@@ -84,7 +194,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
       header: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          RfiContentLoader(loading: asyncList.isLoading),
+          RfiContentLoader(loading: asyncList.isLoading || _exporting),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(
@@ -97,25 +207,39 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
                 ),
                 if (showSearch) ...<Widget>[
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (_) => setState(() => _page = 1),
-                    decoration: InputDecoration(
-                      hintText: 'Search RFI...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                setState(() => _page = 1);
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Expanded(
+                        child: TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (_) => setState(() => _page = 1),
+                          decoration: InputDecoration(
+                            hintText: 'Search RFI...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() => _page = 1);
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      if (widget.kind == RfiListKind.work) ...<Widget>[
+                        const SizedBox(width: 8),
+                        _WorkRfiExportButton(
+                          busy: _exporting,
+                          onPressed: loaded == null ? null : _onExport,
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ],
@@ -167,7 +291,11 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
             );
           }
           return RfiTable(
-            columns: rfiTableColumns(widget.kind),
+            columns: rfiTableColumns(
+              widget.kind,
+              onEdit: widget.kind == RfiListKind.work ? _onEdit : null,
+              onDelete: widget.kind == RfiListKind.work ? _onDelete : null,
+            ),
             items: tablePage.items,
           );
         },
@@ -236,6 +364,86 @@ String _countLabel(int count) {
     return '1 record total';
   }
   return '$count records total';
+}
+
+class _WorkRfiExportButton extends StatelessWidget {
+  const _WorkRfiExportButton({required this.busy, required this.onPressed});
+
+  final bool busy;
+  final void Function(BuildContext context)? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = Theme.of(context).colorScheme.primary;
+    return OutlinedButton.icon(
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const WidgetStatePropertyAll<Size>(
+          Size(0, AppTheme.fieldHeight),
+        ),
+        padding: const WidgetStatePropertyAll<EdgeInsets>(
+          EdgeInsets.symmetric(horizontal: 12),
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith<Color>((
+          Set<WidgetState> states,
+        ) {
+          if (states.contains(WidgetState.disabled)) {
+            return accent.withValues(alpha: 0.45);
+          }
+          return accent;
+        }),
+        backgroundColor: WidgetStateProperty.resolveWith<Color>((
+          Set<WidgetState> states,
+        ) {
+          if (states.contains(WidgetState.disabled)) {
+            return accent.withValues(alpha: 0.06);
+          }
+          return accent.withValues(alpha: 0.14);
+        }),
+        side: WidgetStateProperty.resolveWith<BorderSide>((
+          Set<WidgetState> states,
+        ) {
+          final Color color = states.contains(WidgetState.disabled)
+              ? accent.withValues(alpha: 0.45)
+              : accent;
+          return BorderSide(color: color, width: 1.5);
+        }),
+        textStyle: const WidgetStatePropertyAll<TextStyle>(
+          TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        shape: const WidgetStatePropertyAll<OutlinedBorder>(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(AppTheme.cardRadius),
+            ),
+          ),
+        ),
+      ),
+      onPressed: busy || onPressed == null ? null : () => onPressed!(context),
+      icon: busy
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: accent),
+            )
+          : const Icon(Icons.download_rounded, size: 18),
+      label: const Text('Export'),
+    );
+  }
+}
+
+Rect _shareOrigin(BuildContext context) {
+  final RenderObject? object = context.findRenderObject();
+  if (object is RenderBox && object.hasSize) {
+    return object.localToGlobal(Offset.zero) & object.size;
+  }
+  final Size size = MediaQuery.sizeOf(context);
+  return Rect.fromCenter(
+    center: Offset(size.width / 2, size.height / 2),
+    width: 2,
+    height: 2,
+  );
 }
 
 class _ListHeader extends StatelessWidget {
