@@ -98,6 +98,10 @@ class WorkRfiSubmitDraft {
     this.chainageFrom = '',
     this.chainageTo = '',
     this.layer = '',
+    this.today,
+    this.originalTypeOfRfi = '',
+    this.originalDateOfInspection = '',
+    this.editing = false,
   });
 
   final String project;
@@ -120,6 +124,20 @@ class WorkRfiSubmitDraft {
   final String chainageFrom;
   final String chainageTo;
   final String layer;
+
+  /// Local calendar date used for the Date of Inspection rule. Defaults to the
+  /// device's current local date; tests inject a fixed value.
+  final DateTime? today;
+
+  /// Saved Type of RFI / Date of Inspection of the RFI being edited (empty on
+  /// create). An unchanged saved pair is exempt from the Date of Inspection
+  /// rule so an existing RFI with a past inspection date can still be edited.
+  final String originalTypeOfRfi;
+  final String originalDateOfInspection;
+
+  /// True when the draft updates an existing RFI. Edit keeps posting measurement
+  /// factors as JSON numbers; create posts them as strings like the web form.
+  final bool editing;
 }
 
 class WorkRfiDetail {
@@ -194,6 +212,98 @@ const List<WorkRfiOption> workRfiTypeOptions = <WorkRfiOption>[
 
 const String workRfiFixedAction = 'Create';
 
+const String workRfiRegularRfi = 'Regular RFI';
+const String workRfiSpotRfi = 'Spot RFI';
+
+/// Days after today that a Regular RFI inspection must be at the earliest.
+const int workRfiRegularLeadDays = 2;
+
+const String workRfiChooseTypeFirstMessage =
+    'Please choose Type of RFI before selecting Date of Inspection.';
+const String workRfiRegularDateRule =
+    'Date of Inspection for a Regular RFI must be at least 2 days from today.';
+const String workRfiSpotDateRule =
+    'Date of Inspection for a Spot RFI cannot be in the past.';
+
+/// Strips the time of day, keeping the local calendar date.
+DateTime workRfiDateOnly(DateTime value) {
+  return DateTime(value.year, value.month, value.day);
+}
+
+/// Earliest allowed Date of Inspection for [typeOfRfi] given [today]
+/// (date only). Returns null when the type is not a known type.
+DateTime? workRfiEarliestInspectionDate({
+  required String typeOfRfi,
+  required DateTime today,
+}) {
+  final DateTime base = workRfiDateOnly(today);
+  return switch (typeOfRfi.trim()) {
+    workRfiRegularRfi => DateTime(
+      base.year,
+      base.month,
+      base.day + workRfiRegularLeadDays,
+    ),
+    workRfiSpotRfi => base,
+    _ => null,
+  };
+}
+
+/// Rule message for [typeOfRfi] when [date] breaks it, otherwise null.
+/// A null date or an unknown type is not judged here.
+String? workRfiInspectionDateRuleError({
+  required String typeOfRfi,
+  required DateTime? date,
+  required DateTime today,
+}) {
+  if (date == null) {
+    return null;
+  }
+  final DateTime? earliest = workRfiEarliestInspectionDate(
+    typeOfRfi: typeOfRfi,
+    today: today,
+  );
+  if (earliest == null || !workRfiDateOnly(date).isBefore(earliest)) {
+    return null;
+  }
+  return typeOfRfi.trim() == workRfiRegularRfi
+      ? workRfiRegularDateRule
+      : workRfiSpotDateRule;
+}
+
+bool workRfiInspectionDateAllowed({
+  required String typeOfRfi,
+  required DateTime date,
+  required DateTime today,
+}) {
+  return workRfiEarliestInspectionDate(typeOfRfi: typeOfRfi, today: today) !=
+          null &&
+      workRfiInspectionDateRuleError(
+            typeOfRfi: typeOfRfi,
+            date: date,
+            today: today,
+          ) ==
+          null;
+}
+
+/// The Date of Inspection to keep after Type of RFI changes to [newType]:
+/// the current date if it still satisfies the new rule, otherwise null.
+DateTime? workRfiInspectionDateAfterTypeChange({
+  required String newType,
+  required DateTime? current,
+  required DateTime today,
+}) {
+  if (current == null) {
+    return null;
+  }
+  return workRfiInspectionDateAllowed(
+        typeOfRfi: newType,
+        date: current,
+        today: today,
+      )
+      ? current
+      : null;
+}
+
 const String workRfiChainageRule =
     'Chainages From & To shall be multiples of 10 (must be divisible by 10, no decimals).';
 
@@ -208,6 +318,26 @@ bool workRfiIsEarthworkOrBlanketing(String structureType) {
   final String key = structureType.trim().toLowerCase();
   return key == 'earthwork' || key == 'blanketing';
 }
+
+/// Activity id the server expects for Earthwork and Blanketing. Those types
+/// have no strip-chart activity; the web form posts the string "0".
+const String workRfiLocalActivityWireId = '0';
+
+/// The activity id that goes on the wire for [row]. Earthwork and Blanketing
+/// use a local option id (the structure-type name) that the server cannot
+/// parse as an Integer, so it is replaced by [workRfiLocalActivityWireId].
+/// Every other type keeps the strip-chart activity id.
+String workRfiPostedActivityId({
+  required String structureType,
+  required String activityId,
+}) {
+  if (workRfiIsEarthworkOrBlanketing(structureType)) {
+    return workRfiLocalActivityWireId;
+  }
+  return activityId.trim();
+}
+
+bool _isNumericId(String value) => RegExp(r'^\d+$').hasMatch(value);
 
 List<WorkRfiOption> workRfiLayerOptions({
   required int minLayer,
@@ -341,6 +471,7 @@ num? workRfiTotalQty({
 
 String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
   final List<String> missing = <String>[];
+  final List<String> invalidActivities = <String>[];
   void requireText(String value, String label) {
     if (value.trim().isEmpty) {
       missing.add(label);
@@ -366,6 +497,13 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
     final String name = row.activityName.trim().isEmpty
         ? 'activity'
         : row.activityName.trim();
+    final String wireId = workRfiPostedActivityId(
+      structureType: draft.structureType,
+      activityId: row.activityId,
+    );
+    if (!_isNumericId(wireId)) {
+      invalidActivities.add(name);
+    }
     if (!workRfiMeasurementTypes.contains(row.measurementType)) {
       missing.add('Type of Measurement for $name');
       continue;
@@ -414,10 +552,37 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
       missing.add('Progress Date');
     }
   }
-  if (missing.isEmpty) {
+  if (missing.isNotEmpty) {
+    return 'Missing ${missing.join(', ')}.';
+  }
+  if (invalidActivities.isNotEmpty) {
+    return 'Missing a valid activity for ${invalidActivities.join(', ')}. '
+        'Please reselect the activity.';
+  }
+  return _inspectionDateRuleMessage(draft);
+}
+
+String? _inspectionDateRuleMessage(WorkRfiSubmitDraft draft) {
+  if (draft.rfiRequired != 'Yes') {
     return null;
   }
-  return 'Missing ${missing.join(', ')}.';
+  final DateTime? date = parseWorkRfiDate(draft.dateOfInspection);
+  if (date == null) {
+    return null;
+  }
+  final DateTime? original = parseWorkRfiDate(draft.originalDateOfInspection);
+  final bool unchangedSavedDate =
+      original != null &&
+      workRfiDateOnly(original) == workRfiDateOnly(date) &&
+      draft.originalTypeOfRfi.trim() == draft.typeOfRfi.trim();
+  if (unchangedSavedDate) {
+    return null;
+  }
+  return workRfiInspectionDateRuleError(
+    typeOfRfi: draft.typeOfRfi,
+    date: date,
+    today: draft.today ?? DateTime.now(),
+  );
 }
 
 Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
@@ -425,7 +590,11 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
   final bool no = draft.rfiRequired == 'No';
   final List<String> activityIds = <String>[
     for (final WorkRfiMeasurementDraft row in draft.activities)
-      if (row.activityId.trim().isNotEmpty) row.activityId.trim(),
+      if (row.activityId.trim().isNotEmpty)
+        workRfiPostedActivityId(
+          structureType: draft.structureType,
+          activityId: row.activityId,
+        ),
   ];
   final List<String> descriptionIds = <String>[
     for (final String id in draft.descriptionIds)
@@ -459,13 +628,17 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
     'dateOfSubmission': yes ? workRfiApiDate(draft.dateOfSubmission) : '',
     'timeOfInspection': yes ? workRfiApiTime(draft.timeOfInspection) : '',
     'dateOfInspection': yes ? workRfiApiDate(draft.dateOfInspection) : '',
-    'boqItemRequired': yes ? 'No' : '',
+    'boqItemRequired': '',
     'boqItem': '',
     'selectedEnclosures': enclosureIds,
     'description': draft.description,
     'activities': <Map<String, dynamic>>[
       for (final WorkRfiMeasurementDraft row in draft.activities)
-        _activityPayload(row),
+        _activityPayload(
+          row,
+          structureType: draft.structureType,
+          editing: draft.editing,
+        ),
     ],
     'rfiDescriptions': descriptionIds,
     'enclosures': enclosureIds,
@@ -961,7 +1134,15 @@ String workRfiNumberText(Object? value) {
   return _text(value);
 }
 
-Map<String, dynamic> _activityPayload(WorkRfiMeasurementDraft row) {
+Map<String, dynamic> _activityPayload(
+  WorkRfiMeasurementDraft row, {
+  required String structureType,
+  required bool editing,
+}) {
+  final String wireId = workRfiPostedActivityId(
+    structureType: structureType,
+    activityId: row.activityId,
+  );
   final WorkRfiMeasureFields fields = workRfiFieldsFor(row.measurementType);
   final num? total = workRfiTotalQty(
     measurementType: row.measurementType,
@@ -972,22 +1153,44 @@ Map<String, dynamic> _activityPayload(WorkRfiMeasurementDraft row) {
     no: row.no,
   );
   return <String, dynamic>{
-    'id': row.activityId,
-    'activityId': row.activityId,
-    'activity': row.activityId,
+    'id': wireId,
+    'activityId': wireId,
+    'activity': wireId,
     'activityName': row.activityName,
     'measurementType': row.measurementType,
     'units': row.units,
-    'length': _jsonNumber(row.length, enabled: fields.length),
-    'breadth': _jsonNumber(row.breadth, enabled: fields.breadth),
-    'height': _jsonNumber(row.height, enabled: fields.height),
-    'weight': _jsonNumber(row.weight, enabled: fields.weight),
-    'no': _jsonNumber(row.no, enabled: fields.no),
+    'length': _measureValue(
+      row.length,
+      enabled: fields.length,
+      asNumber: editing,
+    ),
+    'breadth': _measureValue(
+      row.breadth,
+      enabled: fields.breadth,
+      asNumber: editing,
+    ),
+    'height': _measureValue(
+      row.height,
+      enabled: fields.height,
+      asNumber: editing,
+    ),
+    'weight': _measureValue(
+      row.weight,
+      enabled: fields.weight,
+      asNumber: editing,
+    ),
+    'no': _measureValue(row.no, enabled: fields.no, asNumber: editing),
     'totalQty': total ?? '',
   };
 }
 
-Object _jsonNumber(String raw, {required bool enabled}) {
+/// A measurement factor as posted: the web form sends the typed text ("5"),
+/// edit sends a JSON number. Disabled or invalid factors are an empty string.
+Object _measureValue(
+  String raw, {
+  required bool enabled,
+  required bool asNumber,
+}) {
   if (!enabled) {
     return '';
   }
@@ -999,7 +1202,7 @@ Object _jsonNumber(String raw, {required bool enabled}) {
   if (parsed == null) {
     return '';
   }
-  return _whole(parsed);
+  return asNumber ? _whole(parsed) : text;
 }
 
 num _whole(num value) {

@@ -473,6 +473,7 @@ void main() {
           dateOfInspection: '01/10/2026',
           enclosureIds: <String>['69'],
           description: 'Testing _ RFI',
+          editing: true,
         ),
       );
 
@@ -489,7 +490,7 @@ void main() {
       expect(body['dateOfSubmission'], '2026-10-01');
       expect(body['timeOfInspection'], '14:30');
       expect(body['dateOfInspection'], '2026-10-01');
-      expect(body['boqItemRequired'], 'No');
+      expect(body['boqItemRequired'], isEmpty);
       expect(body['selectedEnclosures'], <String>['69']);
       expect(body['enclosures'], <String>['69']);
       expect(body['projectId'], 'P01');
@@ -574,7 +575,7 @@ void main() {
       expect(row['breadth'], isEmpty);
       expect(row['height'], isEmpty);
       expect(row['weight'], isEmpty);
-      expect(row['no'], 22);
+      expect(row['no'], '22');
       expect(row['totalQty'], 22);
       expect(row['units'], 'Nos');
       expect(row['activityName'], 'Concrete');
@@ -716,6 +717,492 @@ void main() {
     expect(body['chainageFrom'], '10');
     expect(body['chainageTo'], '30');
     expect(body['layer'], 'Layer 2');
+  });
+
+  group('create payload matches the web capture', () {
+    const WorkRfiOption blanketingOption = WorkRfiOption(
+      id: 'Blanketing',
+      label: 'Blanketing',
+    );
+
+    WorkRfiSubmitDraft blanketingDraft({
+      required String rfiRequired,
+      String structureType = 'Blanketing',
+      String activityId = 'Blanketing',
+      String activityName = 'Blanketing',
+    }) {
+      final bool yes = rfiRequired == 'Yes';
+      return WorkRfiSubmitDraft(
+        project: 'P01',
+        contract: 'P01EN01',
+        structureType: structureType,
+        structure: '55',
+        component: 'Finishes',
+        element:
+            'Approach Road, Apron, curtain wall, drop wall and other protection works',
+        chainageFrom: '40',
+        chainageTo: '50',
+        layer: 'Layer 2',
+        activities: <WorkRfiMeasurementDraft>[
+          WorkRfiMeasurementDraft(
+            activityId: activityId,
+            activityName: activityName,
+            measurementType: 'Number',
+            units: 'Nos',
+            no: '5',
+          ),
+        ],
+        descriptionIds: const <String>['1'],
+        rfiRequired: rfiRequired,
+        typeOfRfi: yes ? 'Spot RFI' : '',
+        contractorRepresentative: yes ? 'PMIS_RU_001' : '',
+        progressDate: yes ? '' : '2026-10-12',
+        dateOfSubmission: yes ? '2026-10-13' : '',
+        timeOfInspection: yes ? '12:54' : '',
+        dateOfInspection: yes ? '2026-10-13' : '',
+        enclosureIds: yes ? const <String>['4', '34', '44'] : const <String>[],
+        description: '',
+        today: DateTime(2026, 10, 13),
+      );
+    }
+
+    Map<String, dynamic> activityRow(Map<String, dynamic> body) =>
+        (body['activities'] as List<dynamic>).single as Map<String, dynamic>;
+
+    test('Blanketing, RFI Required Yes, Spot RFI equals the web body', () {
+      final WorkRfiSubmitDraft draft = blanketingDraft(rfiRequired: 'Yes');
+      expect(workRfiValidationMessage(draft), isNull);
+      final Map<String, dynamic> body = buildWorkRfiPayload(draft);
+
+      expect(body, <String, dynamic>{
+        'project': 'P01',
+        'contract': 'P01EN01',
+        'structureType': 'Blanketing',
+        'structure': '55',
+        'component': 'Finishes',
+        'element':
+            'Approach Road, Apron, curtain wall, drop wall and other protection works',
+        'chainageFrom': '40',
+        'chainageTo': '50',
+        'layer': 'Layer 2',
+        'activity': '0',
+        'selectedActivities': <String>['0'],
+        'rfiDescription': '',
+        'selectedRfiDescriptions': <String>['1'],
+        'rfiRequired': 'Yes',
+        'action': 'Create',
+        'typeOfRfi': 'Spot RFI',
+        'contractorRepresentative': 'PMIS_RU_001',
+        'progressDate': '',
+        'dateOfSubmission': '2026-10-13',
+        'timeOfInspection': '12:54',
+        'dateOfInspection': '2026-10-13',
+        'boqItemRequired': '',
+        'boqItem': '',
+        'selectedEnclosures': <String>['4', '34', '44'],
+        'description': '',
+        'activities': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'id': '0',
+            'activityId': '0',
+            'activity': '0',
+            'activityName': 'Blanketing',
+            'measurementType': 'Number',
+            'units': 'Nos',
+            'length': '',
+            'breadth': '',
+            'height': '',
+            'weight': '',
+            'no': '5',
+            'totalQty': 5,
+          },
+        ],
+        'rfiDescriptions': <String>['1'],
+        'enclosures': <String>['4', '34', '44'],
+        'projectId': 'P01',
+        'structureId': '55',
+      });
+      expect(activityRow(body)['no'], isA<String>());
+      expect(activityRow(body)['totalQty'], isA<int>());
+      // The local option id/label stay untouched: the description lookup is
+      // keyed by the label, never by the posted id.
+      expect(blanketingOption.id, 'Blanketing');
+      expect(blanketingOption.label, 'Blanketing');
+    });
+
+    test('Blanketing, RFI Required No keeps ids "0" and blank boq/dates', () {
+      final WorkRfiSubmitDraft draft = blanketingDraft(rfiRequired: 'No');
+      expect(workRfiValidationMessage(draft), isNull);
+      final Map<String, dynamic> body = buildWorkRfiPayload(draft);
+
+      expect(body['activity'], '0');
+      expect(body['selectedActivities'], <String>['0']);
+      expect(body['boqItemRequired'], '');
+      expect(body['boqItem'], '');
+      expect(body['progressDate'], '2026-10-12');
+      expect(body['dateOfSubmission'], '');
+      expect(body['timeOfInspection'], '');
+      expect(body['dateOfInspection'], '');
+      expect(body['selectedEnclosures'], isEmpty);
+      expect(body['enclosures'], isEmpty);
+      final Map<String, dynamic> row = activityRow(body);
+      expect(row['id'], '0');
+      expect(row['activityId'], '0');
+      expect(row['activity'], '0');
+      expect(row['activityName'], 'Blanketing');
+      expect(row['no'], '5');
+      expect(row['totalQty'], 5);
+    });
+
+    test('Earthwork also posts "0" and keeps its name in activityName', () {
+      final Map<String, dynamic> body = buildWorkRfiPayload(
+        blanketingDraft(
+          rfiRequired: 'Yes',
+          structureType: 'Earthwork',
+          activityId: 'Earthwork',
+          activityName: 'Earthwork',
+        ),
+      );
+      expect(body['activity'], '0');
+      expect(body['selectedActivities'], <String>['0']);
+      final Map<String, dynamic> row = activityRow(body);
+      expect(row['id'], '0');
+      expect(row['activityId'], '0');
+      expect(row['activity'], '0');
+      expect(row['activityName'], 'Earthwork');
+    });
+
+    test('other structure types keep the strip-chart activity id', () {
+      final Map<String, dynamic> body = buildWorkRfiPayload(
+        blanketingDraft(
+          rfiRequired: 'Yes',
+          structureType: 'Minor Bridge',
+          activityId: '2174',
+          activityName: 'Concrete',
+        ),
+      );
+      expect(body['activity'], '2174');
+      expect(body['selectedActivities'], <String>['2174']);
+      final Map<String, dynamic> row = activityRow(body);
+      expect(row['id'], '2174');
+      expect(row['activityId'], '2174');
+      expect(row['activity'], '2174');
+      expect(row['activityName'], 'Concrete');
+    });
+
+    test('a non-numeric activity id is rejected before sending', () {
+      final String? message = workRfiValidationMessage(
+        blanketingDraft(
+          rfiRequired: 'Yes',
+          structureType: 'Minor Bridge',
+          activityId: 'Concrete',
+          activityName: 'Concrete',
+        ),
+      );
+      expect(message, isNotNull);
+      expect(message, contains('valid activity'));
+      expect(message, contains('Concrete'));
+    });
+
+    test('edit keeps numeric ids and numeric measurement factors', () {
+      final WorkRfiSubmitDraft base = blanketingDraft(
+        rfiRequired: 'Yes',
+        structureType: 'Minor Bridge',
+        activityId: '2174',
+        activityName: 'Concrete',
+      );
+      final Map<String, dynamic> body = buildWorkRfiPayload(
+        WorkRfiSubmitDraft(
+          project: base.project,
+          contract: base.contract,
+          structureType: base.structureType,
+          structure: base.structure,
+          component: base.component,
+          element: base.element,
+          activities: base.activities,
+          descriptionIds: base.descriptionIds,
+          rfiRequired: base.rfiRequired,
+          typeOfRfi: base.typeOfRfi,
+          contractorRepresentative: base.contractorRepresentative,
+          progressDate: base.progressDate,
+          dateOfSubmission: base.dateOfSubmission,
+          timeOfInspection: base.timeOfInspection,
+          dateOfInspection: base.dateOfInspection,
+          enclosureIds: base.enclosureIds,
+          description: base.description,
+          editing: true,
+        ),
+      );
+      final Map<String, dynamic> row = activityRow(body);
+      expect(row['id'], '2174');
+      expect(row['activityId'], '2174');
+      expect(row['no'], 5);
+      expect(row['totalQty'], 5);
+      expect(body['boqItemRequired'], '');
+    });
+  });
+
+  group('Date of Inspection rules', () {
+    // Injected local "today" with a time of day that must be ignored.
+    final DateTime today = DateTime(2026, 10, 13, 23, 45);
+    final DateTime yesterday = DateTime(2026, 10, 12);
+    final DateTime todayDate = DateTime(2026, 10, 13);
+    final DateTime tomorrow = DateTime(2026, 10, 14);
+    final DateTime plusTwo = DateTime(2026, 10, 15);
+
+    bool allowed(String type, DateTime date) =>
+        workRfiInspectionDateAllowed(typeOfRfi: type, date: date, today: today);
+
+    WorkRfiSubmitDraft draft({
+      String type = 'Regular RFI',
+      String date = '',
+      String originalType = '',
+      String originalDate = '',
+    }) {
+      return WorkRfiSubmitDraft(
+        project: 'P01',
+        contract: 'P01EN01',
+        structureType: 'Minor Bridge',
+        structure: '7',
+        component: 'Bottom Slab',
+        element: 'Bottom Haunch',
+        activities: const <WorkRfiMeasurementDraft>[
+          WorkRfiMeasurementDraft(
+            activityId: '1',
+            activityName: 'Concrete',
+            measurementType: 'Number',
+            units: 'Nos',
+            no: '2',
+          ),
+        ],
+        descriptionIds: const <String>['71'],
+        rfiRequired: 'Yes',
+        typeOfRfi: type,
+        contractorRepresentative: 'U1',
+        progressDate: '',
+        dateOfSubmission: '2026-10-13',
+        timeOfInspection: '10:00',
+        dateOfInspection: date,
+        enclosureIds: const <String>['69'],
+        description: '',
+        today: today,
+        originalTypeOfRfi: originalType,
+        originalDateOfInspection: originalDate,
+      );
+    }
+
+    test('earliest date: Regular is today + 2, Spot is today', () {
+      expect(
+        workRfiEarliestInspectionDate(typeOfRfi: 'Regular RFI', today: today),
+        plusTwo,
+      );
+      expect(
+        workRfiEarliestInspectionDate(typeOfRfi: 'Spot RFI', today: today),
+        todayDate,
+      );
+      expect(
+        workRfiEarliestInspectionDate(typeOfRfi: '', today: today),
+        isNull,
+      );
+    });
+
+    test('Regular + 2 rolls over month and year boundaries', () {
+      expect(
+        workRfiEarliestInspectionDate(
+          typeOfRfi: 'Regular RFI',
+          today: DateTime(2026, 12, 31, 8),
+        ),
+        DateTime(2027, 1, 2),
+      );
+    });
+
+    test('yesterday is rejected for both types', () {
+      expect(allowed('Regular RFI', yesterday), isFalse);
+      expect(allowed('Spot RFI', yesterday), isFalse);
+    });
+
+    test('today is rejected for Regular and accepted for Spot', () {
+      expect(allowed('Regular RFI', todayDate), isFalse);
+      expect(allowed('Spot RFI', todayDate), isTrue);
+    });
+
+    test('tomorrow is rejected for Regular and accepted for Spot', () {
+      expect(allowed('Regular RFI', tomorrow), isFalse);
+      expect(allowed('Spot RFI', tomorrow), isTrue);
+    });
+
+    test('today + 2 is accepted for Regular', () {
+      expect(allowed('Regular RFI', plusTwo), isTrue);
+      expect(allowed('Regular RFI', DateTime(2026, 11, 1)), isTrue);
+    });
+
+    test('unknown type allows nothing', () {
+      expect(allowed('', plusTwo), isFalse);
+    });
+
+    test('type change clears a date that breaks the new rule', () {
+      expect(
+        workRfiInspectionDateAfterTypeChange(
+          newType: 'Regular RFI',
+          current: todayDate,
+          today: today,
+        ),
+        isNull,
+      );
+      expect(
+        workRfiInspectionDateAfterTypeChange(
+          newType: 'Regular RFI',
+          current: tomorrow,
+          today: today,
+        ),
+        isNull,
+      );
+      expect(
+        workRfiInspectionDateAfterTypeChange(
+          newType: 'Spot RFI',
+          current: yesterday,
+          today: today,
+        ),
+        isNull,
+      );
+    });
+
+    test('type change keeps a date that still satisfies the new rule', () {
+      expect(
+        workRfiInspectionDateAfterTypeChange(
+          newType: 'Spot RFI',
+          current: plusTwo,
+          today: today,
+        ),
+        plusTwo,
+      );
+      expect(
+        workRfiInspectionDateAfterTypeChange(
+          newType: 'Regular RFI',
+          current: plusTwo,
+          today: today,
+        ),
+        plusTwo,
+      );
+      expect(
+        workRfiInspectionDateAfterTypeChange(
+          newType: 'Spot RFI',
+          current: null,
+          today: today,
+        ),
+        isNull,
+      );
+    });
+
+    test('validation names the Regular and Spot rules', () {
+      expect(
+        workRfiValidationMessage(draft(date: '2026-10-14')),
+        'Date of Inspection for a Regular RFI must be at least 2 days from today.',
+      );
+      expect(
+        workRfiValidationMessage(draft(date: '2026-10-13')),
+        'Date of Inspection for a Regular RFI must be at least 2 days from today.',
+      );
+      expect(workRfiValidationMessage(draft(date: '2026-10-15')), isNull);
+      expect(
+        workRfiValidationMessage(draft(type: 'Spot RFI', date: '2026-10-12')),
+        'Date of Inspection for a Spot RFI cannot be in the past.',
+      );
+      expect(
+        workRfiValidationMessage(draft(type: 'Spot RFI', date: '2026-10-13')),
+        isNull,
+      );
+    });
+
+    test('validation accepts dd/MM/yyyy dates and still reports missing', () {
+      expect(workRfiValidationMessage(draft(date: '15/10/2026')), isNull);
+      expect(
+        workRfiValidationMessage(draft(date: '')),
+        'Missing Date of Inspection.',
+      );
+    });
+
+    test('rule is not applied when RFI Required is No', () {
+      final WorkRfiSubmitDraft no = WorkRfiSubmitDraft(
+        project: 'P01',
+        contract: 'P01EN01',
+        structureType: 'Minor Bridge',
+        structure: '7',
+        component: 'Bottom Slab',
+        element: 'Bottom Haunch',
+        activities: const <WorkRfiMeasurementDraft>[
+          WorkRfiMeasurementDraft(
+            activityId: '1',
+            activityName: 'Concrete',
+            measurementType: 'Number',
+            units: 'Nos',
+            no: '2',
+          ),
+        ],
+        descriptionIds: const <String>['71'],
+        rfiRequired: 'No',
+        typeOfRfi: 'Regular RFI',
+        contractorRepresentative: '',
+        progressDate: '2026-10-01',
+        dateOfSubmission: '',
+        timeOfInspection: '',
+        dateOfInspection: '2026-10-01',
+        enclosureIds: const <String>[],
+        description: '',
+        today: today,
+      );
+      expect(workRfiValidationMessage(no), isNull);
+    });
+
+    test('edit: unchanged saved past date and type stay valid', () {
+      expect(
+        workRfiValidationMessage(
+          draft(
+            type: 'Regular RFI',
+            date: '2026-10-01',
+            originalType: 'Regular RFI',
+            originalDate: '2026-10-01',
+          ),
+        ),
+        isNull,
+      );
+      expect(
+        workRfiValidationMessage(
+          draft(
+            type: 'Spot RFI',
+            date: '01/10/2026',
+            originalType: 'Spot RFI',
+            originalDate: '2026-10-01',
+          ),
+        ),
+        isNull,
+      );
+    });
+
+    test('edit: a newly picked or retyped past date must follow the rules', () {
+      expect(
+        workRfiValidationMessage(
+          draft(
+            type: 'Spot RFI',
+            date: '2026-10-02',
+            originalType: 'Spot RFI',
+            originalDate: '2026-10-01',
+          ),
+        ),
+        'Date of Inspection for a Spot RFI cannot be in the past.',
+      );
+      expect(
+        workRfiValidationMessage(
+          draft(
+            type: 'Regular RFI',
+            date: '2026-10-01',
+            originalType: 'Spot RFI',
+            originalDate: '2026-10-01',
+          ),
+        ),
+        'Date of Inspection for a Regular RFI must be at least 2 days from today.',
+      );
+    });
   });
 
   test('validation names the first missing location and measurement fields', () {

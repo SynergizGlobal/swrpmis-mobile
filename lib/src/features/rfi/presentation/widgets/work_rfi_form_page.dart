@@ -51,6 +51,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   String _layerId = '';
   String _rfiRequired = '';
   String _typeOfRfi = '';
+  // Saved values of the RFI being edited; an unchanged pair is exempt from the
+  // Date of Inspection rule (see workRfiValidationMessage).
+  String _originalTypeOfRfi = '';
+  String _originalDateOfInspection = '';
   String _representativeId = '';
   String _representativeName = '';
   DateTime? _submissionDate;
@@ -74,6 +78,9 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   int _enclosureTicket = 0;
 
   bool get _editing => widget.rfiId != null;
+
+  bool get _keepsLocalActivity =>
+      !_editing && workRfiIsEarthworkOrBlanketing(_structureType);
 
   bool get _busy =>
       !_ready ||
@@ -133,6 +140,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         setState(() => _ready = true);
         await _showError('Projects unavailable', error);
       }
+      unawaited(_loadRepresentatives());
       return;
     }
     unawaited(_loadRepresentatives());
@@ -195,6 +203,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         ? detail.rfiRequired
         : '';
     _typeOfRfi = detail.typeOfRfi;
+    _originalTypeOfRfi = detail.typeOfRfi;
+    _originalDateOfInspection = detail.dateOfInspection;
     _representativeId = detail.userIdOfRepresentative;
     _representativeName = detail.nameOfRepresentative;
     _submissionDate = parseWorkRfiDate(detail.dateOfSubmission) ?? _today();
@@ -400,6 +410,9 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       }
       _loadingStructures = true;
     });
+    if (!_editing && _selectedActivities.isNotEmpty) {
+      unawaited(_refreshDescriptions());
+    }
     unawaited(_loadLayers(id));
     final List<WorkRfiOption>? options = await _guard(
       _source.fetchStructures(contractId: _contractId, structureType: id),
@@ -420,14 +433,11 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (id == _structureId) {
       return;
     }
-    if (!_editing) {
-      setState(() => _structureId = id);
-      return;
-    }
-    final int ticket = _bump();
+    final bool keepLocalActivity = _keepsLocalActivity;
+    final int ticket = _bump(resetDescriptions: !keepLocalActivity);
     setState(() {
       _structureId = id;
-      _clearComponents();
+      _clearComponents(preserveCreateActivity: keepLocalActivity);
       _loadingComponents = true;
     });
     final List<WorkRfiOption>? options = await _guard(
@@ -453,10 +463,11 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (id == _component) {
       return;
     }
-    final int ticket = _bump();
+    final bool keepLocalActivity = _keepsLocalActivity;
+    final int ticket = _bump(resetDescriptions: !keepLocalActivity);
     setState(() {
       _component = id;
-      _clearElements();
+      _clearElements(preserveCreateActivity: keepLocalActivity);
       _loadingElements = true;
     });
     final List<WorkRfiOption>? options = await _guard(
@@ -481,6 +492,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
 
   Future<void> _selectElement(String id) async {
     if (id == _element) {
+      return;
+    }
+    if (_keepsLocalActivity) {
+      setState(() => _element = id);
       return;
     }
     final int ticket = _bump();
@@ -707,6 +722,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       chainageFrom: _chainageFrom.text,
       chainageTo: _chainageTo.text,
       layer: _layerId,
+      today: _today(),
+      originalTypeOfRfi: _originalTypeOfRfi,
+      originalDateOfInspection: _originalDateOfInspection,
+      editing: _editing,
     );
   }
 
@@ -728,12 +747,12 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                       children: <Widget>[
                         _locationCard(),
                         _activityCard(),
-                        if (_editing) _measurementCard(),
+                        _measurementCard(),
                       ],
                     )
                   : const SizedBox.shrink(),
             ),
-            if (_ready && _editing) _actions(),
+            if (_ready) _actions(),
           ],
         ),
       ),
@@ -808,58 +827,36 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             ),
           ),
         ),
-        if (_editing)
-          _labeled(
-            'Component',
-            child: _selectBox(
-              hint: 'Select Component...',
-              value: _optionLabel(_components, _component),
-              enabled: _structureId.isNotEmpty && !_submitting,
-              onTap: () => _pickSingle(
-                title: 'Component',
-                options: _components,
-                selectedId: _component,
-                emptyMessage: 'No components',
-                onPicked: _selectComponent,
-              ),
-            ),
-          )
-        else
-          _labeled(
-            'Component',
-            child: _selectBox(
-              hint: 'Select Component...',
-              value: null,
-              enabled: false,
-              onTap: null,
+        _labeled(
+          'Component',
+          child: _selectBox(
+            hint: 'Select Component...',
+            value: _optionLabel(_components, _component),
+            enabled: _structureId.isNotEmpty && !_submitting,
+            onTap: () => _pickSingle(
+              title: 'Component',
+              options: _components,
+              selectedId: _component,
+              emptyMessage: 'No components',
+              onPicked: _selectComponent,
             ),
           ),
-        if (_editing)
-          _labeled(
-            'Element',
-            child: _selectBox(
-              hint: 'Select Element...',
-              value: _optionLabel(_elements, _element),
-              enabled: _component.isNotEmpty && !_submitting,
-              onTap: () => _pickSingle(
-                title: 'Element',
-                options: _elements,
-                selectedId: _element,
-                emptyMessage: 'No elements',
-                onPicked: _selectElement,
-              ),
-            ),
-          )
-        else
-          _labeled(
-            'Element',
-            child: _selectBox(
-              hint: 'Select Element...',
-              value: null,
-              enabled: false,
-              onTap: null,
+        ),
+        _labeled(
+          'Element',
+          child: _selectBox(
+            hint: 'Select Element...',
+            value: _optionLabel(_elements, _element),
+            enabled: _component.isNotEmpty && !_submitting,
+            onTap: () => _pickSingle(
+              title: 'Element',
+              options: _elements,
+              selectedId: _element,
+              emptyMessage: 'No elements',
+              onPicked: _selectElement,
             ),
           ),
+        ),
         if (chainage) _chainageGroup(),
       ],
     );
@@ -1060,11 +1057,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
               hint: 'dd/mm/yyyy',
               icon: Icons.calendar_today_outlined,
               enabled: !_submitting,
-              onTap: () => _pickDate(
-                current: _inspectionDate,
-                onPicked: (DateTime date) =>
-                    setState(() => _inspectionDate = date),
-              ),
+              onTap: _pickInspectionDate,
             ),
           ),
           _labeled(
@@ -1123,6 +1116,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
 
   Widget _createActivityCard() {
     final bool chainage = workRfiIsEarthworkOrBlanketing(_structureType);
+    final bool yes = _rfiRequired == 'Yes';
+    final bool no = _rfiRequired == 'No';
     final bool activityChosen = _selectedActivities.isNotEmpty;
     final String? activityLabel = activityChosen
         ? _selectedActivities.first.label
@@ -1132,57 +1127,151 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       children: <Widget>[
         _labeled(
           'Activity',
-          child: chainage
-              ? _selectBox(
-                  hint: 'Select activities...',
-                  value: activityLabel,
-                  enabled: activityChosen && !_submitting,
-                  onTap: () => _pickSingle(
-                    title: 'Activity',
-                    options: _activityOptions,
-                    selectedId: activityChosen
-                        ? _selectedActivities.first.id
-                        : '',
-                    emptyMessage: 'No activities',
-                    onPicked: (String id) async {
-                      for (final WorkRfiOption option in _activityOptions) {
-                        if (option.id != id) {
-                          continue;
-                        }
-                        setState(
-                          () => _selectedActivities = <WorkRfiOption>[option],
-                        );
-                        return;
-                      }
-                    },
-                  ),
-                )
-              : _selectBox(
-                  hint: 'Select activities...',
-                  value: null,
-                  enabled: false,
-                  onTap: null,
-                ),
+          child: _selectBox(
+            hint: 'Select activities...',
+            value: activityLabel,
+            enabled:
+                (chainage
+                    ? activityChosen
+                    : _element.isNotEmpty && !_loadingActivities) &&
+                !_submitting,
+            onTap: () => _pickSingle(
+              title: 'Activity',
+              options: _activityOptions,
+              selectedId: activityChosen ? _selectedActivities.first.id : '',
+              emptyMessage: 'No activities',
+              onPicked: _selectCreateActivity,
+            ),
+          ),
         ),
         _labeled(
           'RFI Description',
           child: _selectBox(
             hint: 'Select RFI description(s)...',
-            value: null,
-            enabled: activityChosen && !_submitting,
-            onTap: activityChosen
-                ? () async {
-                    await _pickOne(
-                      title: 'RFI Description',
-                      options: const <WorkRfiOption>[],
-                      selectedId: '',
-                      emptyMessage: 'No RFI descriptions',
-                    );
-                  }
-                : null,
+            value: _descriptionIds.isEmpty
+                ? null
+                : <String>[
+                    for (final String id in _descriptionIds)
+                      _optionLabel(_descriptionOptions, id) ?? id,
+                  ].join(', '),
+            enabled: _descriptionOptions.isNotEmpty && !_submitting,
+            onTap: _descriptionOptions.isEmpty
+                ? null
+                : () => _pickSingle(
+                    title: 'RFI Description',
+                    options: _descriptionOptions,
+                    selectedId: _descriptionIds.isEmpty
+                        ? ''
+                        : _descriptionIds.first,
+                    emptyMessage: 'No RFI descriptions',
+                    onPicked: _selectCreateDescription,
+                  ),
           ),
         ),
         _labeled('RFI Required', child: _requiredRadio()),
+        if (yes) ...<Widget>[
+          _labeled(
+            'Action',
+            child: _selectBox(
+              hint: workRfiFixedAction,
+              value: workRfiFixedAction,
+              enabled: false,
+              onTap: null,
+            ),
+          ),
+          _labeled(
+            'Type of RFI',
+            child: _selectBox(
+              hint: 'Select...',
+              value: _typeOfRfi.isEmpty ? null : _typeOfRfi,
+              enabled: !_submitting,
+              onTap: _pickTypeOfRfi,
+            ),
+          ),
+          _labeled(
+            "Name of Contractor's Representative",
+            child: _selectBox(
+              hint: 'Select Representative...',
+              value: _optionLabel(_representatives, _representativeId),
+              enabled: !_submitting,
+              onTap: _pickRepresentative,
+            ),
+          ),
+          _labeled(
+            'Time of Inspection',
+            child: _iconBox(
+              text: _inspectionTime == null
+                  ? null
+                  : workRfiDisplayTime(_apiTime(_inspectionTime!)),
+              hint: '--:-- --',
+              icon: Icons.schedule_rounded,
+              enabled: !_submitting,
+              onTap: _pickTime,
+            ),
+          ),
+          _labeled(
+            'Date of Inspection',
+            child: _iconBox(
+              text: _inspectionDate == null
+                  ? null
+                  : workRfiFormatDisplayDate(_inspectionDate!),
+              hint: 'dd/mm/yyyy',
+              icon: Icons.calendar_today_outlined,
+              enabled: !_submitting,
+              onTap: _pickInspectionDate,
+            ),
+          ),
+          _labeled(
+            'Date of Submission of RFI',
+            child: _iconBox(
+              text: _submissionDate == null
+                  ? null
+                  : workRfiFormatDisplayDate(_submissionDate!),
+              hint: 'dd/mm/yyyy',
+              icon: Icons.calendar_today_outlined,
+              enabled: false,
+              onTap: null,
+            ),
+          ),
+          _labeled(
+            'Enclosures',
+            child: _multiBox(
+              hint: 'Select enclosures...',
+              selected: _optionsFor(_enclosureOptions, _enclosureIds),
+              enabled: _descriptionIds.isNotEmpty && !_submitting,
+              onTap: _pickEnclosures,
+              onRemove: (WorkRfiOption option) {
+                unawaited(
+                  _setEnclosures(
+                    _enclosureIds
+                        .where((String id) => id != option.id)
+                        .toList(growable: false),
+                  ),
+                );
+              },
+              onClear: _enclosureIds.isEmpty
+                  ? null
+                  : () => unawaited(_setEnclosures(const <String>[])),
+            ),
+          ),
+        ],
+        if (no)
+          _labeled(
+            'Progress Date',
+            child: _iconBox(
+              text: _progressDate == null
+                  ? null
+                  : workRfiFormatDisplayDate(_progressDate!),
+              hint: 'dd/mm/yyyy',
+              icon: Icons.calendar_today_outlined,
+              enabled: !_submitting,
+              onTap: () => _pickDate(
+                current: _progressDate,
+                onPicked: (DateTime date) =>
+                    setState(() => _progressDate = date),
+              ),
+            ),
+          ),
         _labeled(
           'Description',
           required: false,
@@ -1720,12 +1809,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         ),
         child: RadioGroup<String>(
           groupValue: _rfiRequired.isEmpty ? null : _rfiRequired,
-          onChanged: (String? value) {
-            if (value == null || _submitting) {
-              return;
-            }
-            setState(() => _rfiRequired = value);
-          },
+          onChanged: _setRfiRequired,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -1873,7 +1957,68 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (picked == null || !mounted) {
       return;
     }
-    setState(() => _typeOfRfi = picked);
+    final DateTime? previousDate = _inspectionDate;
+    final DateTime? keptDate = workRfiInspectionDateAfterTypeChange(
+      newType: picked,
+      current: previousDate,
+      today: _today(),
+    );
+    final bool cleared = previousDate != null && keptDate == null;
+    setState(() {
+      _typeOfRfi = picked;
+      _inspectionDate = keptDate;
+    });
+    if (cleared) {
+      final String rule =
+          workRfiInspectionDateRuleError(
+            typeOfRfi: picked,
+            date: previousDate,
+            today: _today(),
+          ) ??
+          'The chosen Date of Inspection does not fit this Type of RFI.';
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.warning,
+        title: 'Date of Inspection cleared',
+        message: '$rule Please choose the date again.',
+      );
+    }
+  }
+
+  Future<void> _pickInspectionDate() async {
+    final DateTime today = _today();
+    final DateTime? earliest = workRfiEarliestInspectionDate(
+      typeOfRfi: _typeOfRfi,
+      today: today,
+    );
+    if (earliest == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.warning,
+        title: 'Type of RFI',
+        message: workRfiChooseTypeFirstMessage,
+      );
+      return;
+    }
+    final DateTime? current = _inspectionDate;
+    // An unchanged saved past date on edit may sit before firstDate; open the
+    // picker at the earliest allowed date instead of that stale value.
+    final DateTime initial = current == null || current.isBefore(earliest)
+        ? earliest
+        : current;
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      useRootNavigator: true,
+      initialDate: initial,
+      firstDate: earliest,
+      lastDate: DateTime(2100),
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _inspectionDate = DateTime(picked.year, picked.month, picked.day);
+    });
   }
 
   Future<void> _pickRepresentative() async {
@@ -2107,9 +2252,48 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     _chainageAlertOpen = false;
   }
 
+  void _setRfiRequired(String? value) {
+    if (value == null || value == _rfiRequired || _submitting) {
+      return;
+    }
+    setState(() => _rfiRequired = value);
+    if (value == 'Yes' && _representatives.isEmpty) {
+      unawaited(_loadRepresentatives());
+    }
+    if (value == 'Yes' && _descriptionIds.isNotEmpty) {
+      unawaited(_refreshEnclosures());
+    }
+  }
+
+  Future<void> _selectCreateDescription(String id) async {
+    if (_descriptionIds.length == 1 && _descriptionIds.single == id) {
+      return;
+    }
+    setState(() => _descriptionIds = <String>[id]);
+    await _refreshEnclosures();
+  }
+
+  Future<void> _selectCreateActivity(String id) async {
+    WorkRfiOption? match;
+    for (final WorkRfiOption option in _activityOptions) {
+      if (option.id == id) {
+        match = option;
+        break;
+      }
+    }
+    if (match == null) {
+      return;
+    }
+    final WorkRfiOption selected = match;
+    if (_selectedActivities.length == 1 &&
+        _selectedActivities.single.id == selected.id) {
+      return;
+    }
+    await _setActivities(<WorkRfiOption>[selected]);
+  }
+
   void _applyCreateActivity(String structureType) {
-    _descriptionOptions = <WorkRfiOption>[];
-    _descriptionIds = <String>[];
+    _clearDescriptions();
     if (!workRfiIsEarthworkOrBlanketing(structureType)) {
       _activityOptions = <WorkRfiOption>[];
       _selectedActivities = <WorkRfiOption>[];
@@ -2120,6 +2304,12 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     final WorkRfiOption option = WorkRfiOption(id: structureType, label: label);
     _activityOptions = <WorkRfiOption>[option];
     _selectedActivities = <WorkRfiOption>[option];
+    _replaceRows(<WorkRfiMeasurementDraft>[
+      WorkRfiMeasurementDraft(
+        activityId: option.id,
+        activityName: option.label,
+      ),
+    ]);
   }
 
   Future<void> _loadLayers(String structureType) async {
@@ -2156,9 +2346,11 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     });
   }
 
-  int _bump() {
-    _descriptionTicket++;
-    _enclosureTicket++;
+  int _bump({bool resetDescriptions = true}) {
+    if (resetDescriptions) {
+      _descriptionTicket++;
+      _enclosureTicket++;
+    }
     return ++_cascade;
   }
 
@@ -2195,17 +2387,20 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     _loadingLayers = false;
   }
 
-  void _clearComponents() {
+  void _clearComponents({bool preserveCreateActivity = false}) {
     _component = '';
     _components = <WorkRfiOption>[];
     _loadingComponents = false;
-    _clearElements();
+    _clearElements(preserveCreateActivity: preserveCreateActivity);
   }
 
-  void _clearElements() {
+  void _clearElements({bool preserveCreateActivity = false}) {
     _element = '';
     _elements = <WorkRfiOption>[];
     _loadingElements = false;
+    if (preserveCreateActivity) {
+      return;
+    }
     _clearActivities();
   }
 
