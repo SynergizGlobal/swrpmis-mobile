@@ -4,6 +4,7 @@ import 'package:swr_pmis_mobile/src/app/config/app_config_provider.dart';
 import 'package:swr_pmis_mobile/src/app/router/app_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/app/theme/theme_mode_provider.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/fcm_notification_bootstrap.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -13,13 +14,15 @@ class App extends ConsumerWidget {
     final config = ref.watch(appConfigProvider);
     final router = ref.watch(appRouterProvider);
     final ThemeMode themeMode = ref.watch(themeModeProvider);
-    return MaterialApp.router(
-      title: config.appName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: themeMode,
-      routerConfig: router,
+    return FcmNotificationBootstrap(
+      child: MaterialApp.router(
+        title: config.appName,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: themeMode,
+        routerConfig: router,
+      ),
     );
   }
 }

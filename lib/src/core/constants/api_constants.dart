@@ -102,6 +102,10 @@ class ApiConstants {
   static String rfiDescriptionDeletePath(int id) =>
       '/rfi/delete-rfi-description/$id';
 
+  static const String deviceTokenRegisterPath = 'wcr/device-tokens/register';
+  static const String deviceTokenDeactivatePath =
+      'wcr/device-tokens/deactivate';
+
   static const Duration connectTimeout = Duration(seconds: 20);
   static const Duration receiveTimeout = Duration(seconds: 45);
 }

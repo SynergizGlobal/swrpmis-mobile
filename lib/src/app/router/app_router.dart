@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/router/app_page.dart';
 import 'package:swr_pmis_mobile/src/app/router/go_router_refresh.dart';
+import 'package:swr_pmis_mobile/src/core/app_update/app_update_host.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/notification_route_resolver.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/pending_notification_location.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
@@ -15,6 +18,7 @@ import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_f
 import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_section_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/reports_page.dart';
@@ -50,6 +54,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!loggedIn && !isPublic) {
         return LoginPage.routePath;
       }
+      if (loggedIn) {
+        final PendingNotificationNav? pending = container.read(
+          pendingNotificationNavProvider,
+        );
+        if (pending != null) {
+          container.read(pendingNotificationNavProvider.notifier).state = null;
+          final AuthSession? session = container
+              .read(authControllerProvider)
+              .valueOrNull;
+          if (!NotificationRouteResolver.isIntendedForUser(
+            notificationUserId: pending.userId,
+            sessionUserId: session?.userId,
+          )) {
+            return HomePage.routePath;
+          }
+          return NotificationRouteResolver.resolve(
+            type: pending.type,
+            role: RfiUserRoleResolver.fromSession(session),
+            referenceType: pending.referenceType,
+            referenceId: pending.referenceId,
+          );
+        }
+      }
       if (loggedIn && loc == LoginPage.routePath) {
         return HomePage.routePath;
       }
@@ -80,7 +107,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRouterState state,
               StatefulNavigationShell navigationShell,
             ) {
-              return AppShell(navigationShell: navigationShell);
+              return AppUpdateHost(
+                child: AppShell(navigationShell: navigationShell),
+              );
             },
         branches: <StatefulShellBranch>[
           StatefulShellBranch(

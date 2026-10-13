@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/core/network/dio_client.dart';
 import 'package:swr_pmis_mobile/src/core/network/session_cookie_manager.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/device_token_sync.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/notification_tray_clearer.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/pending_notification_location.dart';
 import 'package:swr_pmis_mobile/src/core/result/failure.dart';
 import 'package:swr_pmis_mobile/src/core/result/result.dart';
 import 'package:swr_pmis_mobile/src/features/auth/data/datasources/auth_local_data_source.dart';
@@ -16,13 +21,14 @@ final loginUseCaseProvider = Provider<LoginUseCase>((ref) {
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<AuthSession?>>((ref) {
-  return AuthController(
-    ref,
-    ref.watch(loginUseCaseProvider),
-    ref.watch(authLocalDataSourceProvider),
-    ref.watch(authRemoteDataSourceProvider),
-  );
-});
+      return AuthController(
+        ref,
+        ref.watch(loginUseCaseProvider),
+        ref.watch(authLocalDataSourceProvider),
+        ref.watch(authRemoteDataSourceProvider),
+        ref.watch(deviceTokenSyncProvider),
+      );
+    });
 
 class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {
   AuthController(
@@ -30,18 +36,24 @@ class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {
     this._loginUseCase,
     this._local,
     this._remote,
+    this._deviceTokenSync,
   ) : super(const AsyncData<AuthSession?>(null));
 
   final Ref _ref;
   final LoginUseCase _loginUseCase;
   final AuthLocalDataSource _local;
   final AuthRemoteDataSource _remote;
+  final DeviceTokenSync _deviceTokenSync;
   bool _autoLoginAttempted = false;
 
   void _syncAuthToken(AuthSession? session) {
     final String token = session?.token.trim() ?? '';
-    _ref.read(authTokenProvider.notifier).state =
-        token.isEmpty ? null : token;
+    _ref.read(authTokenProvider.notifier).state = token.isEmpty ? null : token;
+    _ref.read(swrSessionActiveProvider.notifier).state = session != null;
+  }
+
+  void _syncDeviceTokens() {
+    unawaited(_deviceTokenSync.ensureSessionAndRegister());
   }
 
   Future<Failure?> tryAutoLoginIfRemembered() async {
@@ -64,8 +76,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {
     required bool rememberMe,
   }) async {
     state = const AsyncLoading<AuthSession?>();
-    final SessionCookieManager cookieManager =
-        await _ref.read(sessionCookieManagerProvider.future);
+    final SessionCookieManager cookieManager = await _ref.read(
+      sessionCookieManagerProvider.future,
+    );
     await cookieManager.clearSessionCookies();
     final Result<AuthSession> result = await _loginUseCase(
       userId: userId,
@@ -86,18 +99,23 @@ class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {
           password: password,
           session: session,
         );
+        _syncDeviceTokens();
         return null;
       },
     );
   }
 
   Future<void> logout() async {
+    _ref.read(pendingNotificationNavProvider.notifier).state = null;
+    unawaited(NotificationTrayClearer.clearAll());
+    await _deviceTokenSync.deactivate();
     try {
       await _remote.logoutSession();
     } catch (_) {}
     try {
-      final cookieManager =
-          await _ref.read(sessionCookieManagerProvider.future);
+      final cookieManager = await _ref.read(
+        sessionCookieManagerProvider.future,
+      );
       await cookieManager.clearSessionCookies();
     } catch (_) {}
     await _local.clearAll();

@@ -1,3 +1,5 @@
+import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
+
 enum RfiUserRole {
   superUser,
   contractor,
@@ -12,6 +14,16 @@ enum RfiUserRole {
 
 class RfiUserRoleResolver {
   const RfiUserRoleResolver._();
+
+  static RfiUserRole fromSession(AuthSession? session) {
+    if (session == null) {
+      return RfiUserRole.unknown;
+    }
+    return fromFields(
+      userTypeFk: session.userTypeFk,
+      userRoleNameFk: session.userRoleNameFk,
+    );
+  }
 
   static RfiUserRole fromFields({
     required String userTypeFk,

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "964871981157",
+    "project_id": "swr-pmis-by-synergiz",
+    "storage_bucket": "swr-pmis-by-synergiz.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964871981157:android:00615df15758414fe81e8c",
+        "android_client_info": {
+          "package_name": "com.synergiz.swr.pmis"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWbAfdfcz3GjuDC-4xzfLmjBV2Z1s1B9E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
