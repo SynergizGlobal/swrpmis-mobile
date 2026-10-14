@@ -13,6 +13,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
+import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_forms_page.dart';
@@ -239,6 +240,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: SettingsPage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
           return fadeSlidePage(key: state.pageKey, child: const SettingsPage());
+        },
+      ),
+      GoRoute(
+        path: AddIssueFormPage.routePath,
+        name: AddIssueFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: const AddIssueFormPage(),
+          );
         },
       ),
       ...ModuleCatalog.routable.map((AppModule module) {

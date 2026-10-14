@@ -47,11 +47,13 @@ class RfiFilterField extends StatelessWidget {
     required this.onClear,
     required this.onPick,
     this.emptyLabel = 'Select',
+    this.showLabel = true,
   });
 
   final String label;
   final String? value;
   final String emptyLabel;
+  final bool showLabel;
   final List<RfiFilterOption> options;
   final String? selectedId;
   final VoidCallback? onClear;
@@ -80,17 +82,18 @@ class RfiFilterField extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: palette.mutedText,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                        height: 1.1,
+                    if (showLabel)
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: palette.mutedText,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          height: 1.1,
+                        ),
                       ),
-                    ),
                     Text(
                       value ?? emptyLabel,
                       maxLines: 1,

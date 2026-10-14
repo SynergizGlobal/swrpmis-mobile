@@ -118,91 +118,98 @@ class _DashboardBody extends StatelessWidget {
         ),
         SizedBox(
           width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        'Project Management Dashboard',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            'Project Management Dashboard',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: palette.success.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Row(
+                            children: <Widget>[
+                              Icon(
+                                Icons.wifi_rounded,
+                                size: 14,
+                                color: palette.success,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Live',
+                                style: TextStyle(
+                                  color: palette.success,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: palette.success.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Row(
-                        children: <Widget>[
-                          Icon(
-                            Icons.wifi_rounded,
-                            size: 14,
-                            color: palette.success,
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(
+                          child: _KpiCard(
+                            icon: Icons.work_outline_rounded,
+                            label: 'Total projects',
+                            value: '${data.totalProjects}',
+                            unit: 'projects',
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Live',
-                            style: TextStyle(
-                              color: palette.success,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _KpiCard(
+                            icon: Icons.straighten_rounded,
+                            label: 'Total length',
+                            value: numberFormat.format(data.totalLengthKm),
+                            unit: 'km',
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _KpiCard(
+                            icon: Icons.workspace_premium_outlined,
+                            label: 'Commissioned',
+                            value: numberFormat.format(data.commissionedKm),
+                            unit: 'km',
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: _KpiCard(
-                        icon: Icons.work_outline_rounded,
-                        label: 'Total projects',
-                        value: '${data.totalProjects}',
-                        unit: 'projects',
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _KpiCard(
-                        icon: Icons.straighten_rounded,
-                        label: 'Total length',
-                        value: numberFormat.format(data.totalLengthKm),
-                        unit: 'km',
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _KpiCard(
-                        icon: Icons.workspace_premium_outlined,
-                        label: 'Commissioned',
-                        value: numberFormat.format(data.commissionedKm),
-                        unit: 'km',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _OrgChart(
-                  data: data,
-                  onSelect: (DashboardOrgUser user) =>
-                      _showOrgUserSheet(context, user),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              _OrgChart(
+                data: data,
+                onSelect: (DashboardOrgUser user) =>
+                    _showOrgUserSheet(context, user),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ],

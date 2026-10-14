@@ -26,6 +26,18 @@ class ApiConstants {
   static const String issueStatusFilterPath =
       '/issue/ajax/getStatusListFilterInIssue';
   static const String issueListPath = '/issue/ajax/getIssuesList';
+  static const String issueAddFormPath = '/issue/ajax/form/add-issue-form';
+  static const String issueFormContractsPath =
+      '/issue/ajax/getContractsListForIssuesForm';
+  static const String issueFormCategoriesPath =
+      '/issue/ajax/getIssueCategoryListForIssuesForm';
+  static const String issueFormTitlesPath =
+      '/issue/ajax/getIssueTitlesListForIssuesForm';
+  static const String issueFormStructuresPath =
+      '/issue/ajax/getStructureListForIssue';
+  static const String issueFormComponentsPath =
+      '/issue/ajax/getComponentListForIssue';
+  static const String issueAddPath = '/issue/add-issue';
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';

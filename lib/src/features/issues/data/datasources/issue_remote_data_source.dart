@@ -93,6 +93,56 @@ class IssueRemoteDataSource {
     );
   }
 
+  Future<dynamic> fetchAddIssueForm() {
+    return _post(ApiConstants.issueAddFormPath, const <String, String>{});
+  }
+
+  Future<dynamic> fetchIssueFormContracts(String projectIdFk) {
+    return _post(ApiConstants.issueFormContractsPath, <String, String>{
+      'project_id_fk': projectIdFk,
+    });
+  }
+
+  Future<dynamic> fetchIssueFormCategories(String contractTypeFk) {
+    return _post(ApiConstants.issueFormCategoriesPath, <String, String>{
+      'contract_type_fk': contractTypeFk,
+    });
+  }
+
+  Future<dynamic> fetchIssueFormTitles(String categoryFk) {
+    return _post(ApiConstants.issueFormTitlesPath, <String, String>{
+      'category_fk': categoryFk,
+    });
+  }
+
+  Future<dynamic> fetchIssueFormStructures(String contractIdFk) {
+    return _post(ApiConstants.issueFormStructuresPath, <String, String>{
+      'contract_id_fk': contractIdFk,
+    });
+  }
+
+  Future<dynamic> fetchIssueFormComponents({
+    required String contractIdFk,
+    required String structure,
+  }) {
+    return _post(ApiConstants.issueFormComponentsPath, <String, String>{
+      'contract_id_fk': contractIdFk,
+      'structure': structure,
+    });
+  }
+
+  Future<void> submitAddIssue(Map<String, String> fields) async {
+    final FormData formData = FormData();
+    for (final MapEntry<String, String> field in fields.entries) {
+      formData.fields.add(field);
+    }
+    await _dio.post<dynamic>(
+      ApiConstants.issueAddPath,
+      data: formData,
+      options: Options(contentType: null),
+    );
+  }
+
   Future<dynamic> _post(String path, Map<String, String> body) async {
     final Response<dynamic> response = await _dio.post<dynamic>(
       path,

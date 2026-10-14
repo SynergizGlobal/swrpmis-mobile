@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
@@ -11,6 +12,7 @@ import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/issues/data/issue_export_file.dart';
 import 'package:swr_pmis_mobile/src/features/issues/domain/issue_list.dart';
+import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/providers/issues_provider.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/widgets/issues_table.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
@@ -74,6 +76,16 @@ class _IssuesListViewState extends ConsumerState<IssuesListView> {
   Future<void> _retry() {
     _resetPage();
     return ref.read(issuesControllerProvider.notifier).load();
+  }
+
+  Future<void> _onAdd() async {
+    final Object? saved = await context.push<Object?>(
+      AddIssueFormPage.routePath,
+    );
+    if (!mounted || saved != true) {
+      return;
+    }
+    await _retry();
   }
 
   Future<void> _onEdit(IssueRow _) async {
@@ -165,6 +177,23 @@ class _IssuesListViewState extends ConsumerState<IssuesListView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: <Widget>[
+                      _AddButton(onPressed: _exporting ? null : _onAdd),
+                      _ExportButton(
+                        busy: _exporting,
+                        onPressed: state.loading || failed ? null : _onExport,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 _FilterBar(
                   state: state,
                   enabled: !state.loading && !_exporting,
@@ -177,37 +206,25 @@ class _IssuesListViewState extends ConsumerState<IssuesListView> {
                 ),
                 if (showSearch) ...<Widget>[
                   const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Expanded(
-                        child: TextField(
-                          controller: _search,
-                          textInputAction: TextInputAction.search,
-                          onChanged: (_) => _resetPage(),
-                          decoration: InputDecoration(
-                            hintText: 'Search',
-                            prefixIcon: const Icon(Icons.search_rounded),
-                            suffixIcon: _search.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Clear',
-                                    onPressed: () {
-                                      _search.clear();
-                                      _resetPage();
-                                    },
-                                    icon: const Icon(Icons.close_rounded),
-                                  ),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _ExportButton(
-                        busy: _exporting,
-                        onPressed: state.loading ? null : _onExport,
-                      ),
-                    ],
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => _resetPage(),
+                    decoration: InputDecoration(
+                      hintText: 'Search',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                _resetPage();
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
+                    ),
                   ),
                 ],
               ],
@@ -355,6 +372,7 @@ class _FilterBar extends StatelessWidget {
     return RfiFilterField(
       label: label,
       emptyLabel: label,
+      showLabel: false,
       value: _label(options, selectedId),
       options: <RfiFilterOption>[
         for (final IssueOption option in options)
@@ -377,6 +395,31 @@ String? _label(List<IssueOption> options, String? id) {
     }
   }
   return id;
+}
+
+class _AddButton extends StatelessWidget {
+  const _AddButton({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      style: FilledButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(0, AppTheme.fieldHeight),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppTheme.cardRadius)),
+        ),
+      ),
+      onPressed: onPressed,
+      icon: const Icon(Icons.add_rounded, size: 18),
+      label: const Text('Add'),
+    );
+  }
 }
 
 class _ExportButton extends StatelessWidget {
