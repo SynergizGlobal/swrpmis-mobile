@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 
 class RfiFilterClearButton extends StatelessWidget {
-  const RfiFilterClearButton({super.key, required this.onPressed});
+  const RfiFilterClearButton({
+    super.key,
+    required this.onPressed,
+    this.label = 'Clear',
+  });
 
   final VoidCallback? onPressed;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +63,7 @@ class RfiFilterClearButton extends StatelessWidget {
         ),
       ),
       onPressed: onPressed,
-      child: const Text('Clear', maxLines: 1, overflow: TextOverflow.ellipsis),
+      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }

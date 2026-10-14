@@ -14,6 +14,18 @@ class ApiConstants {
       '/projects/api/getProjectListByType';
   static const String executionProgressPath = '/execution/progress';
   static const String reportFormsPath = '/forms/api/getReportForms';
+  static const String updateFormsPath = '/forms/api/getUpdateForms';
+  static const String issueContractsFilterPath =
+      '/issue/ajax/getContractsListFilterInIssue';
+  static const String issueHodFilterPath =
+      '/issue/ajax/getHODListFilterInIssue';
+  static const String issueDepartmentsFilterPath =
+      '/issue/ajax/getDepartmentsListFilterInIssue';
+  static const String issueCategoryFilterPath =
+      '/issue/ajax/getCategoryListFilterInIssue';
+  static const String issueStatusFilterPath =
+      '/issue/ajax/getStatusListFilterInIssue';
+  static const String issueListPath = '/issue/ajax/getIssuesList';
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';

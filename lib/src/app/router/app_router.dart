@@ -13,6 +13,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
+import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_forms_page.dart';
 import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.dart';
@@ -245,10 +246,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path: module.routePath,
           name: module.routeName,
           pageBuilder: (BuildContext context, GoRouterState state) {
-            return fadeSlidePage(
-              key: state.pageKey,
-              child: ModulePlaceholderPage(module: module),
-            );
+            final Widget page = module.routeName == IssuesPage.routeName
+                ? const IssuesPage()
+                : ModulePlaceholderPage(module: module);
+            return fadeSlidePage(key: state.pageKey, child: page);
           },
         );
       }),
