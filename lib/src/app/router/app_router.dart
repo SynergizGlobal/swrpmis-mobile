@@ -248,7 +248,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (BuildContext context, GoRouterState state) {
           return fadeSlidePage(
             key: state.pageKey,
-            child: const AddIssueFormPage(),
+            child: AddIssueFormPage(
+              issueId: state.uri.queryParameters['issueId'] ?? '',
+            ),
           );
         },
       ),

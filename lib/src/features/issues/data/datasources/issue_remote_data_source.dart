@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
 import 'package:swr_pmis_mobile/src/core/network/dio_client.dart';
+import 'package:swr_pmis_mobile/src/features/issues/domain/issue_form.dart';
 import 'package:swr_pmis_mobile/src/features/issues/domain/issue_list.dart';
 import 'package:swr_pmis_mobile/src/features/issues/domain/issue_parse.dart';
 
@@ -93,8 +94,20 @@ class IssueRemoteDataSource {
     );
   }
 
-  Future<dynamic> fetchAddIssueForm() {
-    return _post(ApiConstants.issueAddFormPath, const <String, String>{});
+  Future<IssueFormMaster> getAddIssueFormMaster(String issueId) async {
+    final dynamic data = await _post(
+      ApiConstants.issueAddFormPath,
+      <String, String>{'issue_id': issueId},
+    );
+    return parseIssueFormMaster(data);
+  }
+
+  Future<IssueDetail> getIssueDetail(String issueId) async {
+    final dynamic data = await _post(
+      ApiConstants.issueDetailPath,
+      <String, String>{'issue_id': issueId},
+    );
+    return parseIssueDetail(data);
   }
 
   Future<dynamic> fetchIssueFormContracts(String projectIdFk) {
@@ -129,18 +142,6 @@ class IssueRemoteDataSource {
       'contract_id_fk': contractIdFk,
       'structure': structure,
     });
-  }
-
-  Future<void> submitAddIssue(Map<String, String> fields) async {
-    final FormData formData = FormData();
-    for (final MapEntry<String, String> field in fields.entries) {
-      formData.fields.add(field);
-    }
-    await _dio.post<dynamic>(
-      ApiConstants.issueAddPath,
-      data: formData,
-      options: Options(contentType: null),
-    );
   }
 
   Future<dynamic> _post(String path, Map<String, String> body) async {

@@ -88,13 +88,14 @@ class _IssuesListViewState extends ConsumerState<IssuesListView> {
     await _retry();
   }
 
-  Future<void> _onEdit(IssueRow _) async {
-    await AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: 'Edit',
-      message: 'Edit will be added next.',
+  Future<void> _onEdit(IssueRow row) async {
+    final Object? saved = await context.push<Object?>(
+      AddIssueFormPage.location(issueId: row.issueId),
     );
+    if (!mounted || saved != true) {
+      return;
+    }
+    await _retry();
   }
 
   Future<void> _onExport(BuildContext origin) async {
