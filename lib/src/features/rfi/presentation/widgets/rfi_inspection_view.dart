@@ -474,6 +474,9 @@ class _FilterBar extends StatelessWidget {
     required this.submitting,
   });
 
+  /// Hidden for now on the inspection list screen.
+  static const bool _showSubmit15 = false;
+
   final RfiInspectionState state;
   final bool enabled;
   final VoidCallback onClearFilters;
@@ -594,38 +597,40 @@ class _FilterBar extends StatelessWidget {
             child: Opacity(opacity: enabled ? 1 : 0.6, child: chip),
           ),
         RfiFilterClearButton(onPressed: enabled ? onClearFilters : null),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            visualDensity: VisualDensity.standard,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            minimumSize: const Size(0, AppTheme.fieldHeight),
-            maximumSize: const Size(double.infinity, AppTheme.fieldHeight),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            backgroundColor: AppTheme.railwayRed,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: AppTheme.railwayRed,
-            disabledForegroundColor: Colors.white,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            textStyle: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(AppTheme.cardRadius),
+        // Temporarily hidden — set _showSubmit15 to true to restore.
+        if (_showSubmit15)
+          FilledButton(
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.standard,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(0, AppTheme.fieldHeight),
+              maximumSize: const Size(double.infinity, AppTheme.fieldHeight),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              backgroundColor: AppTheme.railwayRed,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: AppTheme.railwayRed,
+              disabledForegroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              textStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(
+                  Radius.circular(AppTheme.cardRadius),
+                ),
               ),
             ),
+            onPressed: submitting ? null : onSubmit,
+            child: Text(
+              submitting ? 'Sending' : 'Submit 15',
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          onPressed: submitting ? null : onSubmit,
-          child: Text(
-            submitting ? 'Sending' : 'Submit 15',
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
       ],
     );
   }
