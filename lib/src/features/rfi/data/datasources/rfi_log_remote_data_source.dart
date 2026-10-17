@@ -1,8 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
+import 'package:swr_pmis_mobile/src/core/constants/app_assets.dart';
 import 'package:swr_pmis_mobile/src/core/network/dio_client.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_log_report.dart';
@@ -77,6 +77,7 @@ class RfiLogRemoteDataSource {
     throw const RfiLogUnavailable();
   }
 
+  /// Railway emblem for RFI PDF headers (server first, local `swr_logo.png` fallback).
   Future<Uint8List?> loadLogo(String baseUrl) async {
     try {
       final Response<List<int>> response = await _dio.get<List<int>>(
@@ -87,10 +88,25 @@ class RfiLogRemoteDataSource {
         ),
       );
       final List<int>? data = response.data;
-      if (response.statusCode != 200 || data == null || data.isEmpty) {
-        return null;
+      if (response.statusCode == 200 && data != null && data.isNotEmpty) {
+        final Uint8List bytes = Uint8List.fromList(data);
+        if (RfiStoredFile.looksLikeImage(bytes)) {
+          return bytes;
+        }
       }
-      final Uint8List bytes = Uint8List.fromList(data);
+    } on Object {
+      // Fall through to the bundled railway emblem.
+    }
+    return _loadBundledRailwayLogo();
+  }
+
+  Future<Uint8List?> _loadBundledRailwayLogo() async {
+    try {
+      final ByteData data = await rootBundle.load(AppAssets.railwayLogo);
+      final Uint8List bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
       if (!RfiStoredFile.looksLikeImage(bytes)) {
         return null;
       }

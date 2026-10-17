@@ -57,7 +57,7 @@ class AppShell extends ConsumerWidget {
           titleSpacing: onRfi ? 0 : 16,
           title: Row(
             children: <Widget>[
-              const SwrLogo(size: 36),
+              const SwrLogo(size: 36, variant: SwrLogoVariant.mark),
               const SizedBox(width: 10),
               Expanded(child: Text(title, overflow: TextOverflow.ellipsis)),
             ],

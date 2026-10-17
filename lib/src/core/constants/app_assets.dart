@@ -1,7 +1,15 @@
 class AppAssets {
   const AppAssets._();
 
-  static const String logo = 'assets/brand/swr_logo.png';
+  /// Full display logo (graphic + "SWR PMIS" text).
+  static const String logo = 'assets/brand/swr_pmis_display_logo.png';
+
+  /// Mark only (graphic, no text) — app bar / compact UI.
+  static const String markLogo = 'assets/brand/swr_pmis_app_icon_mark.png';
+
+  /// Official railway emblem — RFI PDF headers and print only.
+  static const String railwayLogo = 'assets/brand/swr_logo.png';
+
   static const String map = 'assets/brand/swr_map.jpg';
 
   static const List<String> loginSlides = <String>[

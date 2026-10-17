@@ -48,7 +48,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/brand/swr_logo.png
+  image_path: assets/brand/swr_pmis_display_logo.png
   adaptive_icon_background: "#0b2f63"
-  adaptive_icon_foreground: assets/brand/swr_logo.png
+  adaptive_icon_foreground: assets/brand/swr_pmis_app_icon_mark.png
   remove_alpha_ios: true
