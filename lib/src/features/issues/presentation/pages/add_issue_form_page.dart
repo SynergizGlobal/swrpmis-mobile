@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
@@ -66,6 +68,7 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
   String _otherOrgId = '';
   String _fileTypeId = '';
   DateTime? _date;
+  final List<_IssueAttachment> _attachments = <_IssueAttachment>[];
 
   String get _issueId => widget.issueId.trim();
 
@@ -424,6 +427,46 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
     return null;
   }
 
+  Future<void> _pickAttachments() async {
+    final FilePickerResult? picked = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      allowMultiple: true,
+      withData: false,
+    );
+    if (picked == null || picked.files.isEmpty) {
+      return;
+    }
+    final List<_IssueAttachment> next = <_IssueAttachment>[..._attachments];
+    final Set<String> existing = <String>{
+      for (final _IssueAttachment item in _attachments) item.path,
+    };
+    for (final PlatformFile file in picked.files) {
+      final String? path = file.path;
+      if (path == null || path.isEmpty || existing.contains(path)) {
+        continue;
+      }
+      final String name = file.name.trim().isNotEmpty
+          ? file.name
+          : p.basename(path);
+      next.add(_IssueAttachment(path: path, name: name));
+      existing.add(path);
+    }
+    if (next.length == _attachments.length) {
+      return;
+    }
+    setState(() {
+      _attachments
+        ..clear()
+        ..addAll(next);
+    });
+  }
+
+  void _removeAttachment(int index) {
+    setState(() {
+      _attachments.removeAt(index);
+    });
+  }
+
   Future<void> _submit() async {
     final String? message = _validationMessage();
     if (message != null) {
@@ -539,7 +582,7 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
                           : _contractId.isNotEmpty,
                       onPick: (String id) => setState(() => _componentId = id),
                     ),
-                  _text(_location, label: 'Location', hint: 'Station / KM'),
+                  _text(_location, label: 'Location'),
                 ],
               ),
               _Section(
@@ -564,7 +607,7 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
                       onPick: (String id) => setState(() => _titleId = id),
                     )
                   else
-                    _text(_title, label: 'Title *', hint: 'Short description'),
+                    _text(_title, label: 'Title *'),
                   _dropdown(
                     label: 'Priority *',
                     options: _withId(
@@ -588,7 +631,6 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
                   _text(
                     _description,
                     label: 'Description *',
-                    hint: 'Describe the issue',
                     maxLines: 4,
                     maxLength: _detailMaxChars,
                   ),
@@ -596,7 +638,6 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
                   _text(
                     _actionTaken,
                     label: 'Action taken',
-                    hint: 'What has been done so far',
                     maxLines: 3,
                     maxLength: _detailMaxChars,
                   ),
@@ -675,10 +716,10 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
                   ],
                 ],
               ),
-              if (_master.fileTypes.isNotEmpty)
-                _Section(
-                  title: 'Attachments',
-                  children: <Widget>[
+              _Section(
+                title: 'Attachments',
+                children: <Widget>[
+                  if (_master.fileTypes.isNotEmpty)
                     _dropdown(
                       label: 'File type',
                       options: _withId(
@@ -689,14 +730,43 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
                       selectedId: _fileTypeId,
                       onPick: (String id) => setState(() => _fileTypeId = id),
                     ),
-                    Text(
-                      'Choosing a file type does not upload a file.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppPalette.of(context).mutedText,
-                      ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: _pickAttachments,
+                      icon: const Icon(Icons.attach_file_rounded, size: 18),
+                      label: const Text('Attach'),
                     ),
-                  ],
-                ),
+                  ),
+                  if (_attachments.isEmpty)
+                    Text(
+                      'No file selected',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    )
+                  else
+                    for (int i = 0; i < _attachments.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Text(
+                                _attachments[i].name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Remove',
+                              onPressed: () => _removeAttachment(i),
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                            ),
+                          ],
+                        ),
+                      ),
+                ],
+              ),
             ],
           ),
         ),
@@ -873,6 +943,13 @@ class _Section extends StatelessWidget {
       ),
     );
   }
+}
+
+class _IssueAttachment {
+  const _IssueAttachment({required this.path, required this.name});
+
+  final String path;
+  final String name;
 }
 
 class _ErrorBody extends StatelessWidget {

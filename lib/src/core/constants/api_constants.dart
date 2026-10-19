@@ -38,6 +38,20 @@ class ApiConstants {
       '/issue/ajax/getStructureListForIssue';
   static const String issueFormComponentsPath =
       '/issue/ajax/getComponentListForIssue';
+  static const String designContractFilterPath =
+      '/design/ajax/getContractListFilterInDesign';
+  static const String designStructureFilterPath =
+      '/design/ajax/getStructureListFilterInDesign';
+  static const String designDrawingTypeFilterPath =
+      '/design/ajax/getDrawingTypeListFilterInDesign';
+  static const String designListPath = '/design/ajax/getDesignsList';
+  static const String designUploadsListPath =
+      '/design/ajax/getDesignUploadsList';
+  static const String designDownloadTemplatePath =
+      '/design/download-design-template';
+  static const String designUploadDesignsPath = '/design/upload-designs';
+  static const String designUploadDownloadPath =
+      '/design/ajax/downloadUploadedDesignData';
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';
@@ -68,6 +82,19 @@ class ApiConstants {
   static const String rfiFilterMaterialPath = '/rfi/filter-material';
   static const String rfiFilterQualitySafetyPath = '/rfi/filter-quality-safety';
   static const String rfiDetailsPath = '/rfi/rfi-details';
+  static String rfiDetailsByIdPath(int id) => '/rfi/rfi-details/$id';
+  static const String rfiInspectionAccessPath = '/inspection-access';
+  static const String checkUserSignaturePath = '/api/checkUserSignature';
+  static const String rfiSaveDraftPath = '/rfi/saveDraft';
+  static const String rfiUploadSiteImagePath =
+      '/rfi/inspection/uploadSiteImage';
+  static const String rfiUploadEnclosurePath = '/rfi/upload';
+  static const String rfiSaveChecklistPath = '/rfi/saveChecklist';
+  static const String rfiChecklistItemsPath =
+      '/api/v1/enclouser/checklist-items';
+  static const String rfiFinalSubmitPath = '/rfi/finalSubmit';
+  static const String rfiDeleteSiteImagePath = '/rfi/delete-site-img';
+  static const String rfiDeleteEnclosurePath = '/rfi/enclosure/files';
   static const String rfiBulkSubmitNoRfiRequiredPath =
       '/rfi/bulkSubmitNoRfiRequired';
   static const String rfiLogListPath = '/api/rfiLog/getAllRfiLogDetails';

@@ -19,6 +19,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_dashboard_card.dart'
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_inspection_actions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_provider.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/rfi_inspection_start.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
@@ -357,7 +358,7 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
             child: IconButton(
               tooltip: 'Actions',
               visualDensity: VisualDensity.compact,
-              onPressed: () => _openActions(context, actions),
+              onPressed: () => _openActions(context, row, actions),
               icon: const Icon(Icons.more_horiz_rounded),
             ),
           );
@@ -368,6 +369,7 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
 
   Future<void> _openActions(
     BuildContext context,
+    RfiInspectionRow row,
     List<RfiInspectionAction> actions,
   ) async {
     final RfiInspectionAction? picked =
@@ -393,12 +395,36 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
     if (picked == null || !context.mounted) {
       return;
     }
-    await AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: picked.dialogTitle,
-      message: '${picked.dialogTitle} will open here.',
-    );
+    switch (picked) {
+      case RfiInspectionAction.startOnline:
+        await startRfiInspectionFlow(
+          context: context,
+          ref: ref,
+          row: row,
+          offline: false,
+        );
+      case RfiInspectionAction.startOffline:
+        await startRfiInspectionFlow(
+          context: context,
+          ref: ref,
+          row: row,
+          offline: true,
+        );
+      case RfiInspectionAction.submit:
+        await startRfiInspectionFlow(
+          context: context,
+          ref: ref,
+          row: row,
+          offline: false,
+        );
+      default:
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.info,
+          title: picked.dialogTitle,
+          message: '${picked.dialogTitle} will open here.',
+        );
+    }
   }
 }
 

@@ -33,6 +33,14 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>SWR-PMIS needs camera access to capture inspection selfies and site images.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SWR-PMIS needs photo library access to choose site images and documents.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SWR-PMIS needs your location to record the inspection site location.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SWR-PMIS may need microphone access when capturing video from the camera.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

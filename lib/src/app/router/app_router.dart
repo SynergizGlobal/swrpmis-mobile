@@ -13,6 +13,8 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
+import 'package:swr_pmis_mobile/src/features/design/presentation/pages/add_design_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_drawing_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
@@ -21,8 +23,10 @@ import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.d
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_inspection_flow_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_section_page.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_flow_provider.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/reports_page.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/settings_page.dart';
 import 'package:swr_pmis_mobile/src/features/shell/presentation/app_shell.dart';
@@ -229,6 +233,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: RfiInspectionFlowPage.routePath,
+        name: RfiInspectionFlowPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final Object? extra = state.extra;
+          final RfiInspectionFlowArgs args = extra is RfiInspectionFlowArgs
+              ? extra
+              : RfiInspectionFlowArgs(
+                  rfiId: int.tryParse(
+                        state.uri.queryParameters['rfiId'] ?? '',
+                      ) ??
+                      0,
+                  rfiCategory: state.uri.queryParameters['category'] ?? '',
+                  offline: state.uri.queryParameters['offline'] == '1',
+                );
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: RfiInspectionFlowPage(args: args),
+          );
+        },
+      ),
+      GoRoute(
         path: ProfilePage.routePath,
         name: ProfilePage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
@@ -254,6 +279,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
+      GoRoute(
+        path: AddDesignFormPage.routePath,
+        name: AddDesignFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddDesignFormPage(
+              designId: state.uri.queryParameters['designId'] ?? '',
+              prefill: AddDesignFormPage.prefillFromExtra(state.extra),
+            ),
+          );
+        },
+      ),
       ...ModuleCatalog.routable.map((AppModule module) {
         return GoRoute(
           path: module.routePath,
@@ -261,6 +299,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           pageBuilder: (BuildContext context, GoRouterState state) {
             final Widget page = module.routeName == IssuesPage.routeName
                 ? const IssuesPage()
+                : module.routeName == DesignDrawingPage.routeName
+                ? const DesignDrawingPage()
                 : ModulePlaceholderPage(module: module);
             return fadeSlidePage(key: state.pageKey, child: page);
           },

@@ -17,6 +17,7 @@ dependencies:
   flutter:
     sdk: flutter
   firebase_core: ^4.9.0
+  firebase_crashlytics: ^5.0.5
   firebase_messaging: ^16.4.3
   firebase_remote_config: ^6.5.2
   flutter_riverpod: ^2.6.1
@@ -32,6 +33,14 @@ dependencies:
   shared_preferences: ^2.5.3
   url_launcher: ^6.3.2
   uuid: ^4.6.0
+  image_picker: ^1.2.4
+  # 11.x skips kotlin-android under AGP 9 with android.builtInKotlin=false
+  # (https://github.com/miguelpruivo/flutter_file_picker/issues/2002).
+  file_picker: 10.3.10
+  geolocator: ^14.0.2
+  geocoding: ^5.0.0
+  permission_handler: ^13.0.2
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4

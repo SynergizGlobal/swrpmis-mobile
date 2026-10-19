@@ -13,23 +13,25 @@ import 'package:swr_pmis_mobile/src/core/network/dio_client.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/fcm_background_handler.dart';
 
 Future<void> bootstrap(AppConfig config) async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initializeFirebase();
-  if (DefaultFirebaseOptions.isConfigured) {
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  }
-  await RemoteConfigInitializer.initialize();
+  await runAppWithCrashlyticsZone(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await initializeFirebase();
+    if (DefaultFirebaseOptions.isConfigured) {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    }
+    await RemoteConfigInitializer.initialize();
 
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  final ProviderContainer container = ProviderContainer(
-    overrides: <Override>[
-      appConfigProvider.overrideWithValue(config),
-      sharedPrefsProvider.overrideWithValue(prefs),
-    ],
-  );
+    final ProviderContainer container = ProviderContainer(
+      overrides: <Override>[
+        appConfigProvider.overrideWithValue(config),
+        sharedPrefsProvider.overrideWithValue(prefs),
+      ],
+    );
 
-  await container.read(sessionCookieManagerProvider.future);
+    await container.read(sessionCookieManagerProvider.future);
 
-  runApp(UncontrolledProviderScope(container: container, child: const App()));
+    runApp(UncontrolledProviderScope(container: container, child: const App()));
+  });
 }
