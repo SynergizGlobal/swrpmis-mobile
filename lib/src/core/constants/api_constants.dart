@@ -52,6 +52,22 @@ class ApiConstants {
   static const String designUploadDesignsPath = '/design/upload-designs';
   static const String designUploadDownloadPath =
       '/design/ajax/downloadUploadedDesignData';
+  static const String utilityShiftingLocationFilterPath =
+      '/utility-shifting/ajax/getLocationListFilter';
+  static const String utilityShiftingCategoryFilterPath =
+      '/utility-shifting/ajax/getUtilityCategoryListFilter';
+  static const String utilityShiftingTypeFilterPath =
+      '/utility-shifting/ajax/getUtilityTypeListFilter';
+  static const String utilityShiftingStatusFilterPath =
+      '/utility-shifting/ajax/getStatusListFilter';
+  static const String utilityShiftingListPath =
+      '/utility-shifting/ajax/getUtilityShiftingList';
+  static const String utilityShiftingUploadsListPath =
+      '/utility-shifting/ajax/getUtilityShiftingUploadsList';
+  static const String utilityShiftingTemplatePath =
+      '/utility-shifting/utility-shifting-template';
+  static const String utilityShiftingUploadPath =
+      '/utility-shifting/upload-utility-shifting';
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';
