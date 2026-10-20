@@ -33,161 +33,119 @@ class _MorePageState extends State<MorePage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: <Widget>[
-        _CardRow(
-          left: _MoreCard(
-            title: rdso.title,
-            icon: rdso.icon,
-            expandable: true,
-            expanded: _rdsoExpanded,
-            onTap: () => setState(() => _rdsoExpanded = !_rdsoExpanded),
-          ),
-          right: _MoreCard(
-            title: 'Reports',
-            icon: Icons.insights_rounded,
-            onTap: () => context.pushNamed(ReportsPage.routeName),
-          ),
+        _ExpandableRow(
+          title: rdso.title,
+          icon: rdso.icon,
+          expanded: _rdsoExpanded,
+          childCount: rdso.children.length,
+          onTap: () => setState(() => _rdsoExpanded = !_rdsoExpanded),
+          children: rdso.children,
         ),
-        if (_rdsoExpanded) ...<Widget>[
-          const SizedBox(height: 12),
-          _RdsoChildren(children: rdso.children),
-        ],
-        const SizedBox(height: 12),
-        _CardRow(
-          left: _MoreCard(
-            title: mail.title,
-            icon: mail.icon,
-            onTap: () => context.pushNamed(mail.routeName),
-          ),
-          right: _MoreCard(
-            title: help.title,
-            icon: help.icon,
-            onTap: () => context.pushNamed(help.routeName),
-          ),
+        const SizedBox(height: 10),
+        _LeafRow(
+          title: 'Reports',
+          icon: Icons.insights_rounded,
+          onTap: () => context.pushNamed(ReportsPage.routeName),
+        ),
+        const SizedBox(height: 10),
+        _LeafRow(
+          title: mail.title,
+          icon: mail.icon,
+          onTap: () => context.pushNamed(mail.routeName),
+        ),
+        const SizedBox(height: 10),
+        _LeafRow(
+          title: help.title,
+          icon: help.icon,
+          onTap: () => context.pushNamed(help.routeName),
         ),
       ],
     );
   }
 }
 
-class _CardRow extends StatelessWidget {
-  const _CardRow({required this.left, required this.right});
-
-  final Widget left;
-  final Widget right;
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Expanded(child: left),
-          const SizedBox(width: 12),
-          Expanded(child: right),
-        ],
-      ),
-    );
-  }
-}
-
-class _MoreCard extends StatelessWidget {
-  const _MoreCard({
+class _ExpandableRow extends StatelessWidget {
+  const _ExpandableRow({
     required this.title,
     required this.icon,
+    required this.expanded,
+    required this.childCount,
     required this.onTap,
-    this.expandable = false,
-    this.expanded = false,
+    required this.children,
   });
 
   final String title;
   final IconData icon;
-  final VoidCallback onTap;
-  final bool expandable;
   final bool expanded;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    final AppPalette palette = AppPalette.of(context);
-    return Material(
-      color: palette.cardSurface,
-      elevation: 0,
-      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        onTap: onTap,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-            border: Border.all(
-              color: expanded ? colors.primary : colors.outlineVariant,
-            ),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 148),
-            child: Padding(
-              padding: AppTheme.cardPadding,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Icon(icon, size: 32, color: colors.primary),
-                  const SizedBox(height: 10),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                      color: colors.onSurface,
-                    ),
-                  ),
-                  if (expandable) ...<Widget>[
-                    const SizedBox(height: 4),
-                    Icon(
-                      expanded
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                      size: 22,
-                      color: palette.mutedText,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RdsoChildren extends StatelessWidget {
-  const _RdsoChildren({required this.children});
-
+  final int childCount;
+  final VoidCallback onTap;
   final List<AppModule> children;
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
     final AppPalette palette = AppPalette.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: palette.cardSurface,
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    return Material(
+      color: palette.cardSurface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        border: Border.all(color: colors.outlineVariant),
+        side: BorderSide(
+          color: expanded ? colors.primary : colors.outlineVariant,
+        ),
       ),
-      child: Padding(
-        padding: AppTheme.cardPadding,
-        child: IntrinsicHeight(
-          child: Row(
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 180),
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: AppTheme.cardPadding,
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              for (int index = 0; index < children.length; index++) ...<Widget>[
-                if (index > 0) const SizedBox(width: 10),
-                Expanded(child: _RdsoChildCard(module: children[index])),
-              ],
+              InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: <Widget>[
+                      _IconBadge(icon: icon),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: colors.onSurface,
+                              ),
+                        ),
+                      ),
+                      Text(
+                        '$childCount',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: palette.mutedText,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Icon(
+                        expanded
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                        color: palette.mutedText,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (expanded)
+                for (final AppModule child in children)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _ChildRow(module: child),
+                  ),
             ],
           ),
         ),
@@ -196,50 +154,116 @@ class _RdsoChildren extends StatelessWidget {
   }
 }
 
-class _RdsoChildCard extends StatelessWidget {
-  const _RdsoChildCard({required this.module});
+class _LeafRow extends StatelessWidget {
+  const _LeafRow({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = AppPalette.of(context);
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    return Material(
+      color: palette.cardSurface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        side: BorderSide(color: colors.outlineVariant),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        child: Padding(
+          padding: AppTheme.cardPadding,
+          child: Row(
+            children: <Widget>[
+              _IconBadge(icon: icon),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChildRow extends StatelessWidget {
+  const _ChildRow({required this.module});
 
   final AppModule module;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final AppPalette palette = AppPalette.of(context);
     return Material(
-      color: palette.cardSurface,
-      elevation: 0,
-      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-      child: InkWell(
+      color: AppPalette.of(context).cardSurface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        side: BorderSide(color: colors.outlineVariant),
+      ),
+      child: InkWell(
         onTap: () => context.pushNamed(module.routeName),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-            border: Border.all(color: colors.outlineVariant),
-          ),
-          child: Padding(
-            padding: AppTheme.cardPadding,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(module.icon, size: 26, color: colors.primary),
-                const SizedBox(height: 8),
-                Text(
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        child: Padding(
+          padding: AppTheme.cardPadding,
+          child: Row(
+            children: <Widget>[
+              Icon(module.icon, color: colors.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
                   module.title,
-                  textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    height: 1.25,
                     color: colors.onSurface,
                   ),
                 ),
-              ],
-            ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+            ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+      ),
+      child: Icon(icon, color: colors.primary),
     );
   }
 }

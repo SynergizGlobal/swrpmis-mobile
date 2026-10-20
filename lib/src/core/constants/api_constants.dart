@@ -173,6 +173,53 @@ class ApiConstants {
   static const String deviceTokenDeactivatePath =
       'wcr/device-tokens/deactivate';
 
+  static const String rdsoCategoriesPath = '/api/rdso/categories';
+  static const String rdsoDrawingsRegisterPath = '/api/rdso/drawings/register';
+
+  static String rdsoFileViewPath(String fileId) =>
+      '/api/rdso/files/$fileId/view';
+
+  static String rdsoFileDownloadPath(String fileId) =>
+      '/api/rdso/files/$fileId/download';
+
+  static String rdsoCategorySubheadsPath(String categoryId) =>
+      '/api/rdso/categories/$categoryId/subheads';
+
+  static String rdsoSubheadDrawingsPath(String subheadId) =>
+      '/api/rdso/subheads/$subheadId/drawings';
+
+  static String rdsoDrawingFilesPath(String drawingId) =>
+      '/api/rdso/drawings/$drawingId/files';
+
+  static String rdsoDrawingPostsPath(String drawingId) =>
+      '/api/rdso/drawings/$drawingId/posts';
+
+  static const String rdsoPostsPath = '/api/rdso/posts';
+
+  static String rdsoFileSendMailPath(String fileId) =>
+      '/api/rdso/files/$fileId/send-mail';
+
+  static const String rdsoCrawlRunsPath = '/api/rdso/admin/crawl/runs';
+
+  static String rdsoCrawlRunLogsPath(String runId) =>
+      '/api/rdso/admin/crawl/runs/$runId/logs';
+
+  static const String rdsoCrawlStartPath = '/api/rdso/admin/crawl';
+
+  static const String mailInboxPath = '/api/mail/inbox';
+  static const String mailDraftsPath = '/api/mail/drafts';
+  static const String mailSentPath = '/api/mail/sent';
+  static const String mailTrashPath = '/api/mail/trash';
+  static const String mailStarredPath = '/api/mail/starred';
+  static const String mailLabelsPath = '/api/labels';
+
+  static String mailLabelMailsPath(String labelName) =>
+      '/api/labels/label/${Uri.encodeComponent(labelName.trim())}';
+
+  static String mailStarPath(int mailId) => '/api/mail/$mailId/star';
+
+  static String mailTrashActionPath(int mailId) => '/api/mail/$mailId/trash';
+
   static const Duration connectTimeout = Duration(seconds: 20);
   static const Duration receiveTimeout = Duration(seconds: 45);
 }

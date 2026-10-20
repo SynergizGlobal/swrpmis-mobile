@@ -9,7 +9,7 @@ class TablePage<T> {
     required this.pageCount,
   });
 
-  static const List<int> pageSizes = <int>[5, 10, 20, 50];
+  static const List<int> pageSizes = <int>[5, 8, 10, 20, 50];
   static const int defaultPageSize = 10;
   static const int compactDefaultPageSize = 5;
 

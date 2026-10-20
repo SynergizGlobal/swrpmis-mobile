@@ -18,9 +18,16 @@ import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_dr
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/utility_shifting_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_forms_page.dart';
 import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.dart';
+import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
+import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_drawing_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_library_page.dart';
+import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_revision_monitor_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
@@ -293,7 +300,138 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-      ...ModuleCatalog.routable.map((AppModule module) {
+      GoRoute(
+        path: RdsoDrawingDetailPage.routePath,
+        name: RdsoDrawingDetailPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final Object? extra = state.extra;
+          final String drawingId = state.pathParameters['drawingId'] ?? '';
+          final RdsoDrawingRow drawing = extra is RdsoDrawingRow
+              ? extra
+              : RdsoDrawingRow(
+                  id: drawingId,
+                  subheadId: '',
+                  subheadName: '',
+                  drawingKey: drawingId,
+                  name: '',
+                  description: '',
+                  sourceUrl: '',
+                  fileSize: null,
+                  fileId: null,
+                  status: '',
+                  department: '',
+                  revision: '',
+                  revisionDate: '',
+                );
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: RdsoDrawingDetailPage(drawing: drawing),
+          );
+        },
+      ),
+      GoRoute(
+        path: MailModulePage.routePath,
+        name: MailModulePage.routeName,
+        redirect: (BuildContext context, GoRouterState state) {
+          if (state.uri.path == MailModulePage.routePath) {
+            return MailModulePage.folderPath(MailFolder.inbox);
+          }
+          return null;
+        },
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'inbox',
+            name: 'mail-inbox',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.inbox),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'sent',
+            name: 'mail-sent',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.sent),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'drafts',
+            name: 'mail-drafts',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.drafts),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'trash',
+            name: 'mail-trash',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.trash),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'starred',
+            name: 'mail-starred',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.starred),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'important',
+            name: 'mail-important',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.important),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'compose',
+            name: MailComposePage.routeName,
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              final String? draftId = state.uri.queryParameters['draftId'];
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: MailComposePage(
+                  draftId: int.tryParse(draftId ?? ''),
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'label/:name',
+            name: 'mail-label',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              final String name =
+                  state.pathParameters['name'] ?? '';
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: MailModulePage(
+                  folder: MailFolder.label,
+                  labelName: Uri.decodeComponent(name),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      ...ModuleCatalog.routable.where((AppModule module) => module.id != 'mail').map((
+        AppModule module,
+      ) {
         return GoRoute(
           path: module.routePath,
           name: module.routeName,
@@ -304,6 +442,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const DesignDrawingPage()
                 : module.routeName == UtilityShiftingPage.routeName
                 ? const UtilityShiftingPage()
+                : module.routeName == RdsoRevisionMonitorPage.routeName
+                ? const RdsoRevisionMonitorPage()
+                : module.routeName == RdsoLibraryPage.routeName
+                ? const RdsoLibraryPage()
                 : ModulePlaceholderPage(module: module);
             return fadeSlidePage(key: state.pageKey, child: page);
           },
