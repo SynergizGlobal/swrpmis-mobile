@@ -15,6 +15,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/add_design_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_drawing_page.dart';
+import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/utility_shifting_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
@@ -301,6 +302,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const IssuesPage()
                 : module.routeName == DesignDrawingPage.routeName
                 ? const DesignDrawingPage()
+                : module.routeName == UtilityShiftingPage.routeName
+                ? const UtilityShiftingPage()
                 : ModulePlaceholderPage(module: module);
             return fadeSlidePage(key: state.pageKey, child: page);
           },

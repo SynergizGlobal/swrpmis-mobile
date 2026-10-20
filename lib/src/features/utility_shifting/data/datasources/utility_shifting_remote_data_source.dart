@@ -136,6 +136,35 @@ class UtilityShiftingRemoteDataSource {
     return parseUtilityShiftingUploadMessage(response.data);
   }
 
+  /// Fetches the full filtered set for Excel export (server-side filters).
+  Future<List<UtilityShiftingRow>> fetchExportRows(
+    UtilityShiftingListQuery query,
+  ) async {
+    const int pageSize = 1000;
+    final List<UtilityShiftingRow> all = <UtilityShiftingRow>[];
+    int start = 0;
+    int total = 1;
+    while (start < total) {
+      final UtilityShiftingListQuery pageQuery = query.copyWith(
+        page: (start ~/ pageSize) + 1,
+        pageSize: pageSize,
+      );
+      final ({List<UtilityShiftingRow> rows, int total}) page = await _postList(
+        pageQuery,
+      );
+      total = page.total < 1 ? page.rows.length : page.total;
+      if (page.rows.isEmpty) {
+        break;
+      }
+      all.addAll(page.rows);
+      start += page.rows.length;
+      if (page.rows.length < pageSize) {
+        break;
+      }
+    }
+    return all;
+  }
+
   Future<({List<UtilityShiftingRow> rows, int total})> _postList(
     UtilityShiftingListQuery query,
   ) async {
