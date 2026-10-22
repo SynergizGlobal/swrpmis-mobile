@@ -141,6 +141,100 @@ void main() {
     );
   });
 
+  test('drawing status filter matches Current and Archived', () {
+    const RdsoDrawingRow current = RdsoDrawingRow(
+      id: '1',
+      subheadId: '',
+      subheadName: '',
+      drawingKey: 'A',
+      name: 'A',
+      description: '',
+      sourceUrl: '',
+      fileSize: null,
+      fileId: null,
+      status: 'Current',
+      department: '',
+      revision: '',
+      revisionDate: '',
+    );
+    const RdsoDrawingRow archived = RdsoDrawingRow(
+      id: '2',
+      subheadId: '',
+      subheadName: '',
+      drawingKey: 'B',
+      name: 'B',
+      description: '',
+      sourceUrl: '',
+      fileSize: null,
+      fileId: null,
+      status: 'Archived',
+      department: '',
+      revision: '',
+      revisionDate: '',
+    );
+    const RdsoDrawingRow emptyStatus = RdsoDrawingRow(
+      id: '3',
+      subheadId: '',
+      subheadName: '',
+      drawingKey: 'C',
+      name: 'C',
+      description: '',
+      sourceUrl: '',
+      fileSize: null,
+      fileId: null,
+      status: '',
+      department: '',
+      revision: '',
+      revisionDate: '',
+    );
+
+    expect(rdsoDrawingMatchesStatus(current.status, 'Current'), isTrue);
+    expect(rdsoDrawingMatchesStatus(archived.status, 'current'), isFalse);
+    expect(rdsoDrawingMatchesStatus(archived.status, 'Archived'), isTrue);
+    expect(rdsoDrawingMatchesStatus(emptyStatus.status, 'Current'), isFalse);
+    expect(rdsoDrawingMatchesStatus(current.status, ''), isTrue);
+
+    final List<RdsoDrawingRow> filtered = filterRdsoDrawingsByStatus(
+      <RdsoDrawingRow>[current, archived, emptyStatus],
+      'Current',
+    );
+    expect(filtered, <RdsoDrawingRow>[current]);
+    expect(
+      filterRdsoDrawingsByStatus(
+        <RdsoDrawingRow>[current, archived],
+        '',
+      ),
+      <RdsoDrawingRow>[current, archived],
+    );
+
+    final List<RdsoDrawingRow> many = List<RdsoDrawingRow>.generate(
+      10,
+      (int i) => RdsoDrawingRow(
+        id: '$i',
+        subheadId: '',
+        subheadName: '',
+        drawingKey: 'K$i',
+        name: 'N$i',
+        description: '',
+        sourceUrl: '',
+        fileSize: null,
+        fileId: null,
+        status: 'Current',
+        department: '',
+        revision: '',
+        revisionDate: '',
+      ),
+    );
+    expect(
+      paginateRdsoDrawings(many, page: 1, size: 8),
+      many.sublist(0, 8),
+    );
+    expect(
+      paginateRdsoDrawings(many, page: 2, size: 8),
+      many.sublist(8, 10),
+    );
+  });
+
   test('library query params exclude cache bust', () {
     const RdsoLibraryQuery query = RdsoLibraryQuery(
       q: 'bridge',

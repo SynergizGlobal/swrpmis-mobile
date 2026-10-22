@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/data/datasources/rdso_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
@@ -59,30 +57,34 @@ class RdsoLibraryState {
   final Object? error;
 
   List<RdsoDrawingRow> get visibleDrawings {
-    if (mode != RdsoLibraryListMode.search) {
-      return treeDrawings;
+    final List<RdsoDrawingRow> filtered = mode != RdsoLibraryListMode.search
+        ? filterRdsoDrawingsByStatus(treeDrawings, query.status)
+        : filterRdsoDrawingsByStatus(searchSnapshot.items, query.status);
+    if (mode == RdsoLibraryListMode.search &&
+        !query.usesDrawingSearchEndpoint) {
+      return filtered;
     }
-    final List<RdsoDrawingRow> all = searchSnapshot.items;
-    if (!query.usesDrawingSearchEndpoint) {
-      return all;
-    }
-    final int pageSize = query.size < 1
-        ? RdsoRevisionQuery.defaultSize
-        : query.size;
-    final int page = query.page < 1 ? 1 : query.page;
-    final int start = (page - 1) * pageSize;
-    if (start >= all.length) {
-      return const <RdsoDrawingRow>[];
-    }
-    return all.sublist(start, math.min(start + pageSize, all.length));
+    return paginateRdsoDrawings(
+      filtered,
+      page: query.page,
+      size: query.size,
+    );
+  }
+
+  bool get showsDrawingPagination {
+    return mode == RdsoLibraryListMode.search ||
+        selectedSubheadId.trim().isNotEmpty;
   }
 
   int get total {
     if (mode != RdsoLibraryListMode.search) {
-      return treeDrawings.length;
+      return filterRdsoDrawingsByStatus(treeDrawings, query.status).length;
     }
     if (query.usesDrawingSearchEndpoint) {
-      return searchSnapshot.items.length;
+      return filterRdsoDrawingsByStatus(
+        searchSnapshot.items,
+        query.status,
+      ).length;
     }
     return searchSnapshot.total;
   }
@@ -162,7 +164,20 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
   }
 
   void setDraftStatus(String value) {
-    state = state.copyWith(draft: state.draft.copyWith(status: value));
+    final RdsoLibraryQuery nextQuery = state.query.copyWith(
+      status: value,
+      page: 1,
+    );
+    state = state.copyWith(
+      draft: state.draft.copyWith(status: value, page: 1),
+      query: nextQuery,
+    );
+    if (state.mode == RdsoLibraryListMode.search &&
+        !nextQuery.usesDrawingSearchEndpoint &&
+        nextQuery.hasSearchFilters) {
+      state = state.copyWith(loading: true, clearError: true);
+      _loadSearch();
+    }
   }
 
   Future<void> loadCategories() async {
@@ -243,6 +258,8 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
       selectedSubheadId: subhead.id,
       selectedSubheadName: subhead.name,
       treeDrawings: const <RdsoDrawingRow>[],
+      draft: state.draft.copyWith(page: 1),
+      query: state.query.copyWith(page: 1),
       loading: true,
       clearError: true,
     );
@@ -305,9 +322,20 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
   }
 
   void setPage(int page) {
-    if (state.mode != RdsoLibraryListMode.search ||
-        page < 1 ||
-        page == state.query.page) {
+    if (page < 1 || page == state.query.page) {
+      return;
+    }
+    if (state.mode == RdsoLibraryListMode.tree) {
+      if (state.selectedSubheadId.trim().isEmpty) {
+        return;
+      }
+      state = state.copyWith(
+        query: state.query.copyWith(page: page),
+        clearError: true,
+      );
+      return;
+    }
+    if (state.mode != RdsoLibraryListMode.search) {
       return;
     }
     state = state.copyWith(
@@ -321,12 +349,24 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
   }
 
   void setPageSize(int size) {
-    if (state.mode != RdsoLibraryListMode.search ||
-        size < 1 ||
-        size == state.query.size) {
+    if (size < 1 || size == state.query.size) {
       return;
     }
     final RdsoLibraryQuery next = state.query.copyWith(size: size, page: 1);
+    if (state.mode == RdsoLibraryListMode.tree) {
+      if (state.selectedSubheadId.trim().isEmpty) {
+        return;
+      }
+      state = state.copyWith(
+        draft: state.draft.copyWith(size: size, page: 1),
+        query: next,
+        clearError: true,
+      );
+      return;
+    }
+    if (state.mode != RdsoLibraryListMode.search) {
+      return;
+    }
     state = state.copyWith(
       draft: state.draft.copyWith(size: size),
       query: next,

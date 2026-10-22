@@ -337,40 +337,27 @@ class _SummaryCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final bool wide = constraints.maxWidth >= 520;
-        final List<Widget> cards = <Widget>[
-          _SummaryCard(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: _SummaryCard(
             icon: Icons.description_outlined,
             label: 'Current Files',
             value: currentFiles,
             accent: AppPalette.of(context).success,
           ),
-          _SummaryCard(
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SummaryCard(
             icon: Icons.inventory_2_outlined,
             label: 'Archived / Superseded Files',
             value: archivedFiles,
             accent: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-        ];
-        if (wide) {
-          return Row(
-            children: <Widget>[
-              Expanded(child: cards[0]),
-              const SizedBox(width: 10),
-              Expanded(child: cards[1]),
-            ],
-          );
-        }
-        return Column(
-          children: <Widget>[
-            cards[0],
-            const SizedBox(height: 10),
-            cards[1],
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -456,6 +443,37 @@ extension on int {
   }
 }
 
+class _RevisionFilterTwoColumnRow extends StatelessWidget {
+  const _RevisionFilterTwoColumnRow({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    assert(children.length == 2);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: SizedBox(
+            height: AppTheme.fieldHeight,
+            width: double.infinity,
+            child: children[0],
+          ),
+        ),
+        const SizedBox(width: _FilterBar._controlGap),
+        Expanded(
+          child: SizedBox(
+            height: AppTheme.fieldHeight,
+            width: double.infinity,
+            child: children[1],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _FilterBar extends StatelessWidget {
   const _FilterBar({
     required this.state,
@@ -483,6 +501,22 @@ class _FilterBar extends StatelessWidget {
   final VoidCallback onSearch;
   final VoidCallback onReset;
 
+  static const double _controlGap = 8;
+
+  static ButtonStyle _filledControlStyle() {
+    return FilledButton.styleFrom(
+      minimumSize: const Size.fromHeight(AppTheme.fieldHeight),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
+  static ButtonStyle _outlinedControlStyle() {
+    return OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(AppTheme.fieldHeight),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final RdsoRevisionQuery draft = state.draft;
@@ -509,33 +543,60 @@ class _FilterBar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            TextField(
-              controller: search,
-              textInputAction: TextInputAction.search,
-              onChanged: onSearchChanged,
-              onSubmitted: (_) => onSearch(),
-              decoration: InputDecoration(
-                hintText: 'Search drawing no., title, keyword...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: search.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear',
-                        onPressed: () {
-                          search.clear();
-                          onSearchChanged('');
-                        },
-                        icon: const Icon(Icons.close_rounded),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: SizedBox(
+                    height: AppTheme.fieldHeight,
+                    child: TextField(
+                      controller: search,
+                      textInputAction: TextInputAction.search,
+                      onChanged: onSearchChanged,
+                      onSubmitted: (_) => onSearch(),
+                      decoration: InputDecoration(
+                        hintText: 'Search drawing no., title, keyword...',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: search.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear',
+                                onPressed: () {
+                                  search.clear();
+                                  onSearchChanged('');
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 13,
+                        ),
                       ),
-                isDense: true,
-              ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: _controlGap),
+                FilledButton(
+                  style: _filledControlStyle().copyWith(
+                    minimumSize: WidgetStateProperty.all(
+                      const Size(96, AppTheme.fieldHeight),
+                    ),
+                    padding: WidgetStateProperty.all(
+                      const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                  ),
+                  onPressed: enabled ? onSearch : null,
+                  child: const Text('Search'),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            RfiFilterGrid(
+            const SizedBox(height: _controlGap),
+            _RevisionFilterTwoColumnRow(
               children: <Widget>[
                 RfiFilterField(
                   label: 'Category',
-                  emptyLabel: '-- Select Category --',
+                  emptyLabel: rdsoFilterEmptyLabel,
                   value: _selectedLabel(categories, draft.categoryId),
                   options: categories,
                   selectedId: draft.categoryId.isEmpty
@@ -551,7 +612,7 @@ class _FilterBar extends StatelessWidget {
                     opacity: 0.55,
                     child: RfiFilterField(
                       label: 'Department',
-                      emptyLabel: '-- Select Department --',
+                      emptyLabel: rdsoFilterEmptyLabel,
                       value: null,
                       options: const <RfiFilterOption>[],
                       selectedId: null,
@@ -560,37 +621,36 @@ class _FilterBar extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: _controlGap),
+            _RevisionFilterTwoColumnRow(
+              children: <Widget>[
                 RfiFilterField(
                   label: 'Status',
-                  emptyLabel: '-- Select Status --',
+                  emptyLabel: rdsoFilterEmptyLabel,
                   value: _selectedLabel(statuses, draft.status),
                   options: statuses,
                   selectedId: draft.status.isEmpty ? null : draft.status,
                   onClear: draft.status.isEmpty ? null : () => onStatus(''),
                   onPick: (RfiFilterOption option) => onStatus(option.id),
                 ),
-                _DateField(
-                  label: dateLabel,
-                  onPick: onPickDate,
-                  onClear: dateLabel == null ? null : onClearDate,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                FilledButton.icon(
-                  onPressed: enabled ? onSearch : null,
-                  icon: const Icon(Icons.search_rounded, size: 18),
-                  label: const Text('Search'),
-                ),
                 OutlinedButton(
+                  style: _outlinedControlStyle(),
                   onPressed: enabled ? onReset : null,
                   child: const Text('Reset'),
                 ),
               ],
+            ),
+            const SizedBox(height: _controlGap),
+            SizedBox(
+              height: AppTheme.fieldHeight,
+              width: double.infinity,
+              child: _DateField(
+                label: dateLabel,
+                onPick: onPickDate,
+                onClear: dateLabel == null ? null : onClearDate,
+              ),
             ),
           ],
         ),

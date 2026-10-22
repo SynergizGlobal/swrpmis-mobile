@@ -1,3 +1,6 @@
+/// Placeholder shown in RDSO filter dropdowns when nothing is selected.
+const String rdsoFilterEmptyLabel = '-- Select --';
+
 class RdsoCategory {
   const RdsoCategory({
     required this.id,
@@ -213,6 +216,53 @@ class RdsoDrawingRow {
     final String? id = fileId?.trim();
     return id != null && id.isNotEmpty;
   }
+}
+
+/// Matches [rowStatus] to a filter value such as `Current` or `Archived`.
+bool rdsoDrawingMatchesStatus(String rowStatus, String statusFilter) {
+  final String filter = statusFilter.trim();
+  if (filter.isEmpty) {
+    return true;
+  }
+  final String normalized = rowStatus.trim();
+  if (normalized.isEmpty) {
+    return false;
+  }
+  return normalized.toLowerCase() == filter.toLowerCase();
+}
+
+List<RdsoDrawingRow> filterRdsoDrawingsByStatus(
+  List<RdsoDrawingRow> rows,
+  String statusFilter,
+) {
+  final String filter = statusFilter.trim();
+  if (filter.isEmpty) {
+    return rows;
+  }
+  return rows
+      .where(
+        (RdsoDrawingRow row) =>
+            rdsoDrawingMatchesStatus(row.status, statusFilter),
+      )
+      .toList(growable: false);
+}
+
+List<RdsoDrawingRow> paginateRdsoDrawings(
+  List<RdsoDrawingRow> rows, {
+  required int page,
+  required int size,
+}) {
+  if (rows.isEmpty) {
+    return rows;
+  }
+  final int pageSize = size < 1 ? RdsoRevisionQuery.defaultSize : size;
+  final int safePage = page < 1 ? 1 : page;
+  final int start = (safePage - 1) * pageSize;
+  if (start >= rows.length) {
+    return const <RdsoDrawingRow>[];
+  }
+  final int end = start + pageSize;
+  return rows.sublist(start, end > rows.length ? rows.length : end);
 }
 
 class RdsoRevisionQuery {

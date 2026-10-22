@@ -82,10 +82,7 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
     final int pageSize = state.query.size < 1
         ? RdsoRevisionQuery.defaultSize
         : state.query.size;
-    final bool searchMode = state.mode == RdsoLibraryListMode.search;
-    final int pageCount = searchMode
-        ? (total == 0 ? 1 : (total / pageSize).ceil())
-        : 1;
+    final int pageCount = total == 0 ? 1 : (total / pageSize).ceil();
     int page = state.query.page < 1 ? 1 : state.query.page;
     if (page > pageCount) {
       page = pageCount;
@@ -98,7 +95,7 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
         ? 'Showing 0 to 0 of 0 entries'
         : 'Showing ${start + 1} to $end of $total entries';
     final bool showFooter =
-        searchMode && !failed && !state.loading && total > 0;
+        state.showsDrawingPagination && !failed && !state.loading;
     final bool filtersEnabled = !state.loading && !_syncBusy;
 
     return PagedTableColumn(
@@ -387,7 +384,7 @@ class _LibraryFilterBar extends StatelessWidget {
               children: <Widget>[
                 RfiFilterField(
                   label: 'Category',
-                  emptyLabel: '-- Select Category --',
+                  emptyLabel: rdsoFilterEmptyLabel,
                   value: _selectedLabel(categories, draft.categoryId),
                   options: categories,
                   selectedId: draft.categoryId.isEmpty
@@ -403,7 +400,7 @@ class _LibraryFilterBar extends StatelessWidget {
                     opacity: 0.55,
                     child: RfiFilterField(
                       label: 'Department',
-                      emptyLabel: '-- Select Department --',
+                      emptyLabel: rdsoFilterEmptyLabel,
                       value: null,
                       options: const <RfiFilterOption>[],
                       selectedId: null,
@@ -419,7 +416,7 @@ class _LibraryFilterBar extends StatelessWidget {
               children: <Widget>[
                 RfiFilterField(
                   label: 'Status',
-                  emptyLabel: '-- Select Status --',
+                  emptyLabel: rdsoFilterEmptyLabel,
                   value: _selectedLabel(statuses, draft.status),
                   options: statuses,
                   selectedId: draft.status.isEmpty ? null : draft.status,
