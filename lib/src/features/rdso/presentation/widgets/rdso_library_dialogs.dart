@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/data/datasources/rdso_remote_data_source.dart';
@@ -157,6 +158,7 @@ class _ImportStatusDialogState extends ConsumerState<_ImportStatusDialog> {
   List<RdsoCrawlRun> _runs = const <RdsoCrawlRun>[];
   bool _loading = true;
   Object? _error;
+  String? _cancellingRunId;
 
   @override
   void initState() {
@@ -243,18 +245,66 @@ class _ImportStatusDialogState extends ConsumerState<_ImportStatusDialog> {
   }
 
   Future<void> _cancelRun(RdsoCrawlRun run) async {
-    await AppDialog.show(
+    if (_cancellingRunId != null) {
+      return;
+    }
+    final bool confirmed = await AppDialog.confirm(
       context,
-      variant: AppDialogVariant.info,
       title: 'Cancel run',
-      message: 'Cancel is not available from the mobile app yet.',
+      message:
+          'Stop this import run? It may take a moment to finish cancelling.',
+      primaryLabel: 'Cancel run',
+      destructive: true,
     );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    setState(() => _cancellingRunId = run.id);
+    try {
+      await ref.read(rdsoRemoteDataSourceProvider).cancelCrawlRun(run.id);
+      if (!mounted) {
+        return;
+      }
+      await _load();
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.success,
+        title: 'Cancel run',
+        message: 'The import run has been cancelled.',
+      );
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Cancel run',
+        message: error is DioException
+            ? userFriendlyErrorMessage(error)
+            : 'Unable to cancel this run.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _cancellingRunId = null);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    final double maxListHeight =
+        MediaQuery.sizeOf(context).height * 0.52;
+
     return AlertDialog(
       title: const Text('Import Status'),
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
@@ -264,52 +314,35 @@ class _ImportStatusDialogState extends ConsumerState<_ImportStatusDialog> {
             RfiContentLoader(loading: _loading),
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
                 child: Text(
                   _error is DioException
                       ? userFriendlyErrorMessage(_error! as DioException)
                       : _error.toString(),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: TextStyle(color: colors.error),
                 ),
               )
             else if (!_loading && _runs.isEmpty)
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 4),
                 child: Text('No import runs found.'),
               )
             else if (!_loading)
-              Flexible(
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxListHeight),
                 child: ListView.separated(
+                  padding: EdgeInsets.zero,
                   shrinkWrap: true,
                   itemCount: _runs.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (BuildContext context, int index) {
                     final RdsoCrawlRun run = _runs[index];
-                    return ListTile(
-                      title: Text(
-                        run.status.isEmpty ? 'Unknown' : run.status,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        _runSubtitle(run),
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      isThreeLine: true,
-                      trailing: Wrap(
-                        spacing: 4,
-                        children: <Widget>[
-                          TextButton(
-                            onPressed: () => _showLogs(run),
-                            child: const Text('View logs'),
-                          ),
-                          if (run.isRunning)
-                            TextButton(
-                              onPressed: () => _cancelRun(run),
-                              child: const Text('Cancel'),
-                            ),
-                        ],
-                      ),
+                    return _ImportRunCard(
+                      run: run,
+                      cancelling: _cancellingRunId == run.id,
+                      cancelDisabled: _cancellingRunId != null,
+                      onViewLogs: () => _showLogs(run),
+                      onCancel: run.isRunning ? () => _cancelRun(run) : null,
                     );
                   },
                 ),
@@ -318,9 +351,10 @@ class _ImportStatusDialogState extends ConsumerState<_ImportStatusDialog> {
         ),
       ),
       actions: <Widget>[
-        TextButton(
+        TextButton.icon(
           onPressed: _loading ? null : _load,
-          child: const Text('Refresh'),
+          icon: const Icon(Icons.refresh, size: 18),
+          label: const Text('Refresh'),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -329,33 +363,296 @@ class _ImportStatusDialogState extends ConsumerState<_ImportStatusDialog> {
       ],
     );
   }
+}
 
-  String _runSubtitle(RdsoCrawlRun run) {
-    final List<String> parts = <String>[];
-    if (run.phase.trim().isNotEmpty) {
-      parts.add('Phase: ${run.phase}');
-    }
-    if (run.startedAt != null && run.startedAt!.trim().isNotEmpty) {
-      parts.add('Started: ${run.startedAt}');
-    }
-    if (run.finishedAt != null && run.finishedAt!.trim().isNotEmpty) {
-      parts.add('Finished: ${run.finishedAt}');
-    }
-    final List<String> counts = <String>[];
-    if (run.categoriesCount != null) {
-      counts.add('${run.categoriesCount} categories');
-    }
-    if (run.drawingsCount != null) {
-      counts.add('${run.drawingsCount} drawings');
-    }
-    if (run.filesCount != null) {
-      counts.add('${run.filesCount} files');
-    }
-    if (counts.isNotEmpty) {
-      parts.add(counts.join(', '));
-    }
-    return parts.isEmpty ? 'Run ${run.id}' : parts.join('\n');
+class _ImportRunCard extends StatelessWidget {
+  const _ImportRunCard({
+    required this.run,
+    required this.cancelling,
+    required this.cancelDisabled,
+    required this.onViewLogs,
+    this.onCancel,
+  });
+
+  final RdsoCrawlRun run;
+  final bool cancelling;
+  final bool cancelDisabled;
+  final VoidCallback onViewLogs;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    final _RunStatusStyle statusStyle = _runStatusStyle(run.status, colors);
+    final String? counts = _runCountsSummary(run);
+    final String? started = _formatCrawlRunTimestamp(run.startedAt);
+    final String? finished = _formatCrawlRunTimestamp(run.finishedAt);
+    final String phase = run.phase.trim();
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(10),
+        color: colors.surfaceContainerLowest,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _RunStatusChip(label: statusStyle.label, style: statusStyle),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '#${run.id}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (phase.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 4),
+              Text(
+                phase,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (started != null || finished != null) ...<Widget>[
+              const SizedBox(height: 6),
+              if (started != null)
+                _RunMetaRow(label: 'Started', value: started),
+              if (finished != null)
+                _RunMetaRow(label: 'Finished', value: finished),
+            ],
+            if (counts != null) ...<Widget>[
+              const SizedBox(height: 4),
+              Text(
+                counts,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 4,
+              runSpacing: 0,
+              children: <Widget>[
+                TextButton(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: onViewLogs,
+                  child: const Text('View logs'),
+                ),
+                if (onCancel != null)
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: colors.error,
+                    ),
+                    onPressed: cancelDisabled ? null : onCancel,
+                    child: cancelling
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colors.error,
+                            ),
+                          )
+                        : const Text('Cancel'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
+
+class _RunMetaRow extends StatelessWidget {
+  const _RunMetaRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final TextStyle? labelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
+    );
+    final TextStyle? valueStyle = theme.textTheme.bodySmall;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 58,
+            child: Text(label, style: labelStyle),
+          ),
+          Expanded(child: Text(value, style: valueStyle)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RunStatusChip extends StatelessWidget {
+  const _RunStatusChip({required this.label, required this.style});
+
+  final String label;
+  final _RunStatusStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: style.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: style.border),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: style.foreground,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _RunStatusStyle {
+  const _RunStatusStyle({
+    required this.label,
+    required this.foreground,
+    required this.background,
+    required this.border,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+  final Color border;
+}
+
+_RunStatusStyle _runStatusStyle(String rawStatus, ColorScheme colors) {
+  final String normalized =
+      rawStatus.trim().toLowerCase().replaceAll('-', '_');
+  final String label = rawStatus.trim().isEmpty
+      ? 'Unknown'
+      : rawStatus.trim().replaceAll('_', ' ');
+
+  if (normalized == 'running' ||
+      normalized == 'in_progress' ||
+      normalized == 'pending') {
+    return _RunStatusStyle(
+      label: _titleCase(label),
+      foreground: colors.onPrimaryContainer,
+      background: colors.primaryContainer,
+      border: colors.primary.withValues(alpha: 0.35),
+    );
+  }
+  if (normalized == 'failed' ||
+      normalized == 'error' ||
+      normalized == 'cancelled' ||
+      normalized == 'canceled') {
+    return _RunStatusStyle(
+      label: _titleCase(label),
+      foreground: colors.onErrorContainer,
+      background: colors.errorContainer,
+      border: colors.error.withValues(alpha: 0.35),
+    );
+  }
+  if (normalized == 'succeeded' ||
+      normalized == 'success' ||
+      normalized == 'completed' ||
+      normalized == 'done') {
+    return _RunStatusStyle(
+      label: _titleCase(label),
+      foreground: colors.onTertiaryContainer,
+      background: colors.tertiaryContainer,
+      border: colors.tertiary.withValues(alpha: 0.35),
+    );
+  }
+  return _RunStatusStyle(
+    label: _titleCase(label),
+    foreground: colors.onSurfaceVariant,
+    background: colors.surfaceContainerHighest,
+    border: colors.outlineVariant,
+  );
+}
+
+String _titleCase(String value) {
+  if (value.isEmpty) {
+    return value;
+  }
+  return value
+      .split(RegExp(r'\s+'))
+      .map(
+        (String word) => word.isEmpty
+            ? word
+            : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+      )
+      .join(' ');
+}
+
+String? _formatCrawlRunTimestamp(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return null;
+  }
+  final String trimmed = raw.trim();
+  final DateTime? parsed = DateTime.tryParse(trimmed);
+  if (parsed != null) {
+    final DateTime local = parsed.toLocal();
+    return DateFormat('MMM d, yyyy · HH:mm').format(local);
+  }
+  if (trimmed.length > 24) {
+    return '${trimmed.substring(0, 24)}…';
+  }
+  return trimmed;
+}
+
+String? _runCountsSummary(RdsoCrawlRun run) {
+  final List<String> counts = <String>[];
+  if (run.categoriesCount != null) {
+    counts.add('${run.categoriesCount} categories');
+  }
+  if (run.drawingsCount != null) {
+    counts.add('${run.drawingsCount} drawings');
+  }
+  if (run.filesCount != null) {
+    counts.add('${run.filesCount} files');
+  }
+  if (counts.isEmpty) {
+    return null;
+  }
+  return counts.join(' · ');
 }
 
 Future<void> runRdsoSyncNow({

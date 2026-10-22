@@ -87,7 +87,11 @@ class RdsoCrawlRun {
   final String? finishedAt;
   final String logTail;
 
-  bool get isRunning => status.trim().toUpperCase() == 'RUNNING';
+  bool get isRunning {
+    final String normalized =
+        status.trim().toLowerCase().replaceAll('-', '_');
+    return normalized == 'running' || normalized == 'in_progress';
+  }
 }
 
 enum RdsoLibraryListMode { tree, search }
@@ -137,6 +141,17 @@ class RdsoLibraryQuery {
     }
     return params;
   }
+
+  /// Web `/api/rdso/drawings/search` accepts only `q` (no pagination or filters).
+  Map<String, dynamic> drawingSearchQueryParameters() {
+    final String search = q.trim();
+    if (search.isEmpty) {
+      return const <String, dynamic>{};
+    }
+    return <String, dynamic>{'q': search};
+  }
+
+  bool get usesDrawingSearchEndpoint => q.trim().isNotEmpty;
 
   RdsoLibraryQuery copyWith({
     String? q,

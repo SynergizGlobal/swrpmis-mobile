@@ -4,11 +4,13 @@ List<RdsoSubhead> parseRdsoSubheads(dynamic data, {String categoryId = ''}) {
   final List<RdsoSubhead> out = <RdsoSubhead>[];
   for (final Map<String, dynamic> json in _maps(data)) {
     final String id = _display(json['id']);
-    final String name = _display(json['name']);
+    final String name = _display(
+      json['name'] ?? json['subheadName'] ?? json['title'],
+    );
     if (id.isEmpty && name.isEmpty) {
       continue;
     }
-    final String cat = _display(json['categoryId']);
+    final String cat = _display(json['categoryId'] ?? json['category_id']);
     out.add(
       RdsoSubhead(
         id: id.isEmpty ? name : id,
@@ -151,7 +153,7 @@ String? rdsoApiMessage(dynamic data) {
 List<RdsoCategory> parseRdsoCategories(dynamic data) {
   final List<RdsoCategory> out = <RdsoCategory>[];
   for (final Map<String, dynamic> json in _maps(data)) {
-    final String id = _display(json['id']);
+    final String id = _display(json['id'] ?? json['categoryId']);
     final String name = _display(json['name']);
     if (id.isEmpty && name.isEmpty) {
       continue;
@@ -240,8 +242,8 @@ Map<String, dynamic> _asMap(dynamic data) {
 }
 
 Iterable<Map<String, dynamic>> _maps(dynamic data) sync* {
-  final dynamic list = data is Map ? (data['items'] ?? data['data'] ?? data) : data;
-  if (list is! List) {
+  final List<dynamic>? list = _listPayload(data);
+  if (list == null) {
     return;
   }
   for (final dynamic item in list) {
@@ -251,6 +253,43 @@ Iterable<Map<String, dynamic>> _maps(dynamic data) sync* {
       yield Map<String, dynamic>.from(item);
     }
   }
+}
+
+/// Normalizes list endpoints that return a bare array or a wrapped payload.
+List<dynamic>? _listPayload(dynamic data) {
+  if (data == null) {
+    return null;
+  }
+  if (data is List) {
+    return data;
+  }
+  if (data is Map) {
+    final Map<String, dynamic> map = data is Map<String, dynamic>
+        ? data
+        : Map<String, dynamic>.from(data);
+    final dynamic nested = map['items'] ??
+        map['data'] ??
+        map['content'] ??
+        map['subheads'] ??
+        map['categories'] ??
+        map['drawings'] ??
+        map['files'] ??
+        map['posts'];
+    if (nested is List) {
+      return nested;
+    }
+    if (_looksLikeEntity(map)) {
+      return <dynamic>[map];
+    }
+  }
+  return null;
+}
+
+bool _looksLikeEntity(Map<String, dynamic> map) {
+  return map.containsKey('id') ||
+      map.containsKey('name') ||
+      map.containsKey('drawingKey') ||
+      map.containsKey('fileName');
 }
 
 String _display(dynamic value) {

@@ -26,6 +26,10 @@ String userFriendlyErrorMessage(DioException error) {
     case DioExceptionType.badCertificate:
       return 'Secure connection failed.';
     case DioExceptionType.unknown:
+      final Object? cause = error.error;
+      if (cause is FormatException) {
+        return 'Server returned an unexpected response format.';
+      }
       return error.message?.isNotEmpty == true
           ? error.message!
           : 'Unexpected network error.';

@@ -2,7 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
-import 'package:swr_pmis_mobile/src/app/config/app_config_provider.dart';
+import 'package:swr_pmis_mobile/src/app/config/app_config.dart';
+import 'package:swr_pmis_mobile/src/app/config/app_config_controller.dart';
 import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
 import 'package:swr_pmis_mobile/src/core/network/auth_interceptor.dart';
 import 'package:swr_pmis_mobile/src/core/network/session_cookie_manager.dart';
@@ -12,6 +13,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/providers/auth_to
 
 final sessionCookieManagerProvider =
     FutureProvider<SessionCookieManager>((ref) {
+  ref.watch(appConfigProvider.select((AppConfig config) => config.baseUrl));
   return SessionCookieManager.create();
 });
 

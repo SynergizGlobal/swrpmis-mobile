@@ -64,62 +64,86 @@ class RfiFilterField extends StatelessWidget {
     final AppPalette palette = AppPalette.of(context);
     final bool dark = Theme.of(context).brightness == Brightness.dark;
     final BorderRadius radius = BorderRadius.circular(AppTheme.cardRadius);
+    final bool hasValue = value != null && value!.trim().isNotEmpty;
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
     return Material(
       color: dark ? AppTheme.cardDark : AppTheme.surfaceLight,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        side: BorderSide(color: colors.outlineVariant),
       ),
       child: InkWell(
         borderRadius: radius,
         onTap: () => _pick(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    if (showLabel)
+        child: SizedBox(
+          height: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 7, 4, 7),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      if (showLabel) ...<Widget>[
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: palette.mutedText,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                height: 1.2,
+                                letterSpacing: 0.2,
+                              ),
+                        ),
+                        const SizedBox(height: 3),
+                      ],
                       Text(
-                        label,
+                        value ?? emptyLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: palette.mutedText,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 10,
-                          height: 1.1,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          height: 1.2,
+                          color: hasValue
+                              ? colors.onSurface
+                              : palette.mutedText,
                         ),
                       ),
-                    Text(
-                      value ?? emptyLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (onClear != null)
-                IconButton(
-                  tooltip: 'Clear $label',
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
+                    ],
                   ),
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close_rounded, size: 16),
                 ),
-              const Icon(Icons.arrow_drop_down_rounded, size: 20),
-            ],
+                if (onClear != null)
+                  IconButton(
+                    tooltip: 'Clear $label',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 32,
+                      height: 32,
+                    ),
+                    onPressed: onClear,
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: palette.mutedText,
+                    ),
+                  ),
+                Icon(
+                  Icons.arrow_drop_down_rounded,
+                  size: 22,
+                  color: palette.mutedText,
+                ),
+              ],
+            ),
           ),
         ),
       ),

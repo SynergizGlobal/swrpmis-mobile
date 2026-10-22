@@ -72,6 +72,24 @@ class RdsoRemoteDataSource {
     return parseRdsoRegister(response.data);
   }
 
+  Future<RdsoRevisionSnapshot> fetchDrawingSearch(RdsoLibraryQuery query) async {
+    final Map<String, dynamic> params = query.drawingSearchQueryParameters();
+    if (params.isEmpty) {
+      return RdsoRevisionSnapshot.empty;
+    }
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.rdsoDrawingsSearchPath,
+      queryParameters: params,
+    );
+    final List<RdsoDrawingRow> items = parseRdsoDrawingList(response.data);
+    return RdsoRevisionSnapshot(
+      items: items,
+      total: items.length,
+      page: 0,
+      size: items.isEmpty ? RdsoRevisionQuery.defaultSize : items.length,
+    );
+  }
+
   Future<List<RdsoDrawingFile>> fetchDrawingFiles(String drawingId) async {
     final String trimmed = drawingId.trim();
     if (trimmed.isEmpty) {
@@ -132,10 +150,20 @@ class RdsoRemoteDataSource {
   }
 
   Future<String> fetchCrawlRunLogs(String runId) async {
-    final Response<dynamic> response = await _dio.get<dynamic>(
+    final Response<String> response = await _dio.get<String>(
       ApiConstants.rdsoCrawlRunLogsPath(runId.trim()),
+      options: Options(
+        responseType: ResponseType.plain,
+        headers: const <String, String>{'Accept': 'text/plain, */*'},
+      ),
     );
     return parseRdsoCrawlLogs(response.data);
+  }
+
+  Future<void> cancelCrawlRun(String runId) async {
+    await _dio.post<dynamic>(
+      ApiConstants.rdsoCrawlRunCancelPath(runId.trim()),
+    );
   }
 
   Future<void> startCrawl() async {

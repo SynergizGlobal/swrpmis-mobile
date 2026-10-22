@@ -23,14 +23,17 @@ class _RdsoLibraryPageState extends ConsumerState<RdsoLibraryPage> {
   final Set<String> _expandedCategories = <String>{};
 
   void _toggleCategory(String categoryId) {
+    final bool expanding = !_expandedCategories.contains(categoryId);
     setState(() {
-      if (_expandedCategories.contains(categoryId)) {
-        _expandedCategories.remove(categoryId);
-      } else {
+      if (expanding) {
         _expandedCategories.add(categoryId);
+      } else {
+        _expandedCategories.remove(categoryId);
       }
     });
-    ref.read(rdsoLibraryControllerProvider.notifier).loadSubheads(categoryId);
+    if (expanding) {
+      ref.read(rdsoLibraryControllerProvider.notifier).loadSubheads(categoryId);
+    }
   }
 
   void _revealCategory(String categoryId) {
@@ -124,9 +127,14 @@ class _RdsoCategoryBrowseBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
+    final bool dark = colors.brightness == Brightness.dark;
+    final Color barFill = Color.alphaBlend(
+      colors.primary.withValues(alpha: dark ? 0.14 : 0.06),
+      colors.surface,
+    );
 
     return Material(
-      color: colors.surfaceContainerLow,
+      color: barFill,
       child: InkWell(
         onTap: onOpenCategories,
         child: DecoratedBox(
@@ -141,7 +149,7 @@ class _RdsoCategoryBrowseBar extends StatelessWidget {
               children: <Widget>[
                 IconButton(
                   tooltip: 'Categories',
-                  icon: const Icon(Icons.menu_rounded),
+                  icon: Icon(Icons.menu_rounded, color: colors.onSurface),
                   onPressed: onOpenCategories,
                 ),
                 Expanded(
@@ -149,6 +157,7 @@ class _RdsoCategoryBrowseBar extends StatelessWidget {
                     'Browse categories',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: colors.onSurface,
                     ),
                   ),
                 ),

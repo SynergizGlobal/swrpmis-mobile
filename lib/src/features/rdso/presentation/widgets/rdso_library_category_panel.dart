@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/providers/rdso_library_provider.dart';
@@ -107,52 +109,62 @@ class _RdsoLibraryCategoryPanelState extends State<RdsoLibraryCategoryPanel> {
     final List<RdsoCategory> filteredArchived = _filtered(archived);
     final bool hasFilter = _query.trim().isNotEmpty;
 
+    final bool inDrawer = widget.onClose != null;
+    final Widget header = Container(
+      padding: EdgeInsets.fromLTRB(16, inDrawer ? 14 : 16, 4, 14),
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: 0.08),
+        border: Border(
+          bottom: BorderSide(color: colors.outlineVariant),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Icon(Icons.account_tree_rounded, color: colors.primary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Categories',
+                  style: text.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colors.onSurface,
+                  ),
+                ),
+                Text(
+                  'Pick a subhead to load drawings',
+                  style: text.labelSmall?.copyWith(
+                    color: palette.mutedText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (widget.onClose != null)
+            IconButton(
+              tooltip: 'Close',
+              onPressed: widget.onClose,
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              icon: const Icon(Icons.close_rounded),
+            ),
+        ],
+      ),
+    );
+
     return Material(
       color: colors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
-            decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: 0.08),
-              border: Border(
-                bottom: BorderSide(color: colors.outlineVariant),
-              ),
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(Icons.account_tree_rounded, color: colors.primary, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Categories',
-                        style: text.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: colors.onSurface,
-                        ),
-                      ),
-                      Text(
-                        'Pick a subhead to load drawings',
-                        style: text.labelSmall?.copyWith(
-                          color: palette.mutedText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (widget.onClose != null)
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: widget.onClose,
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-              ],
-            ),
-          ),
+          if (inDrawer)
+            SafeArea(bottom: false, child: header)
+          else
+            header,
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
             child: TextField(
@@ -348,6 +360,7 @@ class _CategoryNode extends StatelessWidget {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final AppPalette palette = AppPalette.of(context);
     final bool loading = state.loadingSubheads.contains(category.id);
+    final Object? loadError = state.subheadErrorsByCategory[category.id];
     final List<RdsoSubhead> subheads =
         state.subheadsByCategory[category.id] ?? const <RdsoSubhead>[];
     final String q = filterQuery.trim().toLowerCase();
@@ -447,6 +460,7 @@ class _CategoryNode extends StatelessWidget {
               firstChild: const SizedBox.shrink(),
               secondChild: _SubheadList(
                 loading: loading && subheads.isEmpty,
+                loadError: loadError,
                 subheads: visibleSubheads,
                 showCategoryMatchHint: categoryMatches && visibleSubheads.isEmpty,
                 selectedSubheadId: state.selectedSubheadId,
@@ -468,6 +482,7 @@ class _CategoryNode extends StatelessWidget {
 class _SubheadList extends StatelessWidget {
   const _SubheadList({
     required this.loading,
+    this.loadError,
     required this.subheads,
     required this.showCategoryMatchHint,
     required this.selectedSubheadId,
@@ -475,6 +490,7 @@ class _SubheadList extends StatelessWidget {
   });
 
   final bool loading;
+  final Object? loadError;
   final List<RdsoSubhead> subheads;
   final bool showCategoryMatchHint;
   final String selectedSubheadId;
@@ -499,6 +515,20 @@ class _SubheadList extends StatelessWidget {
     }
 
     if (subheads.isEmpty) {
+      final Object? error = loadError;
+      if (error != null) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
+          child: Text(
+            error is DioException
+                ? userFriendlyErrorMessage(error)
+                : error.toString(),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.error,
+            ),
+          ),
+        );
+      }
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
         child: Text(

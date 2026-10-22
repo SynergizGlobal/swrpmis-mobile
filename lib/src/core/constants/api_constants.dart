@@ -175,6 +175,7 @@ class ApiConstants {
 
   static const String rdsoCategoriesPath = '/api/rdso/categories';
   static const String rdsoDrawingsRegisterPath = '/api/rdso/drawings/register';
+  static const String rdsoDrawingsSearchPath = '/api/rdso/drawings/search';
 
   static String rdsoFileViewPath(String fileId) =>
       '/api/rdso/files/$fileId/view';
@@ -203,6 +204,9 @@ class ApiConstants {
 
   static String rdsoCrawlRunLogsPath(String runId) =>
       '/api/rdso/admin/crawl/runs/$runId/logs';
+
+  static String rdsoCrawlRunCancelPath(String runId) =>
+      '/api/rdso/admin/crawl/runs/$runId/cancel';
 
   static const String rdsoCrawlStartPath = '/api/rdso/admin/crawl';
 

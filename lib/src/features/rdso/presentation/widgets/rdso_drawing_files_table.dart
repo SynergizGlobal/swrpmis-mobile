@@ -6,6 +6,11 @@ import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_parse.dart';
 
+/// Three action icons at [_kFileTableActionButtonSize] plus horizontal padding.
+const double _kFileTableActionColumnMinWidth = 112;
+const double _kFileTableActionCellPadding = 4;
+const Size _kFileTableActionButtonSize = Size(32, 32);
+
 class RdsoDrawingFilesTable extends StatelessWidget {
   const RdsoDrawingFilesTable({
     super.key,
@@ -40,7 +45,7 @@ class RdsoDrawingFilesTable extends StatelessWidget {
           _Col('Type', 100),
           _Col('Size', 90),
           _Col('Status', 100),
-          _Col('Actions', 120),
+          _Col('Actions', _kFileTableActionColumnMinWidth),
         ];
         final double total = columns.fold<double>(
           0,
@@ -147,7 +152,6 @@ class _FileRow extends StatelessWidget {
     final Color background = index.isEven
         ? (dark ? const Color(0xFF122844) : AppTheme.surfaceLight)
         : (dark ? const Color(0xFF0E1F36) : AppTheme.scaffoldLight);
-    final ColorScheme colors = Theme.of(context).colorScheme;
     final TextStyle cellStyle =
         Theme.of(context).textTheme.bodySmall?.copyWith(
           fontWeight: FontWeight.w600,
@@ -173,41 +177,113 @@ class _FileRow extends StatelessWidget {
             SizedBox(width: columns[3].minWidth, child: Padding(padding: const EdgeInsets.all(12), child: cell(file.status))),
             SizedBox(
               width: columns[4].minWidth,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: busy
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          IconButton(
-                            tooltip: 'View',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: file.hasFile ? onView : null,
-                            icon: Icon(Icons.visibility_rounded, size: 20, color: colors.primary),
-                          ),
-                          IconButton(
-                            tooltip: 'Download',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: file.hasFile ? onDownload : null,
-                            icon: Icon(Icons.download_rounded, size: 20, color: colors.primary),
-                          ),
-                          IconButton(
-                            tooltip: 'Send via mail',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: file.hasFile ? onMail : null,
-                            icon: Icon(Icons.mail_outline_rounded, size: 20, color: colors.primary),
-                          ),
-                        ],
-                      ),
+              child: _FileActionsCell(
+                busy: busy,
+                enabled: file.hasFile,
+                onView: onView,
+                onDownload: onDownload,
+                onMail: onMail,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FileActionsCell extends StatelessWidget {
+  const _FileActionsCell({
+    required this.busy,
+    required this.enabled,
+    required this.onView,
+    required this.onDownload,
+    required this.onMail,
+  });
+
+  final bool busy;
+  final bool enabled;
+  final VoidCallback onView;
+  final VoidCallback onDownload;
+  final VoidCallback onMail;
+
+  static const Size _kLoaderSize = Size(20, 20);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _kFileTableActionCellPadding,
+        vertical: _kFileTableActionCellPadding,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: busy
+            ? SizedBox(
+                width: _kLoaderSize.width,
+                height: _kLoaderSize.height,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _FileTableIconAction(
+                    tooltip: 'View',
+                    icon: Icons.visibility_rounded,
+                    onPressed: enabled ? onView : null,
+                  ),
+                  _FileTableIconAction(
+                    tooltip: 'Download',
+                    icon: Icons.download_rounded,
+                    onPressed: enabled ? onDownload : null,
+                  ),
+                  _FileTableIconAction(
+                    tooltip: 'Send via mail',
+                    icon: Icons.mail_outline_rounded,
+                    onPressed: enabled ? onMail : null,
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _FileTableIconAction extends StatelessWidget {
+  const _FileTableIconAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        fixedSize: _kFileTableActionButtonSize,
+        minimumSize: _kFileTableActionButtonSize,
+        maximumSize: _kFileTableActionButtonSize,
+      ),
+      constraints: BoxConstraints.tightFor(
+        width: _kFileTableActionButtonSize.width,
+        height: _kFileTableActionButtonSize.height,
+      ),
+      onPressed: onPressed,
+      icon: Icon(
+        icon,
+        size: 18,
+        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }

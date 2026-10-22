@@ -13,6 +13,7 @@ import 'package:swr_pmis_mobile/src/features/rdso/presentation/providers/rdso_li
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/widgets/rdso_library_dialogs.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/widgets/rdso_revision_table.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
+import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
 
@@ -39,7 +40,7 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
   }
 
   Future<void> _retry() {
-    return ref.read(rdsoLibraryControllerProvider.notifier).loadCategories();
+    return ref.read(rdsoLibraryControllerProvider.notifier).retrySearch();
   }
 
   Future<void> _onImportStatus() {
@@ -110,26 +111,12 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _syncBusy ? null : _onImportStatus,
-                    child: const Text('Import Status'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _syncBusy ? null : _onSyncNow,
-                    child: const Text('Sync Now'),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 _LibraryFilterBar(
                   state: state,
                   search: _search,
                   enabled: filtersEnabled,
+                  onImportStatus: _onImportStatus,
+                  onSyncNow: _onSyncNow,
                   onSearchChanged: (String value) {
                     ref
                         .read(rdsoLibraryControllerProvider.notifier)
@@ -240,11 +227,44 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
   }
 }
 
+class _LibraryFilterTwoColumnRow extends StatelessWidget {
+  const _LibraryFilterTwoColumnRow({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    assert(children.length == 2);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: SizedBox(
+            height: AppTheme.fieldHeight,
+            width: double.infinity,
+            child: children[0],
+          ),
+        ),
+        const SizedBox(width: _LibraryFilterBar._controlGap),
+        Expanded(
+          child: SizedBox(
+            height: AppTheme.fieldHeight,
+            width: double.infinity,
+            child: children[1],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _LibraryFilterBar extends StatelessWidget {
   const _LibraryFilterBar({
     required this.state,
     required this.search,
     required this.enabled,
+    required this.onImportStatus,
+    required this.onSyncNow,
     required this.onSearchChanged,
     required this.onCategory,
     required this.onStatus,
@@ -255,11 +275,29 @@ class _LibraryFilterBar extends StatelessWidget {
   final RdsoLibraryState state;
   final TextEditingController search;
   final bool enabled;
+  final VoidCallback onImportStatus;
+  final Future<void> Function() onSyncNow;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onCategory;
   final ValueChanged<String?> onStatus;
   final VoidCallback onSearch;
   final VoidCallback onReset;
+
+  static const double _controlGap = 8;
+
+  static ButtonStyle _filledControlStyle() {
+    return FilledButton.styleFrom(
+      minimumSize: const Size.fromHeight(AppTheme.fieldHeight),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
+  static ButtonStyle _outlinedControlStyle() {
+    return OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(AppTheme.fieldHeight),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -281,29 +319,71 @@ class _LibraryFilterBar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            TextField(
-              controller: search,
-              textInputAction: TextInputAction.search,
-              onChanged: onSearchChanged,
-              onSubmitted: (_) => onSearch(),
-              decoration: InputDecoration(
-                hintText: 'Search drawing no., title, keyword...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: search.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear',
-                        onPressed: () {
-                          search.clear();
-                          onSearchChanged('');
-                        },
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                isDense: true,
-              ),
+            _LibraryFilterTwoColumnRow(
+              children: <Widget>[
+                OutlinedButton(
+                  style: _outlinedControlStyle(),
+                  onPressed: enabled ? onImportStatus : null,
+                  child: const Text('Import Status'),
+                ),
+                FilledButton(
+                  style: _filledControlStyle(),
+                  onPressed: enabled ? onSyncNow : null,
+                  child: const Text('Sync Now'),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            RfiFilterGrid(
+            const SizedBox(height: _controlGap),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: SizedBox(
+                    height: AppTheme.fieldHeight,
+                    child: TextField(
+                      controller: search,
+                      textInputAction: TextInputAction.search,
+                      onChanged: onSearchChanged,
+                      onSubmitted: (_) => onSearch(),
+                      decoration: InputDecoration(
+                        hintText: 'Search drawing no., title, keyword...',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: search.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear',
+                                onPressed: () {
+                                  search.clear();
+                                  onSearchChanged('');
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: _controlGap),
+                FilledButton(
+                  style: _filledControlStyle().copyWith(
+                    minimumSize: WidgetStateProperty.all(
+                      const Size(96, AppTheme.fieldHeight),
+                    ),
+                    padding: WidgetStateProperty.all(
+                      const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                  ),
+                  onPressed: enabled ? onSearch : null,
+                  child: const Text('Search'),
+                ),
+              ],
+            ),
+            const SizedBox(height: _controlGap),
+            _LibraryFilterTwoColumnRow(
               children: <Widget>[
                 RfiFilterField(
                   label: 'Category',
@@ -332,6 +412,11 @@ class _LibraryFilterBar extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: _controlGap),
+            _LibraryFilterTwoColumnRow(
+              children: <Widget>[
                 RfiFilterField(
                   label: 'Status',
                   emptyLabel: '-- Select Status --',
@@ -341,23 +426,12 @@ class _LibraryFilterBar extends StatelessWidget {
                   onClear: draft.status.isEmpty ? null : () => onStatus(''),
                   onPick: (RfiFilterOption option) => onStatus(option.id),
                 ),
+                OutlinedButton(
+                  style: _outlinedControlStyle(),
+                  onPressed: enabled ? onReset : null,
+                  child: const Text('Reset'),
+                ),
               ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: enabled ? onSearch : null,
-                child: const Text('Search'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: enabled ? onReset : null,
-                child: const Text('Reset'),
-              ),
             ),
           ],
         ),

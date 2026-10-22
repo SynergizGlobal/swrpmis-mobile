@@ -4,8 +4,9 @@ class ApiHosts {
   static const String prodBaseUrl =
       'https://pmis-swrindianrailways.org/swrpmis/';
 
-  /// QA matches production until a separate QA host is provided.
-  static const String qaBaseUrl = prodBaseUrl;
+  /// QA SWR PMIS (`/swrpmis_qa/` on the staging host).
+  static const String qaBaseUrl =
+      'http://115.124.125.151:8443/swrpmis_qa/';
 
   /// Hosted privacy policy (deploy [docs/swr-pmis-privacy-policy.html] here).
   static const String privacyPolicyRelativePath =

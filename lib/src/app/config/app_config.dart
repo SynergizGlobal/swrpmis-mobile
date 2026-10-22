@@ -3,4 +3,11 @@ class AppConfig {
 
   final String appName;
   final String baseUrl;
+
+  AppConfig copyWith({String? baseUrl}) {
+    return AppConfig(
+      appName: appName,
+      baseUrl: baseUrl ?? this.baseUrl,
+    );
+  }
 }

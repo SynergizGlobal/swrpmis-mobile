@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/data/datasources/rdso_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
@@ -14,6 +16,7 @@ class RdsoLibraryState {
     required this.mode,
     required this.categories,
     required this.subheadsByCategory,
+    required this.subheadErrorsByCategory,
     required this.loadingSubheads,
     required this.selectedSubheadId,
     required this.selectedSubheadName,
@@ -30,6 +33,7 @@ class RdsoLibraryState {
       mode: RdsoLibraryListMode.tree,
       categories: <RdsoCategory>[],
       subheadsByCategory: <String, List<RdsoSubhead>>{},
+      subheadErrorsByCategory: <String, Object>{},
       loadingSubheads: <String>{},
       selectedSubheadId: '',
       selectedSubheadName: '',
@@ -45,6 +49,7 @@ class RdsoLibraryState {
   final RdsoLibraryListMode mode;
   final List<RdsoCategory> categories;
   final Map<String, List<RdsoSubhead>> subheadsByCategory;
+  final Map<String, Object> subheadErrorsByCategory;
   final Set<String> loadingSubheads;
   final String selectedSubheadId;
   final String selectedSubheadName;
@@ -54,15 +59,32 @@ class RdsoLibraryState {
   final Object? error;
 
   List<RdsoDrawingRow> get visibleDrawings {
-    return mode == RdsoLibraryListMode.search
-        ? searchSnapshot.items
-        : treeDrawings;
+    if (mode != RdsoLibraryListMode.search) {
+      return treeDrawings;
+    }
+    final List<RdsoDrawingRow> all = searchSnapshot.items;
+    if (!query.usesDrawingSearchEndpoint) {
+      return all;
+    }
+    final int pageSize = query.size < 1
+        ? RdsoRevisionQuery.defaultSize
+        : query.size;
+    final int page = query.page < 1 ? 1 : query.page;
+    final int start = (page - 1) * pageSize;
+    if (start >= all.length) {
+      return const <RdsoDrawingRow>[];
+    }
+    return all.sublist(start, math.min(start + pageSize, all.length));
   }
 
   int get total {
-    return mode == RdsoLibraryListMode.search
-        ? searchSnapshot.total
-        : treeDrawings.length;
+    if (mode != RdsoLibraryListMode.search) {
+      return treeDrawings.length;
+    }
+    if (query.usesDrawingSearchEndpoint) {
+      return searchSnapshot.items.length;
+    }
+    return searchSnapshot.total;
   }
 
   RdsoLibraryState copyWith({
@@ -71,6 +93,7 @@ class RdsoLibraryState {
     RdsoLibraryListMode? mode,
     List<RdsoCategory>? categories,
     Map<String, List<RdsoSubhead>>? subheadsByCategory,
+    Map<String, Object>? subheadErrorsByCategory,
     Set<String>? loadingSubheads,
     String? selectedSubheadId,
     String? selectedSubheadName,
@@ -86,6 +109,8 @@ class RdsoLibraryState {
       mode: mode ?? this.mode,
       categories: categories ?? this.categories,
       subheadsByCategory: subheadsByCategory ?? this.subheadsByCategory,
+      subheadErrorsByCategory:
+          subheadErrorsByCategory ?? this.subheadErrorsByCategory,
       loadingSubheads: loadingSubheads ?? this.loadingSubheads,
       selectedSubheadId: selectedSubheadId ?? this.selectedSubheadId,
       selectedSubheadName: selectedSubheadName ?? this.selectedSubheadName,
@@ -163,11 +188,24 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
 
   Future<void> loadSubheads(String categoryId) async {
     final String id = categoryId.trim();
-    if (id.isEmpty || state.subheadsByCategory.containsKey(id)) {
+    if (id.isEmpty) {
+      return;
+    }
+    final List<RdsoSubhead>? cached = state.subheadsByCategory[id];
+    if (cached != null && cached.isNotEmpty) {
+      return;
+    }
+    if (state.loadingSubheads.contains(id)) {
       return;
     }
     final Set<String> loading = Set<String>.from(state.loadingSubheads)..add(id);
-    state = state.copyWith(loadingSubheads: loading, clearError: true);
+    final Map<String, Object> errors =
+        Map<String, Object>.from(state.subheadErrorsByCategory)..remove(id);
+    state = state.copyWith(
+      loadingSubheads: loading,
+      subheadErrorsByCategory: errors,
+      clearError: true,
+    );
     try {
       final List<RdsoSubhead> subheads = await _source.fetchSubheads(id);
       if (_disposed) {
@@ -187,7 +225,14 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
         return;
       }
       final Set<String> done = Set<String>.from(state.loadingSubheads)..remove(id);
-      state = state.copyWith(loadingSubheads: done, error: error);
+      final Map<String, Object> errMap =
+          Map<String, Object>.from(state.subheadErrorsByCategory);
+      errMap[id] = error;
+      state = state.copyWith(
+        loadingSubheads: done,
+        subheadErrorsByCategory: errMap,
+        error: error,
+      );
     }
   }
 
@@ -267,10 +312,12 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
     }
     state = state.copyWith(
       query: state.query.copyWith(page: page),
-      loading: true,
       clearError: true,
     );
-    _loadSearch();
+    if (!state.query.usesDrawingSearchEndpoint) {
+      state = state.copyWith(loading: true);
+      _loadSearch();
+    }
   }
 
   void setPageSize(int size) {
@@ -283,10 +330,20 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
     state = state.copyWith(
       draft: state.draft.copyWith(size: size),
       query: next,
-      loading: true,
       clearError: true,
     );
-    _loadSearch();
+    if (!state.query.usesDrawingSearchEndpoint) {
+      state = state.copyWith(loading: true);
+      _loadSearch();
+    }
+  }
+
+  Future<void> retrySearch() {
+    if (state.mode != RdsoLibraryListMode.search) {
+      return loadCategories();
+    }
+    state = state.copyWith(loading: true, clearError: true);
+    return _loadSearch();
   }
 
   Future<void> _loadSearch() async {
@@ -294,12 +351,29 @@ class RdsoLibraryController extends AutoDisposeNotifier<RdsoLibraryState> {
     final RdsoLibraryQuery query = state.query;
     state = state.copyWith(loading: true, clearError: true);
     try {
+      if (!query.hasSearchFilters) {
+        if (_disposed || ticket != _ticket) {
+          return;
+        }
+        state = state.copyWith(
+          searchSnapshot: RdsoRevisionSnapshot.empty,
+          loading: false,
+          clearError: true,
+        );
+        return;
+      }
+
+      final Future<RdsoRevisionSnapshot> registerFuture =
+          query.usesDrawingSearchEndpoint
+          ? _source.fetchDrawingSearch(query)
+          : _source.fetchLibraryRegister(query);
+
       final List<Object> results = await Future.wait<Object>(
         <Future<Object>>[
           state.categories.isEmpty
               ? _source.fetchCategories()
               : Future<Object>.value(state.categories),
-          _source.fetchLibraryRegister(query),
+          registerFuture,
         ],
       );
       if (_disposed || ticket != _ticket) {
