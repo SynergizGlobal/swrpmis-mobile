@@ -34,7 +34,7 @@ class MailNotificationsMenu extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text(
                   '$count unread',
-                  style: const TextStyle(color: Colors.black54, fontSize: 12),
+                  style: MailTheme.mutedStyle(context, fontSize: 12),
                 ),
                 const Spacer(),
                 IconButton(
@@ -52,8 +52,11 @@ class MailNotificationsMenu extends ConsumerWidget {
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
-                  backgroundColor: MailColors.pillBlue,
-                  child: Icon(Icons.mail_outline, color: MailColors.pillBlueText),
+                  backgroundColor: MailTheme.pillBackground(context),
+                  child: Icon(
+                    Icons.mail_outline,
+                    color: MailTheme.pillForeground(context),
+                  ),
                 ),
                 title: Text(
                   message.displaySender,
@@ -73,15 +76,15 @@ class MailNotificationsMenu extends ConsumerWidget {
                       message.snippet,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black54),
+                      style: MailTheme.mutedStyle(context),
                     ),
                   ],
                 ),
                 trailing: Container(
                   width: 8,
                   height: 8,
-                  decoration: const BoxDecoration(
-                    color: MailColors.pillBlueText,
+                  decoration: BoxDecoration(
+                    color: MailTheme.unreadIndicator(context),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -89,11 +92,11 @@ class MailNotificationsMenu extends ConsumerWidget {
             ),
           PopupMenuItem<void>(
             onTap: () => context.go(MailModulePage.folderPath(MailFolder.inbox)),
-            child: const Center(
+            child: Center(
               child: Text(
                 'View all inbox',
                 style: TextStyle(
-                  color: MailColors.pillBlueText,
+                  color: MailTheme.linkAccent(context),
                   fontWeight: FontWeight.w600,
                 ),
               ),

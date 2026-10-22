@@ -107,29 +107,16 @@ class UtilityShiftingUploadsTable extends StatelessWidget {
         final _ColumnLayout layout = _ColumnLayout.fit(columns, viewport);
         return TableScrollFrame(
           width: math.max(layout.total, viewport),
-          slivers: <Widget>[
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _HeaderDelegate(
-                columns: columns,
-                widths: layout.widths,
-              ),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate((
-                BuildContext context,
-                int index,
-              ) {
-                return _DataRow(
-                  row: rows[index],
-                  columns: columns,
-                  widths: layout.widths,
-                  index: index,
-                );
-              }, childCount: rows.length),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          ],
+          header: _TableHeaderRow(columns: columns, widths: layout.widths),
+          itemCount: rows.length,
+          itemBuilder: (BuildContext context, int index) {
+            return _DataRow(
+              row: rows[index],
+              columns: columns,
+              widths: layout.widths,
+              index: index,
+            );
+          },
         );
       },
     );
@@ -177,8 +164,8 @@ class _ColumnLayout {
   }
 }
 
-class _HeaderDelegate extends SliverPersistentHeaderDelegate {
-  _HeaderDelegate({required this.columns, required this.widths})
+class _TableHeaderRow extends StatelessWidget {
+  const _TableHeaderRow({required this.columns, required this.widths})
     : assert(columns.length == widths.length);
 
   final List<UtilityShiftingUploadTableColumn> columns;
@@ -187,17 +174,7 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   static const double _height = 52;
 
   @override
-  double get minExtent => _height;
-
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+  Widget build(BuildContext context) {
     return ColoredBox(
       color: AppTheme.brandPrimary,
       child: Row(
@@ -227,20 +204,6 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
         ],
       ),
     );
-  }
-
-  @override
-  bool shouldRebuild(covariant _HeaderDelegate oldDelegate) {
-    if (oldDelegate.columns.length != columns.length) {
-      return true;
-    }
-    for (int i = 0; i < columns.length; i++) {
-      if (oldDelegate.columns[i].label != columns[i].label ||
-          oldDelegate.widths[i] != widths[i]) {
-        return true;
-      }
-    }
-    return false;
   }
 }
 

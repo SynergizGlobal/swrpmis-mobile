@@ -1,0 +1,211 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+
+void main() {
+  Future<void> pumpWithoutOverflow(
+    WidgetTester tester,
+    Widget home,
+    List<FlutterErrorDetails> errors,
+  ) async {
+    await tester.pumpWidget(MaterialApp(home: home));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(
+      errors.where(
+        (FlutterErrorDetails details) =>
+            details.exceptionAsString().contains('RenderFlex overflowed'),
+      ),
+      isEmpty,
+    );
+  }
+
+  testWidgets('PagedTableColumn fits bounded scaffold without overflow', (
+    WidgetTester tester,
+  ) async {
+    const int rowCount = 30;
+    const double rowHeight = 48;
+    final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
+    final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+    FlutterError.onError = errors.add;
+
+    addTearDown(() {
+      FlutterError.onError = previous;
+    });
+
+    await pumpWithoutOverflow(
+      tester,
+      Scaffold(
+        body: PagedTableColumn(
+          header: const SizedBox(height: 120, child: Text('Header')),
+          footer: const SizedBox(height: 56, child: Text('Footer')),
+          body: TableScrollFrame(
+            width: 400,
+            header: const SizedBox(
+              height: 52,
+              child: ColoredBox(
+                color: Colors.blue,
+                child: Text('Table header'),
+              ),
+            ),
+            itemCount: rowCount,
+            itemBuilder: (BuildContext context, int index) {
+              return SizedBox(
+                height: rowHeight,
+                child: Text('Row $index'),
+              );
+            },
+          ),
+        ),
+      ),
+      errors,
+    );
+  });
+
+  testWidgets('PagedTableColumn fits TabBarView tab without overflow', (
+    WidgetTester tester,
+  ) async {
+    final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
+    final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+    FlutterError.onError = errors.add;
+
+    addTearDown(() {
+      FlutterError.onError = previous;
+    });
+
+    await pumpWithoutOverflow(
+      tester,
+      DefaultTabController(
+        length: 1,
+        child: Scaffold(
+          appBar: AppBar(
+            bottom: const TabBar(tabs: <Widget>[Tab(text: 'Tab')]),
+          ),
+          body: TabBarView(
+            children: <Widget>[
+              PagedTableColumn(
+                header: const SizedBox(height: 80, child: Text('Header')),
+                footer: const SizedBox(height: 48, child: Text('Footer')),
+                body: TableScrollFrame(
+                  width: 300,
+                  header: const SizedBox(height: 52, child: Text('Cols')),
+                  itemCount: 25,
+                  itemBuilder: (BuildContext context, int index) {
+                    return SizedBox(
+                      height: 48,
+                      child: Text('Row $index'),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      errors,
+    );
+  });
+
+  testWidgets(
+    'PagedTableColumn fits tall header and wide table without overflow',
+    (WidgetTester tester) async {
+      const int rowCount = 25;
+      const double rowHeight = 45;
+      const double tableHeaderHeight = 52;
+      final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
+      final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+      FlutterError.onError = errors.add;
+
+      addTearDown(() {
+        FlutterError.onError = previous;
+      });
+
+      await pumpWithoutOverflow(
+        tester,
+        Scaffold(
+          appBar: AppBar(title: const Text('Revision Monitor')),
+          body: PagedTableColumn(
+            header: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: List<Widget>.generate(
+                      6,
+                      (int i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: SizedBox(
+                          height: 44,
+                          child: Text('Filter row $i'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            footer: const SizedBox(height: 56, child: Text('Pagination')),
+            body: TableScrollFrame(
+              width: 900,
+              header: SizedBox(
+                height: tableHeaderHeight,
+                child: const ColoredBox(
+                  color: Colors.blue,
+                  child: Text('Table header'),
+                ),
+              ),
+              itemCount: rowCount,
+              itemBuilder: (BuildContext context, int index) {
+                return SizedBox(
+                  height: rowHeight,
+                  child: Text('Drawing row $index'),
+                );
+              },
+            ),
+          ),
+        ),
+        errors,
+      );
+    },
+  );
+
+  testWidgets(
+    'PagedTableColumn scrolls tall filters instead of overflowing',
+    (WidgetTester tester) async {
+      final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
+      final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+      FlutterError.onError = errors.add;
+
+      addTearDown(() {
+        FlutterError.onError = previous;
+      });
+
+      await pumpWithoutOverflow(
+        tester,
+        Scaffold(
+          body: PagedTableColumn(
+            header: Column(
+              children: List<Widget>.generate(
+                20,
+                (int i) => SizedBox(height: 56, child: Text('Filter $i')),
+              ),
+            ),
+            footer: const SizedBox(height: 56, child: Text('Footer')),
+            body: TableScrollFrame(
+              width: 1200,
+              header: const SizedBox(height: 52, child: Text('Header row')),
+              itemCount: 30,
+              itemBuilder: (BuildContext context, int index) {
+                return SizedBox(height: 44, child: Text('Row $index'));
+              },
+            ),
+          ),
+        ),
+        errors,
+      );
+    },
+  );
+}

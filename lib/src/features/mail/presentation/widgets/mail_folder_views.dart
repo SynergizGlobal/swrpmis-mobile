@@ -63,7 +63,7 @@ class _MailInboxListViewState extends ConsumerState<MailInboxListView> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
                 controller: _search,
-                decoration: mailSearchDecoration(hint: 'Search mail...'),
+                decoration: mailSearchDecoration(context: context, hint: 'Search mail...'),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -129,7 +129,7 @@ class _InboxRow extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: message.read
                       ? Colors.transparent
-                      : MailColors.unreadDot,
+                      : MailTheme.unreadIndicator(context),
                 ),
               ),
             ),
@@ -148,7 +148,7 @@ class _InboxRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      mailReferencePill(message.referenceId),
+                      mailReferencePill(context, message.referenceId),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -165,7 +165,7 @@ class _InboxRow extends StatelessWidget {
                         ),
                         TextSpan(
                           text: ' — ${message.snippet}',
-                          style: const TextStyle(color: Colors.black54),
+                          style: MailTheme.mutedStyle(context),
                         ),
                       ],
                     ),
@@ -175,11 +175,11 @@ class _InboxRow extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: <Widget>[
-                      mailMetaPill(message.category),
-                      mailMetaPill(message.priority),
-                      mailMetaPill(message.status),
+                      mailMetaPill(context, message.category),
+                      mailMetaPill(context, message.priority),
+                      mailMetaPill(context, message.status),
                       for (final String tag in message.tags)
-                        mailMetaPill('#$tag'),
+                        mailMetaPill(context, '#$tag'),
                     ],
                   ),
                 ],
@@ -191,7 +191,9 @@ class _InboxRow extends StatelessWidget {
                   tooltip: message.starred ? 'Unstar' : 'Star',
                   icon: Icon(
                     message.starred ? Icons.star_rounded : Icons.star_outline_rounded,
-                    color: message.starred ? Colors.amber : Colors.black45,
+                    color: message.starred
+                        ? Colors.amber
+                        : MailTheme.subtleIcon(context),
                   ),
                   onPressed: onStar,
                 ),
@@ -201,7 +203,11 @@ class _InboxRow extends StatelessWidget {
                   onPressed: onTrash,
                 ),
                 if (message.hasAttachments)
-                  const Icon(Icons.attach_file, size: 18, color: Colors.black45),
+                  Icon(
+                    Icons.attach_file,
+                    size: 18,
+                    color: MailTheme.subtleIcon(context),
+                  ),
               ],
             ),
           ],
@@ -260,17 +266,17 @@ class _MailDraftsListViewState extends ConsumerState<MailDraftsListView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
+                        Text(
                           'Drafts',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            color: MailColors.navy,
+                            color: MailTheme.heading(context),
                           ),
                         ),
                         Text(
                           '${filtered.length} drafts messages',
-                          style: const TextStyle(color: Colors.black54),
+                          style: MailTheme.mutedStyle(context),
                         ),
                       ],
                     ),
@@ -279,7 +285,7 @@ class _MailDraftsListViewState extends ConsumerState<MailDraftsListView> {
                     width: 220,
                     child: TextField(
                       controller: _search,
-                      decoration: mailSearchDecoration(hint: 'Search drafts...'),
+                      decoration: mailSearchDecoration(context: context, hint: 'Search drafts...'),
                       onChanged: (_) => setState(() => _page = 1),
                     ),
                   ),
@@ -363,10 +369,7 @@ class _DraftRow extends StatelessWidget {
                     Text(formatMailDateShort(modified)),
                     Text(
                       formatMailTime(modified),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
+                      style: MailTheme.mutedStyle(context, fontSize: 12),
                     ),
                   ],
                 ),
@@ -379,7 +382,9 @@ class _DraftRow extends StatelessWidget {
                       message.starred
                           ? Icons.star_rounded
                           : Icons.star_outline_rounded,
-                      color: message.starred ? Colors.amber : MailColors.navy,
+                      color: message.starred
+                          ? Colors.amber
+                          : MailTheme.navIcon(context),
                     ),
                     onPressed: onStar,
                   ),
@@ -451,17 +456,17 @@ class _MailSentListViewState extends ConsumerState<MailSentListView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
+                        Text(
                           'Sent Mail',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            color: MailColors.navy,
+                            color: MailTheme.heading(context),
                           ),
                         ),
                         Text(
                           '${filtered.length} messages',
-                          style: const TextStyle(color: Colors.black54),
+                          style: MailTheme.mutedStyle(context),
                         ),
                       ],
                     ),
@@ -471,6 +476,7 @@ class _MailSentListViewState extends ConsumerState<MailSentListView> {
                     child: TextField(
                       controller: _search,
                       decoration: mailSearchDecoration(
+                        context: context,
                         hint: 'Search sent mails...',
                       ),
                       onChanged: (_) => setState(() => _page = 1),
@@ -548,15 +554,12 @@ class _SentRow extends StatelessWidget {
                     Text(formatMailDateShort(when)),
                     Text(
                       formatMailTime(when),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
+                      style: MailTheme.mutedStyle(context, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              mailSentStatusBadge(),
+              mailSentStatusBadge(context),
               IconButton(
                 icon: const Icon(Icons.delete_outline_rounded),
                 onPressed: onTrash,
@@ -613,20 +616,21 @@ class _MailStarredListViewState extends ConsumerState<MailStarredListView> {
                 children: <Widget>[
                   Text(
                     widget.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: MailColors.navy,
+                      color: MailTheme.heading(context),
                     ),
                   ),
                   Text(
                     '${filtered.length} starred threads',
-                    style: const TextStyle(color: Colors.black54),
+                    style: MailTheme.mutedStyle(context),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _search,
                     decoration: mailSearchDecoration(
+                      context: context,
                       hint: 'Search starred mails...',
                     ),
                     onChanged: (_) => setState(() {}),
@@ -659,7 +663,7 @@ class _MailStarredListViewState extends ConsumerState<MailStarredListView> {
                           ),
                           trailing: Text(
                             formatMailDateShort(message.sentAt ?? message.createdAt),
-                            style: const TextStyle(color: Colors.black54),
+                            style: MailTheme.mutedStyle(context),
                           ),
                           onTap: () => showMailDetailSheet(context, message),
                         );
@@ -755,12 +759,10 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
+                        Text(
                           'LABEL',
-                          style: TextStyle(
-                            fontSize: 11,
+                          style: MailTheme.mutedStyle(context, fontSize: 11).copyWith(
                             letterSpacing: 0.8,
-                            color: Colors.black54,
                           ),
                         ),
                         Text(
@@ -770,9 +772,9 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'Mails assigned to this label',
-                          style: TextStyle(color: Colors.black54),
+                          style: MailTheme.mutedStyle(context),
                         ),
                       ],
                     ),
@@ -783,7 +785,7 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black26),
+                      border: Border.all(color: MailTheme.borderSubtle(context)),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text('${filtered.length} mails'),
@@ -795,7 +797,7 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
                 controller: _search,
-                decoration: mailSearchDecoration(hint: 'Search mails...'),
+                decoration: mailSearchDecoration(context: context, hint: 'Search mails...'),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -815,10 +817,7 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
                       children: <Widget>[
                         Text(
                           formatMailDate(message.sentAt ?? message.createdAt),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.black54,
-                          ),
+                          style: MailTheme.mutedStyle(context, fontSize: 12),
                         ),
                         IconButton(
                           icon: Icon(

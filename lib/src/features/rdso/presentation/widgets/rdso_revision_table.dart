@@ -6,6 +6,11 @@ import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_parse.dart';
 
+/// Action cells: [minWidth] minus horizontal padding must fit two [_kTableActionButtonSize] icons.
+const double _kTableActionColumnMinWidth = 112;
+const double _kTableActionCellPadding = 4;
+const Size _kTableActionButtonSize = Size(32, 32);
+
 class RdsoRevisionTableColumn {
   const RdsoRevisionTableColumn({
     required this.label,
@@ -56,21 +61,15 @@ List<RdsoRevisionTableColumn> rdsoLibraryTableColumns({
     ),
     RdsoRevisionTableColumn(
       label: 'Action',
-      minWidth: 56,
+      minWidth: _kTableActionColumnMinWidth,
       read: _blank,
       buildCell: (BuildContext context, RdsoDrawingRow row) {
         return Align(
           alignment: Alignment.centerLeft,
-          child: IconButton(
+          child: _TableIconAction(
             tooltip: 'Open drawing',
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: Icons.visibility_rounded,
             onPressed: () => onOpen(row),
-            icon: Icon(
-              Icons.visibility_rounded,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
-            ),
           ),
         );
       },
@@ -116,7 +115,7 @@ List<RdsoRevisionTableColumn> rdsoRevisionTableColumns({
     ),
     RdsoRevisionTableColumn(
       label: 'Action',
-      minWidth: 96,
+      minWidth: _kTableActionColumnMinWidth,
       read: _blank,
       buildCell: (BuildContext context, RdsoDrawingRow row) {
         return _Actions(
@@ -210,30 +209,17 @@ Widget _rdsoTableLayout({
       final _ColumnLayout layout = _ColumnLayout.fit(columns, viewport);
       return TableScrollFrame(
         width: math.max(layout.total, viewport),
-        slivers: <Widget>[
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _HeaderDelegate(
-              columns: columns,
-              widths: layout.widths,
-            ),
-          ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate((
-              BuildContext context,
-              int index,
-            ) {
-              return _DataRow(
-                row: rows[index],
-                columns: columns,
-                widths: layout.widths,
-                index: index,
-                onTap: onRowTap == null ? null : () => onRowTap(rows[index]),
-              );
-            }, childCount: rows.length),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-        ],
+        header: _TableHeaderRow(columns: columns, widths: layout.widths),
+        itemCount: rows.length,
+        itemBuilder: (BuildContext context, int index) {
+          return _DataRow(
+            row: rows[index],
+            columns: columns,
+            widths: layout.widths,
+            index: index,
+            onTap: onRowTap == null ? null : () => onRowTap(rows[index]),
+          );
+        },
       );
     },
   );
@@ -274,8 +260,8 @@ class _ColumnLayout {
   }
 }
 
-class _HeaderDelegate extends SliverPersistentHeaderDelegate {
-  _HeaderDelegate({required this.columns, required this.widths})
+class _TableHeaderRow extends StatelessWidget {
+  const _TableHeaderRow({required this.columns, required this.widths})
     : assert(columns.length == widths.length);
 
   final List<RdsoRevisionTableColumn> columns;
@@ -284,17 +270,7 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   static const double _height = 52;
 
   @override
-  double get minExtent => _height;
-
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+  Widget build(BuildContext context) {
     return ColoredBox(
       color: AppTheme.brandPrimary,
       child: Row(
@@ -324,20 +300,6 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
         ],
       ),
     );
-  }
-
-  @override
-  bool shouldRebuild(covariant _HeaderDelegate oldDelegate) {
-    if (oldDelegate.columns.length != columns.length) {
-      return true;
-    }
-    for (int i = 0; i < columns.length; i++) {
-      if (oldDelegate.columns[i].label != columns[i].label ||
-          oldDelegate.widths[i] != widths[i]) {
-        return true;
-      }
-    }
-    return false;
   }
 }
 
@@ -378,8 +340,10 @@ class _DataRow extends StatelessWidget {
             SizedBox(
               width: widths[i],
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: columns[i].label == 'Action'
+                      ? _kTableActionCellPadding
+                      : 12,
                   vertical: 12,
                 ),
                 child: _cell(context, columns[i], dark, i == 0),
@@ -490,7 +454,6 @@ class _Actions extends StatelessWidget {
         ),
       );
     }
-    final ColorScheme colors = Theme.of(context).colorScheme;
     return Align(
       alignment: Alignment.centerLeft,
       child: busy
@@ -502,36 +465,55 @@ class _Actions extends StatelessWidget {
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                IconButton(
+                _TableIconAction(
                   tooltip: 'View file',
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 36,
-                    height: 36,
-                  ),
+                  icon: Icons.visibility_rounded,
                   onPressed: onPreview,
-                  icon: Icon(
-                    Icons.visibility_rounded,
-                    size: 20,
-                    color: colors.primary,
-                  ),
                 ),
-                IconButton(
+                _TableIconAction(
                   tooltip: 'Download file',
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 36,
-                    height: 36,
-                  ),
+                  icon: Icons.download_rounded,
                   onPressed: onDownload,
-                  icon: Icon(
-                    Icons.download_rounded,
-                    size: 20,
-                    color: colors.primary,
-                  ),
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _TableIconAction extends StatelessWidget {
+  const _TableIconAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        fixedSize: _kTableActionButtonSize,
+        minimumSize: _kTableActionButtonSize,
+        maximumSize: _kTableActionButtonSize,
+      ),
+      constraints: BoxConstraints.tightFor(
+        width: _kTableActionButtonSize.width,
+        height: _kTableActionButtonSize.height,
+      ),
+      onPressed: onPressed,
+      icon: Icon(
+        icon,
+        size: 18,
+        color: Theme.of(context).colorScheme.primary,
+      ),
     );
   }
 }

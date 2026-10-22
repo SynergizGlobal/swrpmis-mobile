@@ -27,18 +27,30 @@ class AppShell extends ConsumerWidget {
     };
 
     final bool onRfi = navigationShell.currentIndex == 3;
+    final bool onHomeShell = navigationShell.currentIndex == 0;
+    final GoRouter router = GoRouter.of(context);
 
     return PopScope(
-      canPop: !onRfi,
+      canPop: onRfi ? false : router.canPop() || onHomeShell,
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop || !onRfi) {
+        if (didPop) {
           return;
         }
-        handleRfiBack(
-          ref,
-          shellIndex: navigationShell.currentIndex,
-          goHome: () => navigationShell.goBranch(0),
-        );
+        if (onRfi) {
+          handleRfiBack(
+            ref,
+            shellIndex: navigationShell.currentIndex,
+            goHome: () => navigationShell.goBranch(0),
+          );
+          return;
+        }
+        if (router.canPop()) {
+          router.pop();
+          return;
+        }
+        if (!onHomeShell) {
+          navigationShell.goBranch(0);
+        }
       },
       child: Scaffold(
         appBar: AppBar(

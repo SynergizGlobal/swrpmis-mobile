@@ -171,7 +171,7 @@ void main() {
   test('logo url uses the app base url and empty filters stay null', () {
     expect(
       RfiLogLinks.logoUrl(ApiHosts.qaBaseUrl),
-      'http://115.124.125.151:8443/swrpmis_qa/static/media/swrlogo.ed293643301635609477.png',
+      'https://pmis-swrindianrailways.org/swrpmis/static/media/swrlogo.ed293643301635609477.png',
     );
     final Map<String, dynamic> body = const RfiInspectionFilter(
       structureId: 43,

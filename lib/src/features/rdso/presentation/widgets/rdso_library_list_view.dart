@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
@@ -27,7 +26,6 @@ class RdsoLibraryListView extends ConsumerStatefulWidget {
 
 class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
   final TextEditingController _search = TextEditingController();
-  final Set<String> _expandedCategories = <String>{};
   bool _syncBusy = false;
 
   @override
@@ -112,21 +110,20 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: <Widget>[
-                    OutlinedButton.icon(
-                      onPressed: _syncBusy ? null : _onImportStatus,
-                      icon: const Icon(Icons.info_outline_rounded, size: 18),
-                      label: const Text('Import Status'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: _syncBusy ? null : _onSyncNow,
-                      icon: const Icon(Icons.sync_rounded, size: 18),
-                      label: const Text('Sync Now'),
-                    ),
-                  ],
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _syncBusy ? null : _onImportStatus,
+                    child: const Text('Import Status'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _syncBusy ? null : _onSyncNow,
+                    child: const Text('Sync Now'),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _LibraryFilterBar(
@@ -162,40 +159,6 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
                     setState(() {});
                   },
                 ),
-                const SizedBox(height: 12),
-                if (!failed && state.categories.isNotEmpty)
-                  _CategoryTree(
-                    state: state,
-                    expanded: _expandedCategories,
-                    onToggle: (String categoryId) {
-                      setState(() {
-                        if (_expandedCategories.contains(categoryId)) {
-                          _expandedCategories.remove(categoryId);
-                        } else {
-                          _expandedCategories.add(categoryId);
-                        }
-                      });
-                      ref
-                          .read(rdsoLibraryControllerProvider.notifier)
-                          .loadSubheads(categoryId);
-                    },
-                    onSelectSubhead: (RdsoSubhead subhead) {
-                      ref
-                          .read(rdsoLibraryControllerProvider.notifier)
-                          .selectSubhead(subhead);
-                    },
-                  ),
-                if (state.selectedSubheadName.trim().isNotEmpty &&
-                    state.mode == RdsoLibraryListMode.tree)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      state.selectedSubheadName,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -273,135 +236,6 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
           ),
         );
       },
-    );
-  }
-}
-
-class _CategoryTree extends StatelessWidget {
-  const _CategoryTree({
-    required this.state,
-    required this.expanded,
-    required this.onToggle,
-    required this.onSelectSubhead,
-  });
-
-  final RdsoLibraryState state;
-  final Set<String> expanded;
-  final ValueChanged<String> onToggle;
-  final ValueChanged<RdsoSubhead> onSelectSubhead;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette palette = AppPalette.of(context);
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    return Material(
-      color: palette.cardSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        side: BorderSide(color: colors.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-              child: Text(
-                'Category',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            for (final RdsoCategory category in state.categories)
-              _CategoryNode(
-                category: category,
-                expanded: expanded.contains(category.id),
-                loading: state.loadingSubheads.contains(category.id),
-                subheads: state.subheadsByCategory[category.id] ??
-                    const <RdsoSubhead>[],
-                selectedSubheadId: state.selectedSubheadId,
-                onToggle: () => onToggle(category.id),
-                onSelectSubhead: onSelectSubhead,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryNode extends StatelessWidget {
-  const _CategoryNode({
-    required this.category,
-    required this.expanded,
-    required this.loading,
-    required this.subheads,
-    required this.selectedSubheadId,
-    required this.onToggle,
-    required this.onSelectSubhead,
-  });
-
-  final RdsoCategory category;
-  final bool expanded;
-  final bool loading;
-  final List<RdsoSubhead> subheads;
-  final String selectedSubheadId;
-  final VoidCallback onToggle;
-  final ValueChanged<RdsoSubhead> onSelectSubhead;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        ListTile(
-          dense: true,
-          leading: Icon(
-            expanded ? Icons.expand_more : Icons.chevron_right,
-            color: colors.primary,
-          ),
-          title: Text(
-            category.name,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          onTap: onToggle,
-        ),
-        if (expanded)
-          Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: loading && subheads.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  )
-                : subheads.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 0, 12, 8),
-                    child: Text('No subheads'),
-                  )
-                : Column(
-                    children: subheads
-                        .map(
-                          (RdsoSubhead subhead) => ListTile(
-                            dense: true,
-                            selected: subhead.id == selectedSubheadId,
-                            title: Text(subhead.name),
-                            onTap: () => onSelectSubhead(subhead),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-          ),
-      ],
     );
   }
 }
@@ -510,20 +344,20 @@ class _LibraryFilterBar extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                FilledButton.icon(
-                  onPressed: enabled ? onSearch : null,
-                  icon: const Icon(Icons.search_rounded, size: 18),
-                  label: const Text('Search'),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? onReset : null,
-                  child: const Text('Reset'),
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: enabled ? onSearch : null,
+                child: const Text('Search'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: enabled ? onReset : null,
+                child: const Text('Reset'),
+              ),
             ),
           ],
         ),

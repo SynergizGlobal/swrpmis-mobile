@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:swr_pmis_mobile/src/core/navigation/app_system_back.dart';
 
 CustomTransitionPage<T> fadeSlidePage<T>({
   required LocalKey key,
@@ -9,7 +10,7 @@ CustomTransitionPage<T> fadeSlidePage<T>({
 }) {
   return CustomTransitionPage<T>(
     key: key,
-    child: child,
+    child: AppSystemBackScope(child: child),
     transitionDuration: duration,
     reverseTransitionDuration: reverseDuration,
     transitionsBuilder: (

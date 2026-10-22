@@ -48,27 +48,17 @@ class RfiLogTable extends StatelessWidget {
         );
         return TableScrollFrame(
           width: math.max(sum, viewport),
-          slivers: <Widget>[
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _LogHeaderDelegate(columns: _columns),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate((
-                BuildContext context,
-                int index,
-              ) {
-                return _LogDataRow(
-                  row: rows[index],
-                  index: index,
-                  onPreview: onPreview,
-                  onDownload: onDownload,
-                  downloadingRow: downloadingRow,
-                );
-              }, childCount: rows.length),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          ],
+          header: const _LogHeaderRow(columns: _columns),
+          itemCount: rows.length,
+          itemBuilder: (BuildContext context, int index) {
+            return _LogDataRow(
+              row: rows[index],
+              index: index,
+              onPreview: onPreview,
+              onDownload: onDownload,
+              downloadingRow: downloadingRow,
+            );
+          },
         );
       },
     );
@@ -83,25 +73,15 @@ class _LogColumn {
   final String? group;
 }
 
-class _LogHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _LogHeaderDelegate({required this.columns});
+class _LogHeaderRow extends StatelessWidget {
+  const _LogHeaderRow({required this.columns});
 
   final List<_LogColumn> columns;
 
   static const double _height = 64;
 
   @override
-  double get minExtent => _height;
-
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+  Widget build(BuildContext context) {
     final List<Widget> cells = <Widget>[];
     int index = 0;
     while (index < columns.length) {
@@ -149,9 +129,6 @@ class _LogHeaderDelegate extends SliverPersistentHeaderDelegate {
       child: Row(children: cells),
     );
   }
-
-  @override
-  bool shouldRebuild(covariant _LogHeaderDelegate oldDelegate) => false;
 }
 
 const TextStyle _headerStyle = TextStyle(

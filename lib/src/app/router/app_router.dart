@@ -36,6 +36,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_page.dar
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_section_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_flow_provider.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/reports_page.dart';
+import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/privacy_policy_page.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/settings_page.dart';
 import 'package:swr_pmis_mobile/src/features/shell/presentation/app_shell.dart';
 import 'package:swr_pmis_mobile/src/features/works/presentation/pages/execution_progress_page.dart';
@@ -273,6 +274,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: SettingsPage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
           return fadeSlidePage(key: state.pageKey, child: const SettingsPage());
+        },
+      ),
+      GoRoute(
+        path: PrivacyPolicyPage.routePath,
+        name: PrivacyPolicyPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: const PrivacyPolicyPage(),
+          );
         },
       ),
       GoRoute(

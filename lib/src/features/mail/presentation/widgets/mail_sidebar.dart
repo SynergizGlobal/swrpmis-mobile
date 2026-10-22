@@ -38,7 +38,7 @@ class MailSidebar extends ConsumerWidget {
               context.push(MailComposePage.routePath);
             },
             style: FilledButton.styleFrom(
-              backgroundColor: MailColors.composeRed,
+              backgroundColor: MailTheme.composePrimaryButton(context),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -49,7 +49,7 @@ class MailSidebar extends ConsumerWidget {
             label: const Text('Compose Mail'),
           ),
           const SizedBox(height: 20),
-          _sectionTitle('MAILBOX'),
+          _sectionTitle(context, 'MAILBOX'),
           _NavTile(
             icon: Icons.inbox_rounded,
             label: 'Inbox',
@@ -83,7 +83,7 @@ class MailSidebar extends ConsumerWidget {
             onTap: () => _goFolder(context, MailFolder.important),
           ),
           const SizedBox(height: 16),
-          _sectionTitle('STORAGE'),
+          _sectionTitle(context, 'STORAGE'),
           _NavTile(
             icon: Icons.inventory_2_outlined,
             label: 'My Repository',
@@ -97,7 +97,7 @@ class MailSidebar extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 16),
-          _sectionTitle('VIEWS'),
+          _sectionTitle(context, 'VIEWS'),
           _NavTile(
             icon: Icons.flag_outlined,
             label: 'Flagged',
@@ -107,10 +107,10 @@ class MailSidebar extends ConsumerWidget {
           const SizedBox(height: 16),
           Row(
             children: <Widget>[
-              Expanded(child: _sectionTitle('LABELS')),
+              Expanded(child: _sectionTitle(context, 'LABELS')),
               IconButton(
                 tooltip: 'Add label',
-                icon: const Icon(Icons.add, size: 18, color: MailColors.pillBlueText),
+                icon: Icon(Icons.add, size: 18, color: MailTheme.linkAccent(context)),
                 onPressed: () async {
                   await AppDialog.show(
                     context,
@@ -125,11 +125,11 @@ class MailSidebar extends ConsumerWidget {
           labels.when(
             data: (List<MailLabel> items) {
               if (items.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
                     'No labels',
-                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                    style: MailTheme.mutedStyle(context, fontSize: 13),
                   ),
                 );
               }
@@ -167,16 +167,13 @@ class MailSidebar extends ConsumerWidget {
     context.go(MailModulePage.folderPath(folder));
   }
 
-  Widget _sectionTitle(String text) {
+  Widget _sectionTitle(BuildContext context, String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 6, top: 4),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+        style: MailTheme.mutedStyle(context, fontSize: 11, fontWeight: FontWeight.w700).copyWith(
           letterSpacing: 0.6,
-          color: Colors.black54,
         ),
       ),
     );
@@ -205,7 +202,7 @@ class _NavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color bg = selected
-        ? MailColors.pillBlue.withValues(alpha: 0.65)
+        ? MailTheme.selectedNavBackground(context)
         : Colors.transparent;
     return Material(
       color: bg,
@@ -217,14 +214,18 @@ class _NavTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Row(
             children: <Widget>[
-              Icon(icon, size: iconSize ?? 20, color: iconColor ?? MailColors.navy),
+              Icon(
+                icon,
+                size: iconSize ?? 20,
+                color: iconColor ?? MailTheme.navIcon(context),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   label,
                   style: TextStyle(
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: MailColors.navy,
+                    color: MailTheme.navLabel(context),
                   ),
                 ),
               ),
@@ -232,7 +233,7 @@ class _NavTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: MailColors.pillBlueText,
+                    color: MailTheme.countBadgeBackground(context),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(

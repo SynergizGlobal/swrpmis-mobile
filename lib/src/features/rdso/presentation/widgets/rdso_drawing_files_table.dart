@@ -49,30 +49,23 @@ class RdsoDrawingFilesTable extends StatelessWidget {
         final double width = math.max(total, viewport);
         return TableScrollFrame(
           width: width,
-          slivers: <Widget>[
-            SliverToBoxAdapter(
-              child: _HeaderRow(columns: columns, width: width),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate((
-                BuildContext context,
-                int index,
-              ) {
-                final RdsoDrawingFile file = files[index];
-                final bool busy = busyFileId == file.id;
-                return _FileRow(
-                  file: file,
-                  columns: columns,
-                  width: width,
-                  index: index,
-                  busy: busy,
-                  onView: () => onView(file),
-                  onDownload: () => onDownload(file),
-                  onMail: () => onMail(file),
-                );
-              }, childCount: files.length),
-            ),
-          ],
+          header: _HeaderRow(columns: columns, width: width),
+          itemCount: files.length,
+          itemBuilder: (BuildContext context, int index) {
+            final RdsoDrawingFile file = files[index];
+            final bool busy = busyFileId == file.id;
+            return _FileRow(
+              file: file,
+              columns: columns,
+              width: width,
+              index: index,
+              busy: busy,
+              onView: () => onView(file),
+              onDownload: () => onDownload(file),
+              onMail: () => onMail(file),
+            );
+          },
+          bottomPadding: 0,
         );
       },
     );

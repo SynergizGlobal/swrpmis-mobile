@@ -172,7 +172,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: MailTheme.referencePanelBackground(context),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -181,8 +181,8 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                   const Spacer(),
                   Text(
                     _referenceId.isEmpty ? '#MAIL-2026-00268' : _referenceId,
-                    style: const TextStyle(
-                      color: MailColors.pillBlueText,
+                    style: TextStyle(
+                      color: MailTheme.pillForeground(context),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -311,9 +311,12 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
               ],
             ),
             if (_tags.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('No tags added', style: TextStyle(color: Colors.black54)),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'No tags added',
+                  style: MailTheme.mutedStyle(context),
+                ),
               ),
             const SizedBox(height: 24),
             Row(
@@ -327,7 +330,8 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                 const SizedBox(width: 8),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: MailColors.navy,
+                    backgroundColor: MailTheme.composeSecondaryButton(context),
+                    foregroundColor: Colors.white,
                   ),
                   onPressed: () => _stubAction('Save Draft'),
                   icon: const Icon(Icons.save),
@@ -336,7 +340,8 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                 const SizedBox(width: 8),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: MailColors.composeRed,
+                    backgroundColor: MailTheme.composePrimaryButton(context),
+                    foregroundColor: Colors.white,
                   ),
                   onPressed: () => _stubAction('Send'),
                   icon: const Icon(Icons.send_rounded),
@@ -432,9 +437,9 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
           ),
           onTap: _requiredResponse ? _pickDate : null,
         ),
-        const Text(
+        Text(
           'You will be reminded before due date.',
-          style: TextStyle(fontSize: 11, color: Colors.black54),
+          style: MailTheme.mutedStyle(context, fontSize: 11),
         ),
       ],
     );

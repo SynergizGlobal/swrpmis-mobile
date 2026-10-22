@@ -41,6 +41,7 @@ dependencies:
   geocoding: ^5.0.0
   permission_handler: ^13.0.2
   path: ^1.9.1
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4
@@ -53,6 +54,7 @@ flutter:
   assets:
     - assets/brand/
     - assets/login_slides/
+    - docs/swr-pmis-privacy-policy.html
 
 flutter_launcher_icons:
   android: true

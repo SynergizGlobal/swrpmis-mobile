@@ -25,14 +25,15 @@ Future<void> showMailDetailSheet(
           children: <Widget>[
             Text(
               message.displaySubject,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: MailColors.navy,
+                color: MailTheme.heading(context),
               ),
             ),
             const SizedBox(height: 8),
-            if (message.referenceId.isNotEmpty) mailReferencePill(message.referenceId),
+            if (message.referenceId.isNotEmpty)
+              mailReferencePill(context, message.referenceId),
             const SizedBox(height: 12),
             Text(
               'From: ${message.displaySender}',
@@ -47,16 +48,17 @@ Future<void> showMailDetailSheet(
               spacing: 6,
               runSpacing: 6,
               children: <Widget>[
-                mailMetaPill(message.category),
-                mailMetaPill(message.priority),
-                mailMetaPill(message.status),
-                for (final String tag in message.tags) mailMetaPill('#$tag'),
+                mailMetaPill(context, message.category),
+                mailMetaPill(context, message.priority),
+                mailMetaPill(context, message.status),
+                for (final String tag in message.tags)
+                  mailMetaPill(context, '#$tag'),
               ],
             ),
             const SizedBox(height: 12),
             Text(
               formatMailDate(message.sentAt ?? message.createdAt),
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+              style: MailTheme.mutedStyle(context, fontSize: 13),
             ),
             const SizedBox(height: 16),
             Align(
