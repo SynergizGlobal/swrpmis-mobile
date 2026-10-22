@@ -68,6 +68,17 @@ class ApiConstants {
       '/utility-shifting/utility-shifting-template';
   static const String utilityShiftingUploadPath =
       '/utility-shifting/upload-utility-shifting';
+  static const String materialReceiptListPath =
+      '/material-receipt/ajax/getMaterialReceipts';
+  static const String materialReceiptFilterOptionsPath =
+      '/material-receipt/ajax/getMaterialReceiptFilterOptions';
+
+  static String materialReceiptViewPath(String receiptId) =>
+      '/material-receipt/view/${Uri.encodeComponent(receiptId.trim())}';
+
+  static String materialReceiptDownloadDocumentPath(int docId) =>
+      '/material-receipt/download-document/$docId';
+
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';

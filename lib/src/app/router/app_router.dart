@@ -18,6 +18,8 @@ import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_dr
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/utility_shifting_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
+import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipts_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
@@ -453,6 +455,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const DesignDrawingPage()
                 : module.routeName == UtilityShiftingPage.routeName
                 ? const UtilityShiftingPage()
+                : module.routeName == MaterialReceiptsPage.routeName
+                ? const MaterialReceiptsPage()
                 : module.routeName == RdsoRevisionMonitorPage.routeName
                 ? const RdsoRevisionMonitorPage()
                 : module.routeName == RdsoLibraryPage.routeName
@@ -460,6 +464,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 : ModulePlaceholderPage(module: module);
             return fadeSlidePage(key: state.pageKey, child: page);
           },
+          routes: module.routeName == MaterialReceiptsPage.routeName
+              ? <RouteBase>[
+                  GoRoute(
+                    path: 'receipt/:receiptId',
+                    name: MaterialReceiptDetailPage.routeName,
+                    pageBuilder: (BuildContext context, GoRouterState state) {
+                      final String receiptId =
+                          state.pathParameters['receiptId'] ?? '';
+                      return fadeSlidePage(
+                        key: state.pageKey,
+                        child: MaterialReceiptDetailPage(
+                          receiptId: Uri.decodeComponent(receiptId),
+                        ),
+                      );
+                    },
+                  ),
+                ]
+              : const <RouteBase>[],
         );
       }),
     ],
