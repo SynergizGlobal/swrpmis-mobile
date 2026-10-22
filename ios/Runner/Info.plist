@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>SWR-PMIS</string>
+	<string>SWR PMIS</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -35,12 +35,12 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>SWR-PMIS needs camera access to capture inspection selfies and site images.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SWR-PMIS needs photo library access to choose site images and documents.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SWR-PMIS needs your location to record the inspection site location.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>SWR-PMIS may need microphone access when capturing video from the camera.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SWR-PMIS needs photo library access to choose site images and documents.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
