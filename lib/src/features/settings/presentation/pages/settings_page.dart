@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/config/app_config_controller.dart';
 import 'package:swr_pmis_mobile/src/app/theme/theme_mode_provider.dart';
 import 'package:swr_pmis_mobile/src/core/config/env.dart';
-import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
+import 'package:swr_pmis_mobile/src/core/constants/api_hosts.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/privacy_policy_page.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -74,25 +73,22 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Card(
-            child: Column(
-              children: <Widget>[
-                ListTile(
-                  title: const Text('QA'),
-                  subtitle: const Text('Staging server (115.124.125.151:8443)'),
-                  trailing: environment == Env.qa
-                      ? const Icon(Icons.check_rounded)
-                      : null,
-                  onTap: () => _switchEnvironment(context, ref, Env.qa),
-                ),
-                ListTile(
-                  title: const Text('Production'),
-                  subtitle: const Text('pmis-swrindianrailways.org'),
-                  trailing: environment == Env.prod
-                      ? const Icon(Icons.check_rounded)
-                      : null,
-                  onTap: () => _switchEnvironment(context, ref, Env.prod),
-                ),
-              ],
+            child: ListTile(
+              title: Text(environment == Env.qa ? 'QA' : 'Production'),
+              subtitle: Text(
+                environment == Env.qa
+                    ? ApiHosts.qaBaseUrl
+                    : ApiHosts.prodBaseUrl,
+              ),
+              trailing: const Icon(Icons.lock_outline_rounded),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+            child: Text(
+              'Set in lib/main.dart via Environment.init(Env.qa) or '
+              'Environment.init(Env.prod), then rebuild — same as WR/WCR.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
           const SizedBox(height: 24),
@@ -114,21 +110,5 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _switchEnvironment(
-    BuildContext context,
-    WidgetRef ref,
-    Env env,
-  ) async {
-    if (ref.read(appEnvironmentProvider) == env) {
-      return;
-    }
-    await ref.read(appConfigProvider.notifier).setEnvironment(env);
-    await ref.read(authControllerProvider.notifier).logout();
-    if (!context.mounted) {
-      return;
-    }
-    context.goNamed(LoginPage.routeName);
   }
 }

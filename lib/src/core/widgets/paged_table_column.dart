@@ -62,10 +62,7 @@ class PagedTableColumn extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              // Cap header height. shrinkWrap ListView keeps short headers
-              // intrinsic; tall filters scroll inside the cap (never a flex
-              // Flexible/ListView without shrinkWrap — that leaves body size
-              // MISSING and blanks Material Receipts with a navy frame).
+              // Cap header; shrinkWrap keeps intrinsic height (no Flexible).
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: headerMaxHeight),
                 child: ListView(

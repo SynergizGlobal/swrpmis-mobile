@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:swr_pmis_mobile/src/app/config/app_config_controller.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
-import 'package:swr_pmis_mobile/src/core/constants/app_constants.dart';
+import 'package:swr_pmis_mobile/src/core/config/environment.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/swr_logo.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
@@ -18,8 +19,9 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AppPalette palette = AppPalette.of(context);
     final AuthSession? session = ref.watch(authControllerProvider).valueOrNull;
+    final String appName = ref.watch(appConfigProvider).appName;
     final String title = switch (navigationShell.currentIndex) {
-      0 => AppConstants.appName,
+      0 => appName,
       1 => 'Works',
       2 => 'Update Forms',
       3 => 'RFI',
@@ -72,6 +74,20 @@ class AppShell extends ConsumerWidget {
               const SwrLogo(size: 36, variant: SwrLogoVariant.mark),
               const SizedBox(width: 10),
               Expanded(child: Text(title, overflow: TextOverflow.ellipsis)),
+              if (Environment.isQa && navigationShell.currentIndex != 0) ...<Widget>[
+                const SizedBox(width: 8),
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  label: Text(
+                    'QA',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ],
             ],
           ),
           actions: <Widget>[_ProfileButton(session: session)],

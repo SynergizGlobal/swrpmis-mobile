@@ -1,13 +1,18 @@
 import 'package:swr_pmis_mobile/src/app/bootstrap/bootstrap.dart';
 import 'package:swr_pmis_mobile/src/app/config/app_config.dart';
+import 'package:swr_pmis_mobile/src/core/config/environment.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_constants.dart';
 
 Future<void> main() async {
+  // Switch QA ↔ Prod here (same pattern as WR / WCR PMIS).
+  Environment.init(Env.prod);
+
   await bootstrap(
     AppConfig(
-      appName: AppConstants.appName,
-      // Overwritten after Environment.init in bootstrap.
-      baseUrl: '',
+      appName: Environment.isQa
+          ? '${AppConstants.appName} (QA)'
+          : AppConstants.appName,
+      baseUrl: Environment.swrBaseUrl,
     ),
   );
 }
