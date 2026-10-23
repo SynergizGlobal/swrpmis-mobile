@@ -5,7 +5,7 @@ class MaterialReceiptsPage extends StatelessWidget {
   const MaterialReceiptsPage({super.key});
 
   static const String routeName = 'forms-quality';
-  static const String routePath = '/module/quality';
+  static const String routePath = '/module/quality/material-receipts';
 
   @override
   Widget build(BuildContext context) {

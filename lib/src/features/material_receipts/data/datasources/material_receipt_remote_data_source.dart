@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_assets.dart';
 import 'package:swr_pmis_mobile/src/core/network/dio_client.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_detail.dart';
+import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_form.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_list.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_parse.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_log_links.dart';
@@ -56,6 +60,118 @@ class MaterialReceiptRemoteDataSource {
       ApiConstants.materialReceiptViewPath(id),
     );
     return parseMaterialReceiptDetail(response.data);
+  }
+
+  Future<List<MaterialReceiptOption>> fetchDropdownProjects() async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.materialReceiptDropdownProjectsPath,
+    );
+    return parseMaterialReceiptDropdownProjects(response.data);
+  }
+
+  Future<List<MaterialReceiptOption>> fetchDropdownMaterials() async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.materialReceiptDropdownMaterialsPath,
+    );
+    return parseMaterialReceiptDropdownMaterials(response.data);
+  }
+
+  Future<List<MaterialReceiptOption>> fetchDropdownSections(
+    String projectId,
+  ) async {
+    final String id = projectId.trim();
+    if (id.isEmpty) {
+      return const <MaterialReceiptOption>[];
+    }
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.materialReceiptDropdownSectionsPath,
+      queryParameters: <String, dynamic>{'projectIdFk': id},
+    );
+    return parseMaterialReceiptDropdownSections(response.data);
+  }
+
+  Future<List<MaterialReceiptOption>> fetchDropdownContracts(
+    String projectId,
+  ) async {
+    final String id = projectId.trim();
+    if (id.isEmpty) {
+      return const <MaterialReceiptOption>[];
+    }
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.materialReceiptDropdownContractsPath,
+      queryParameters: <String, dynamic>{'projectIdFk': id},
+    );
+    return parseMaterialReceiptDropdownContracts(response.data);
+  }
+
+  Future<List<MaterialReceiptChecklistDoc>> fetchDocumentsByMaterial(
+    List<String> materialNames,
+  ) async {
+    final List<String> names = materialNames
+        .map((String name) => name.trim())
+        .where((String name) => name.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (names.isEmpty) {
+      return const <MaterialReceiptChecklistDoc>[];
+    }
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.materialReceiptDocumentsByMaterialPath,
+      data: <String, dynamic>{'materialNames': names},
+    );
+    return parseMaterialReceiptDocumentsByMaterial(response.data);
+  }
+
+  Future<({String receiptId, String status, String message})> saveReceipt({
+    required Map<String, dynamic> payload,
+    List<({String path, String fileName})> newFiles =
+        const <({String path, String fileName})>[],
+  }) async {
+    final FormData form = FormData();
+    form.fields.add(MapEntry<String, String>('payload', jsonEncode(payload)));
+    for (final ({String path, String fileName}) file in newFiles) {
+      form.files.add(
+        MapEntry<String, MultipartFile>(
+          'files',
+          await MultipartFile.fromFile(
+            file.path,
+            filename: file.fileName.trim().isEmpty
+                ? p.basename(file.path)
+                : file.fileName,
+          ),
+        ),
+      );
+    }
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.materialReceiptSavePath,
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    final ({String receiptId, String status, String message}) parsed =
+        parseMaterialReceiptSaveResult(response.data);
+    if (response.data is Map &&
+        (response.data as Map)['success'] == false) {
+      throw StateError(parsed.message);
+    }
+    return parsed;
+  }
+
+  Future<({Uint8List bytes, String fileName})> downloadTemplate() async {
+    final Response<List<int>> response = await _dio.get<List<int>>(
+      ApiConstants.materialReceiptDownloadTemplatePath,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final List<int>? data = response.data;
+    if (data == null || data.isEmpty) {
+      throw StateError('Empty material receipt template download.');
+    }
+    return (
+      bytes: Uint8List.fromList(data),
+      fileName: _fileNameFromResponse(
+        response,
+        fallback: 'material-receipt-template.xlsx',
+      ),
+    );
   }
 
   Future<({Uint8List bytes, String fileName})> downloadDocument(int docId) async {

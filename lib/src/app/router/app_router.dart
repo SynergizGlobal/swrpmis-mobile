@@ -18,7 +18,7 @@ import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_dr
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/utility_shifting_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
-import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipts_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
@@ -467,14 +467,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           routes: module.routeName == MaterialReceiptsPage.routeName
               ? <RouteBase>[
                   GoRoute(
+                    path: 'add',
+                    name: MaterialReceiptFormPage.routeNameAdd,
+                    pageBuilder: (BuildContext context, GoRouterState state) {
+                      return fadeSlidePage(
+                        key: state.pageKey,
+                        child: const MaterialReceiptFormPage(),
+                      );
+                    },
+                  ),
+                  GoRoute(
                     path: 'receipt/:receiptId',
-                    name: MaterialReceiptDetailPage.routeName,
+                    name: MaterialReceiptFormPage.routeNameEdit,
                     pageBuilder: (BuildContext context, GoRouterState state) {
                       final String receiptId =
                           state.pathParameters['receiptId'] ?? '';
                       return fadeSlidePage(
                         key: state.pageKey,
-                        child: MaterialReceiptDetailPage(
+                        child: MaterialReceiptFormPage(
                           receiptId: Uri.decodeComponent(receiptId),
                         ),
                       );

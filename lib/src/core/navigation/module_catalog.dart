@@ -116,9 +116,20 @@ class ModuleCatalog {
       title: 'Quality Inspections',
       subtitle: 'Inspection records and NCR',
       icon: Icons.manage_search_rounded,
-      routeName: 'forms-quality',
+      routeName: 'forms-quality-group',
       routePath: '/module/quality',
       group: ModuleGroup.updateForms,
+      children: <AppModule>[
+        AppModule(
+          id: 'materialreceipts',
+          title: 'Material Receipts',
+          subtitle: 'Receipts, checklist and documents',
+          icon: Icons.inventory_2_rounded,
+          routeName: 'forms-quality',
+          routePath: '/module/quality/material-receipts',
+          group: ModuleGroup.updateForms,
+        ),
+      ],
     ),
     AppModule(
       id: 'land',

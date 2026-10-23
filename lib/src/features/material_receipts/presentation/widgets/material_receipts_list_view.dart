@@ -17,7 +17,7 @@ import 'package:swr_pmis_mobile/src/features/material_receipts/data/datasources/
 import 'package:swr_pmis_mobile/src/features/material_receipts/data/material_receipt_file_actions.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/data/material_receipt_pdf_builder.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_list.dart';
-import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/providers/material_receipts_provider.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/widgets/material_receipts_table.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
@@ -61,18 +61,24 @@ class _MaterialReceiptsListViewState
   }
 
   Future<void> _onAdd() async {
-    await AppDialog.show(
-      context,
-      title: 'Add Material Receipt',
-      message: 'Add material receipt will be available later.',
+    final Object? saved = await context.push<Object?>(
+      MaterialReceiptFormPage.locationAdd(),
     );
+    if (saved == true && mounted) {
+      await ref.read(materialReceiptsControllerProvider.notifier).load();
+    }
   }
 
   Future<void> _onOpen(MaterialReceiptRow row) async {
     if (!mounted) {
       return;
     }
-    context.push(MaterialReceiptDetailPage.locationFor(row.receiptId));
+    final Object? saved = await context.push<Object?>(
+      MaterialReceiptFormPage.locationFor(row.receiptId),
+    );
+    if (saved == true && mounted) {
+      await ref.read(materialReceiptsControllerProvider.notifier).load();
+    }
   }
 
   Future<void> _onDownload(MaterialReceiptRow row) async {
@@ -237,15 +243,6 @@ class _MaterialReceiptsListViewState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    onPressed: busy ? null : _onAdd,
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text('Add'),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 _FilterBar(
                   state: state,
                   enabled: !state.loading && !busy,
@@ -277,33 +274,47 @@ class _MaterialReceiptsListViewState
                         .clearFilters();
                   },
                 ),
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (String value) {
-                      _onSearchChanged(value);
-                      setState(() {});
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                _onSearchChanged('');
-                                setState(() {});
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    if (showSearch)
+                      Expanded(
+                        child: TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (String value) {
+                            _onSearchChanged(value);
+                            setState(() {});
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      _onSearchChanged('');
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      )
+                    else
+                      const Spacer(),
+                    if (showSearch) const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: busy ? null : _onAdd,
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Add'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -451,7 +462,7 @@ class _FilterBar extends StatelessWidget {
               onClear: dateLabel == null ? null : onClearDateRange,
             ),
             RfiFilterClearButton(
-              label: 'Clear',
+              label: 'Reset',
               onPressed: enabled ? onClear : null,
             ),
           ],

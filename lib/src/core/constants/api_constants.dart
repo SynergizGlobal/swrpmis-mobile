@@ -79,6 +79,20 @@ class ApiConstants {
   static String materialReceiptDownloadDocumentPath(int docId) =>
       '/material-receipt/download-document/$docId';
 
+  static const String materialReceiptDropdownProjectsPath =
+      '/material-receipt/dropdown-projects';
+  static const String materialReceiptDropdownMaterialsPath =
+      '/material-receipt/dropdown-materials';
+  static const String materialReceiptDropdownSectionsPath =
+      '/material-receipt/dropdown-sections';
+  static const String materialReceiptDropdownContractsPath =
+      '/material-receipt/dropdown-contracts';
+  static const String materialReceiptDocumentsByMaterialPath =
+      '/material-receipt/documents-by-material';
+  static const String materialReceiptSavePath = '/material-receipt/save';
+  static const String materialReceiptDownloadTemplatePath =
+      '/material-receipt/download-template';
+
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';

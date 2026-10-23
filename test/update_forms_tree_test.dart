@@ -90,6 +90,37 @@ void main() {
     expect(updateFormRouteName(design), 'forms-design');
     expect(updateFormRouteName(land), 'forms-land');
   });
+
+  test('Material Receipts under Quality Inspections routes to forms-quality', () {
+    const FormMenuNode byUrl = FormMenuNode(
+      formId: '1396',
+      formName: 'Material Receipts',
+      webFormUrl: 'materialreceipts',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byHyphenUrl = FormMenuNode(
+      formId: '1396',
+      formName: 'Other label',
+      webFormUrl: 'material-receipts',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byName = FormMenuNode(
+      formId: '1396',
+      formName: 'Material Receipts',
+      webFormUrl: '',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+
+    expect(updateFormRouteName(byUrl), 'forms-quality');
+    expect(updateFormRouteName(byHyphenUrl), 'forms-quality');
+    expect(updateFormRouteName(byName), 'forms-quality');
+  });
 }
 
 Set<String> _names(List<FormMenuNode> nodes) {

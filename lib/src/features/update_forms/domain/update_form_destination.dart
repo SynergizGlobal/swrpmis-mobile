@@ -3,11 +3,16 @@ import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
 
 String? updateFormRouteName(FormMenuNode node) {
   final String url = _segment(node.webFormUrl);
+  final String compactUrl = _compact(url);
   final String name = node.formName.trim().toLowerCase();
   for (final AppModule module in ModuleCatalog.routable) {
     final String id = module.id.trim().toLowerCase();
     final String path = _segment(module.routePath);
-    if (url.isNotEmpty && (url == id || url == path)) {
+    if (url.isNotEmpty &&
+        (url == id ||
+            url == path ||
+            compactUrl == _compact(id) ||
+            compactUrl == _compact(path))) {
       return module.routeName;
     }
     if (name.isNotEmpty && name == module.title.trim().toLowerCase()) {
@@ -30,4 +35,8 @@ String _segment(String value) {
     return '';
   }
   return parts.last;
+}
+
+String _compact(String value) {
+  return value.replaceAll(RegExp(r'[-_\s]'), '');
 }

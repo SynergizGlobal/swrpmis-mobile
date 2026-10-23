@@ -1,4 +1,5 @@
 import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_detail.dart';
+import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_form.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_list.dart';
 
 ({List<MaterialReceiptRow> rows, int total}) parseMaterialReceiptList(
@@ -257,4 +258,166 @@ int? _int(dynamic value) {
     return value.toInt();
   }
   return int.tryParse(_text(value));
+}
+
+List<MaterialReceiptOption> parseMaterialReceiptDropdownProjects(dynamic data) {
+  return _namedOptions(
+    _envelopeList(data),
+    idKeys: const <String>['projectIdFk', 'project_id', 'id'],
+    nameKeys: const <String>['projectName', 'project_name', 'name'],
+  );
+}
+
+List<MaterialReceiptOption> parseMaterialReceiptDropdownMaterials(dynamic data) {
+  return _namedOptions(
+    _envelopeList(data),
+    idKeys: const <String>['materialCode', 'material_code', 'id'],
+    nameKeys: const <String>['materialName', 'material_name', 'name'],
+  );
+}
+
+List<MaterialReceiptOption> parseMaterialReceiptDropdownSections(dynamic data) {
+  return _namedOptions(
+    _envelopeList(data),
+    idKeys: const <String>['section_id', 'sectionId', 'id'],
+    nameKeys: const <String>['section_name', 'sectionName', 'name'],
+  );
+}
+
+List<MaterialReceiptOption> parseMaterialReceiptDropdownContracts(dynamic data) {
+  return _namedOptions(
+    _envelopeList(data),
+    idKeys: const <String>['id', 'contract_id', 'contractId'],
+    nameKeys: const <String>['name', 'contract_name', 'contractShortName'],
+  );
+}
+
+List<MaterialReceiptChecklistDoc> parseMaterialReceiptDocumentsByMaterial(
+  dynamic data,
+) {
+  final List<MaterialReceiptChecklistDoc> out = <MaterialReceiptChecklistDoc>[];
+  for (final Map<String, dynamic> json in _listOfMaps(_envelopeList(data))) {
+    final String name = _firstText(json, const <String>[
+      'documentName',
+      'document_name',
+      'docType',
+      'name',
+    ]);
+    if (name.isEmpty) {
+      continue;
+    }
+    out.add(
+      MaterialReceiptChecklistDoc(
+        documentId: _int(json['documentId'] ?? json['document_id']),
+        documentName: name,
+        mandatory: _bool(json['mandatory'] ?? json['checklist']),
+      ),
+    );
+  }
+  return out;
+}
+
+({String receiptId, String status, String message}) parseMaterialReceiptSaveResult(
+  dynamic data,
+) {
+  final Map<String, dynamic>? root = _map(data);
+  final Map<String, dynamic>? payload = _map(root?['data']) ?? root;
+  final String message = _firstText(root ?? const <String, dynamic>{}, const <String>[
+    'message',
+    'success',
+  ]);
+  return (
+    receiptId: _text(payload?['receiptId']),
+    status: _text(payload?['status']),
+    message: message.isEmpty ? 'Success' : message,
+  );
+}
+
+/// Converts UI `dd-MM-yyyy` / `dd/MM/yyyy` to API `yyyy-MM-dd`.
+String materialReceiptApiDate(String uiDate) {
+  final String text = uiDate.trim();
+  if (text.isEmpty) {
+    return '';
+  }
+  final RegExpMatch? match = RegExp(
+    r'^(\d{2})[-/](\d{2})[-/](\d{4})$',
+  ).firstMatch(text);
+  if (match != null) {
+    return '${match.group(3)}-${match.group(2)}-${match.group(1)}';
+  }
+  if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
+    return text;
+  }
+  return text;
+}
+
+String materialReceiptUiDateFromApi(String apiOrDisplay) {
+  final String formatted = formatMaterialReceiptDate(apiOrDisplay);
+  if (formatted.isEmpty) {
+    return '';
+  }
+  return formatted.replaceAll('-', '/');
+}
+
+Object? materialReceiptSectionIdForSave(String sectionId) {
+  final String text = sectionId.trim();
+  if (text.isEmpty) {
+    return null;
+  }
+  return int.tryParse(text) ?? text;
+}
+
+List<dynamic> _envelopeList(dynamic data) {
+  final Map<String, dynamic>? root = _map(data);
+  if (root != null) {
+    final dynamic nested = root['data'] ?? root['items'] ?? root['results'];
+    if (nested is List) {
+      return nested;
+    }
+  }
+  if (data is List) {
+    return data;
+  }
+  return const <dynamic>[];
+}
+
+List<MaterialReceiptOption> _namedOptions(
+  List<dynamic> raw, {
+  required List<String> idKeys,
+  required List<String> nameKeys,
+}) {
+  final List<MaterialReceiptOption> out = <MaterialReceiptOption>[];
+  for (final Map<String, dynamic> json in _listOfMaps(raw)) {
+    final String id = _firstText(json, idKeys);
+    final String name = _firstText(json, nameKeys);
+    if (id.isEmpty && name.isEmpty) {
+      continue;
+    }
+    final String value = id.isEmpty ? name : id;
+    final String label = name.isEmpty
+        ? id
+        : id.isEmpty
+        ? name
+        : '$id - $name';
+    out.add(MaterialReceiptOption(value: value, label: label));
+  }
+  return out;
+}
+
+String _firstText(Map<String, dynamic> json, List<String> keys) {
+  for (final String key in keys) {
+    final String value = _text(json[key]);
+    if (value.isNotEmpty) {
+      return value;
+    }
+  }
+  return '';
+}
+
+bool _bool(dynamic value) {
+  if (value is bool) {
+    return value;
+  }
+  final String text = _text(value).toLowerCase();
+  return text == 'true' || text == '1' || text == 'yes' || text == 'y';
 }
