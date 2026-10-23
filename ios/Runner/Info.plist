@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>SWR-PMIS needs camera access to capture inspection selfies and site images.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SWR-PMIS needs your location to record the inspection site location for forms and works.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>SWR-PMIS needs your location to record the inspection site location for forms and works.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SWR-PMIS needs your location to record the inspection site location.</string>
 	<key>NSMicrophoneUsageDescription</key>

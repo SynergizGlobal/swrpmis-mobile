@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign_executive_view.dart';
@@ -21,37 +22,37 @@ class RfiSectionPage extends StatelessWidget {
     final RfiMenuItem? item = RfiMenuItem.byId(section);
     final RfiListKind? listKind = RfiListKind.fromMenuId(item?.id);
     if (item?.id == RfiMenuId.inspection) {
-      return Scaffold(
+      return AppListScaffold(
         appBar: AppBar(title: const Text('Inspection')),
         body: const RfiInspectionView(showTitle: false),
       );
     }
     if (item?.id == RfiMenuId.validation) {
-      return Scaffold(
+      return AppListScaffold(
         appBar: AppBar(title: const Text('Validation')),
         body: const RfiValidationView(showTitle: false),
       );
     }
     if (item?.id == RfiMenuId.log) {
-      return Scaffold(
+      return AppListScaffold(
         appBar: AppBar(title: const Text('RFI Log')),
         body: const RfiLogView(showTitle: false),
       );
     }
     if (item?.id == RfiMenuId.assignExecutive) {
-      return Scaffold(
+      return AppListScaffold(
         appBar: AppBar(title: const Text('Assign Executive')),
         body: const RfiAssignExecutiveView(showTitle: false),
       );
     }
     if (item?.id == RfiMenuId.inspectionReference) {
-      return Scaffold(
+      return AppListScaffold(
         appBar: AppBar(title: const Text('Reference')),
         body: const RfiReferenceView(showTitle: false),
       );
     }
     if (listKind != null) {
-      return Scaffold(
+      return AppListScaffold(
         appBar: AppBar(title: Text(listKind.title)),
         body: RfiListView(kind: listKind),
       );

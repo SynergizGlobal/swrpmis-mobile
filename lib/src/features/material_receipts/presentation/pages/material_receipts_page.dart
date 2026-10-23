@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/widgets/material_receipts_list_view.dart';
 
 class MaterialReceiptsPage extends StatelessWidget {
@@ -9,7 +10,7 @@ class MaterialReceiptsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppListScaffold(
       appBar: AppBar(title: const Text('Material Receipts')),
       body: const MaterialReceiptsListView(),
     );

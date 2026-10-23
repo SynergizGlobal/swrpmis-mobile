@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:swr_pmis_mobile/src/core/forms/form_menu_tree.dart';
+import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
 import 'package:swr_pmis_mobile/src/features/update_forms/domain/entities/update_forms_tree.dart';
 import 'package:swr_pmis_mobile/src/features/update_forms/domain/update_form_destination.dart';
 
@@ -120,6 +121,88 @@ void main() {
     expect(updateFormRouteName(byUrl), 'forms-quality');
     expect(updateFormRouteName(byHyphenUrl), 'forms-quality');
     expect(updateFormRouteName(byName), 'forms-quality');
+  });
+
+  test('Quality Test Register under Quality Inspections routes', () {
+    const FormMenuNode byCompactUrl = FormMenuNode(
+      formId: '1398',
+      formName: 'Other label',
+      webFormUrl: 'qualitytestregister',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byHyphenUrl = FormMenuNode(
+      formId: '1398',
+      formName: 'Other label',
+      webFormUrl: 'quality-test-register',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byName = FormMenuNode(
+      formId: '1398',
+      formName: 'Quality Test Register',
+      webFormUrl: '',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    // Live getUpdateForms leaf (formId 1398).
+    const FormMenuNode liveApiLeaf = FormMenuNode(
+      formId: '1398',
+      formName: 'Quality Test Register',
+      webFormUrl: 'qualitytestregister',
+      mobileFormUrl: '',
+      priority: 6,
+      children: <FormMenuNode>[],
+    );
+
+    expect(updateFormRouteName(byCompactUrl), 'forms-quality-test-register');
+    expect(updateFormRouteName(byHyphenUrl), 'forms-quality-test-register');
+    expect(updateFormRouteName(byName), 'forms-quality-test-register');
+    expect(updateFormRouteName(liveApiLeaf), 'forms-quality-test-register');
+    expect(
+      ModuleCatalog.byRouteName('forms-quality-test-register')?.id,
+      'qualitytestregister',
+    );
+    expect(
+      ModuleCatalog.routable.any(
+        (AppModule module) => module.id == 'qualitytestregister',
+      ),
+      isTrue,
+    );
+  });
+
+  test('Quality Test Master does not open Quality Test Register', () {
+    const FormMenuNode byMasterName = FormMenuNode(
+      formId: '1401',
+      formName: 'Quality Test Master',
+      webFormUrl: '',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byMasterUrl = FormMenuNode(
+      formId: '1401',
+      formName: 'Other',
+      webFormUrl: 'quality-test-master',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byMasterCompactUrl = FormMenuNode(
+      formId: '1401',
+      formName: 'Other',
+      webFormUrl: 'qualitytestmaster',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+
+    expect(updateFormRouteName(byMasterName), isNull);
+    expect(updateFormRouteName(byMasterUrl), isNull);
+    expect(updateFormRouteName(byMasterCompactUrl), isNull);
   });
 }
 

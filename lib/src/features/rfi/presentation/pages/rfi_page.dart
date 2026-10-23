@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
@@ -86,7 +87,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
           goHome: () => StatefulNavigationShell.of(context).goBranch(0),
         );
       },
-      child: Scaffold(
+      child: AppListScaffold(
         backgroundColor: Colors.transparent,
         floatingActionButton: creates.isEmpty || sectionId != RfiMenuId.home
             ? null

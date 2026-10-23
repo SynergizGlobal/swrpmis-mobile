@@ -93,6 +93,12 @@ class ApiConstants {
   static const String materialReceiptDownloadTemplatePath =
       '/material-receipt/download-template';
 
+  static const String qualityTestObligationsPath =
+      '/api/quality/test-obligations';
+
+  static String qualityTestObligationDetailPath(int id) =>
+      '/api/quality/test-obligations/$id';
+
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';

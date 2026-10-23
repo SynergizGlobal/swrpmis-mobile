@@ -79,6 +79,7 @@ class _DesignUploadsListViewState extends ConsumerState<DesignUploadsListView> {
 
     return PagedTableColumn(
       header: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           RfiContentLoader(loading: state.loading),

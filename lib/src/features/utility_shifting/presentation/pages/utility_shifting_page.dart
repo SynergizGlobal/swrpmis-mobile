@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/widgets/utility_shifting_list_view.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/widgets/utility_shifting_uploads_list_view.dart';
 
@@ -34,7 +35,7 @@ class _UtilityShiftingPageState extends State<UtilityShiftingPage>
     final Color appBarForeground =
         theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
 
-    return Scaffold(
+    return AppListScaffold(
       appBar: AppBar(
         title: const Text('Utility Shifting'),
         bottom: TabBar(

@@ -12,7 +12,9 @@ class RfiFilterGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         const double gap = 8;
-        final double maxWidth = constraints.maxWidth;
+        final double maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
         final int columns = maxWidth >= 840
             ? 4
             : maxWidth >= 560
@@ -29,7 +31,11 @@ class RfiFilterGrid extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
             for (final Widget child in children)
-              SizedBox(width: cell, height: AppTheme.fieldHeight, child: child),
+              SizedBox(
+                width: cell.isFinite ? cell : maxWidth,
+                height: AppTheme.fieldHeight,
+                child: child,
+              ),
           ],
         );
       },
@@ -77,73 +83,67 @@ class RfiFilterField extends StatelessWidget {
       child: InkWell(
         borderRadius: radius,
         onTap: () => _pick(context),
-        child: SizedBox(
-          height: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 7, 4, 7),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      if (showLabel) ...<Widget>[
-                        Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: palette.mutedText,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11,
-                                height: 1.2,
-                                letterSpacing: 0.2,
-                              ),
-                        ),
-                        const SizedBox(height: 3),
-                      ],
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 7, 4, 7),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    if (showLabel) ...<Widget>[
                       Text(
-                        value ?? emptyLabel,
+                        label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: palette.mutedText,
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: 11,
                           height: 1.2,
-                          color: hasValue
-                              ? colors.onSurface
-                              : palette.mutedText,
+                          letterSpacing: 0.2,
                         ),
                       ),
+                      const SizedBox(height: 3),
                     ],
+                    Text(
+                      value ?? emptyLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        height: 1.2,
+                        color: hasValue ? colors.onSurface : palette.mutedText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onClear != null)
+                IconButton(
+                  tooltip: 'Clear $label',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
+                  ),
+                  onPressed: onClear,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: palette.mutedText,
                   ),
                 ),
-                if (onClear != null)
-                  IconButton(
-                    tooltip: 'Clear $label',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 32,
-                      height: 32,
-                    ),
-                    onPressed: onClear,
-                    icon: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: palette.mutedText,
-                    ),
-                  ),
-                Icon(
-                  Icons.arrow_drop_down_rounded,
-                  size: 22,
-                  color: palette.mutedText,
-                ),
-              ],
-            ),
+              Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 22,
+                color: palette.mutedText,
+              ),
+            ],
           ),
         ),
       ),

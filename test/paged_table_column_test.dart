@@ -12,11 +12,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(
-      errors.where(
-        (FlutterErrorDetails details) =>
-            details.exceptionAsString().contains('RenderFlex overflowed'),
-      ),
+      errors.where((FlutterErrorDetails details) {
+        final String text = details.exceptionAsString();
+        return text.contains('RenderFlex overflowed') ||
+            text.contains('was not laid out') ||
+            text.contains('RenderShrinkWrappingViewport') ||
+            text.contains('NEEDS-LAYOUT') ||
+            text.contains('NEEDS-PAINT') ||
+            text.contains('size MISSING') ||
+            text.contains('hasSize');
+      }),
       isEmpty,
+    );
+  }
+
+  Finder verticalHeaderScroll() {
+    return find.descendant(
+      of: find.byType(PagedTableColumn),
+      matching: find.byWidgetPredicate(
+        (Widget w) =>
+            w is SingleChildScrollView && w.scrollDirection == Axis.vertical,
+      ),
     );
   }
 
@@ -107,7 +123,7 @@ void main() {
   });
 
   testWidgets(
-    'PagedTableColumn fits tall header and wide table without overflow',
+    'PagedTableColumn fits compact filter header and wide table without overflow',
     (WidgetTester tester) async {
       const int rowCount = 25;
       const double rowHeight = 45;
@@ -126,15 +142,16 @@ void main() {
           appBar: AppBar(title: const Text('Revision Monitor')),
           body: PagedTableColumn(
             header: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                const SizedBox(height: 4),
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: List<Widget>.generate(
-                      6,
+                      3,
                       (int i) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: SizedBox(
@@ -169,11 +186,13 @@ void main() {
         ),
         errors,
       );
+
+      expect(verticalHeaderScroll(), findsNothing);
     },
   );
 
   testWidgets(
-    'PagedTableColumn scrolls tall filters instead of overflowing',
+    'PagedTableColumn does not wrap header in a vertical scroll band',
     (WidgetTester tester) async {
       final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
       final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
@@ -188,9 +207,10 @@ void main() {
         Scaffold(
           body: PagedTableColumn(
             header: Column(
+              mainAxisSize: MainAxisSize.min,
               children: List<Widget>.generate(
-                20,
-                (int i) => SizedBox(height: 56, child: Text('Filter $i')),
+                4,
+                (int i) => SizedBox(height: 48, child: Text('Filter $i')),
               ),
             ),
             footer: const SizedBox(height: 56, child: Text('Footer')),
@@ -206,6 +226,54 @@ void main() {
         ),
         errors,
       );
+
+      expect(verticalHeaderScroll(), findsNothing);
+      expect(find.text('Filter 0'), findsOneWidget);
+      expect(find.text('Footer'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'PagedTableColumn hosts Column(mainAxisSize: min) without size MISSING',
+    (WidgetTester tester) async {
+      final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
+      final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+      FlutterError.onError = errors.add;
+
+      addTearDown(() {
+        FlutterError.onError = previous;
+      });
+
+      await pumpWithoutOverflow(
+        tester,
+        Scaffold(
+          body: PagedTableColumn(
+            header: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: List<Widget>.generate(
+                4,
+                (int i) => SizedBox(
+                  height: 48,
+                  child: Text('Min-style filter $i'),
+                ),
+              ),
+            ),
+            footer: const SizedBox(height: 56, child: Text('Footer')),
+            body: TableScrollFrame(
+              width: 800,
+              header: const SizedBox(height: 52, child: Text('Cols')),
+              itemCount: 20,
+              itemBuilder: (BuildContext context, int index) {
+                return SizedBox(height: 44, child: Text('Row $index'));
+              },
+            ),
+          ),
+        ),
+        errors,
+      );
+
+      expect(verticalHeaderScroll(), findsNothing);
     },
   );
 }

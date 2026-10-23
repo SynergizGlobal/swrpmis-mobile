@@ -129,6 +129,15 @@ class ModuleCatalog {
           routePath: '/module/quality/material-receipts',
           group: ModuleGroup.updateForms,
         ),
+        AppModule(
+          id: 'qualitytestregister',
+          title: 'Quality Test Register',
+          subtitle: 'Test obligations and status',
+          icon: Icons.science_rounded,
+          routeName: 'forms-quality-test-register',
+          routePath: '/module/quality/test-register',
+          group: ModuleGroup.updateForms,
+        ),
       ],
     ),
     AppModule(
@@ -257,15 +266,38 @@ class ModuleCatalog {
     return all.where((AppModule module) => module.group == group).toList();
   }
 
+  /// Leaf modules used for routing and Update Forms matching.
+  ///
+  /// Expandable parents are omitted; nested [AppModule.children] are included
+  /// at any depth (Quality Test Register under Quality Inspections, etc.).
   static List<AppModule> get routable {
     final List<AppModule> modules = <AppModule>[];
-    for (final AppModule module in all) {
-      if (module.children.isNotEmpty) {
-        modules.addAll(module.children);
-      } else {
+    void walk(AppModule module) {
+      if (module.children.isEmpty) {
         modules.add(module);
+        return;
+      }
+      for (final AppModule child in module.children) {
+        walk(child);
       }
     }
+
+    for (final AppModule module in all) {
+      walk(module);
+    }
     return modules;
+  }
+
+  static AppModule? byRouteName(String routeName) {
+    final String name = routeName.trim();
+    if (name.isEmpty) {
+      return null;
+    }
+    for (final AppModule module in routable) {
+      if (module.routeName == name) {
+        return module;
+      }
+    }
+    return null;
   }
 }

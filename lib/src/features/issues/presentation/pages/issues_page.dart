@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/widgets/issues_list_view.dart';
 
 class IssuesPage extends StatelessWidget {
@@ -9,7 +10,7 @@ class IssuesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppListScaffold(
       appBar: AppBar(title: const Text('Issues')),
       body: const IssuesListView(),
     );

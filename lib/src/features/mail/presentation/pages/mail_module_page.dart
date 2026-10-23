@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_folder_views.dart';
@@ -113,8 +114,8 @@ class _MailModulePageState extends ConsumerState<MailModulePage> {
     final double width = MediaQuery.sizeOf(context).width;
     final bool wide = width >= 900;
 
-    return Scaffold(
-      key: _scaffoldKey,
+    return AppListScaffold(
+      scaffoldKey: _scaffoldKey,
       appBar: AppBar(
         title: const Text('Mail'),
         leading: wide

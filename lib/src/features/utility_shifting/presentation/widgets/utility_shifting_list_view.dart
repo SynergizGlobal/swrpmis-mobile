@@ -278,12 +278,14 @@ class _UtilityShiftingListViewState
 
     return PagedTableColumn(
       header: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           RfiContentLoader(loading: state.loading || _toolbarBusy),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Align(

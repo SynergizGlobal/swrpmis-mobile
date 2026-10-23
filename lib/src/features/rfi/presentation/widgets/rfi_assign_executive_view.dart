@@ -324,6 +324,7 @@ class _LogTabState extends ConsumerState<_LogTab> {
 
     return PagedTableColumn(
       header: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           RfiContentLoader(loading: log.loading),

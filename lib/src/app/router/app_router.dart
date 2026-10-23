@@ -20,6 +20,8 @@ import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipts_page.dart';
+import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
@@ -457,6 +459,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const UtilityShiftingPage()
                 : module.routeName == MaterialReceiptsPage.routeName
                 ? const MaterialReceiptsPage()
+                : module.routeName == QualityTestRegisterPage.routeName
+                ? const QualityTestRegisterPage()
                 : module.routeName == RdsoRevisionMonitorPage.routeName
                 ? const RdsoRevisionMonitorPage()
                 : module.routeName == RdsoLibraryPage.routeName
@@ -486,6 +490,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                         key: state.pageKey,
                         child: MaterialReceiptFormPage(
                           receiptId: Uri.decodeComponent(receiptId),
+                        ),
+                      );
+                    },
+                  ),
+                ]
+              : module.routeName == QualityTestRegisterPage.routeName
+              ? <RouteBase>[
+                  GoRoute(
+                    path: 'obligation/:obligationId',
+                    name: QualityTestRegisterDetailPage.routeName,
+                    pageBuilder: (BuildContext context, GoRouterState state) {
+                      final int obligationId =
+                          int.tryParse(
+                            state.pathParameters['obligationId'] ?? '',
+                          ) ??
+                          0;
+                      return fadeSlidePage(
+                        key: state.pageKey,
+                        child: QualityTestRegisterDetailPage(
+                          obligationId: obligationId,
                         ),
                       );
                     },

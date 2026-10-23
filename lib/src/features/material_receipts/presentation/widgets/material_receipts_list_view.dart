@@ -235,12 +235,14 @@ class _MaterialReceiptsListViewState
 
     return PagedTableColumn(
       header: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           RfiContentLoader(loading: state.loading || busy),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 _FilterBar(
@@ -275,46 +277,41 @@ class _MaterialReceiptsListViewState
                   },
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    if (showSearch)
-                      Expanded(
-                        child: TextField(
-                          controller: _search,
-                          textInputAction: TextInputAction.search,
-                          onChanged: (String value) {
-                            _onSearchChanged(value);
-                            setState(() {});
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'Search...',
-                            prefixIcon: const Icon(Icons.search_rounded),
-                            suffixIcon: _search.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Clear',
-                                    onPressed: () {
-                                      _search.clear();
-                                      _onSearchChanged('');
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(Icons.close_rounded),
-                                  ),
-                            isDense: true,
-                          ),
-                        ),
-                      )
-                    else
-                      const Spacer(),
-                    if (showSearch) const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: busy ? null : _onAdd,
-                      icon: const Icon(Icons.add_circle_outline, size: 18),
-                      label: const Text('Add'),
-                    ),
-                  ],
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: busy ? null : _onAdd,
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('Add'),
+                  ),
                 ),
+                if (showSearch) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (String value) {
+                      _onSearchChanged(value);
+                      setState(() {});
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                _onSearchChanged('');
+                                setState(() {});
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -522,49 +519,46 @@ class _DateRangeField extends StatelessWidget {
       child: InkWell(
         borderRadius: radius,
         onTap: onTap,
-        child: SizedBox(
-          height: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 7, 4, 7),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    value ?? 'dd-mm-yyyy - dd-mm-yyyy',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      height: 1.2,
-                      color: hasValue ? colors.onSurface : palette.mutedText,
-                    ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 7, 4, 7),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  value ?? 'dd-mm-yyyy - dd-mm-yyyy',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    height: 1.2,
+                    color: hasValue ? colors.onSurface : palette.mutedText,
                   ),
                 ),
-                if (onClear != null)
-                  IconButton(
-                    tooltip: 'Clear date range',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 32,
-                      height: 32,
-                    ),
-                    onPressed: onClear,
-                    icon: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: palette.mutedText,
-                    ),
+              ),
+              if (onClear != null)
+                IconButton(
+                  tooltip: 'Clear date range',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
                   ),
-                Icon(
-                  Icons.calendar_month_rounded,
-                  size: 18,
-                  color: palette.mutedText,
+                  onPressed: onClear,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: palette.mutedText,
+                  ),
                 ),
-                const SizedBox(width: 6),
-              ],
-            ),
+              Icon(
+                Icons.calendar_month_rounded,
+                size: 18,
+                color: palette.mutedText,
+              ),
+              const SizedBox(width: 6),
+            ],
           ),
         ),
       ),

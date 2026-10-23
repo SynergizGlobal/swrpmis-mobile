@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/app_system_back.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/providers/rdso_library_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/widgets/rdso_library_category_panel.dart';
@@ -64,8 +65,8 @@ class _RdsoLibraryPageState extends ConsumerState<RdsoLibraryPage> {
     final double width = MediaQuery.sizeOf(context).width;
     final bool wide = width >= 900;
 
-    return Scaffold(
-      key: _scaffoldKey,
+    return AppListScaffold(
+      scaffoldKey: _scaffoldKey,
       appBar: AppBar(
         title: const Text('RDSO Digital Library'),
         leading: IconButton(

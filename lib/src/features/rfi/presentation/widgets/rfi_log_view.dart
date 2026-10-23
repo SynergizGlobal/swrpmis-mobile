@@ -136,12 +136,14 @@ class _RfiLogViewState extends ConsumerState<RfiLogView> {
 
     return PagedTableColumn(
       header: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           RfiContentLoader(loading: log.loading),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 if (widget.showTitle)

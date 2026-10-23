@@ -55,6 +55,9 @@ class AppShell extends ConsumerWidget {
         }
       },
       child: Scaffold(
+        // Keep bottom nav at the screen bottom when a child list opens the
+        // keyboard; list pages use [AppListScaffold] for the same reason.
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           automaticallyImplyLeading: false,
           leading: onRfi

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/widgets/design_uploads_list_view.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/widgets/designs_list_view.dart';
 
@@ -34,7 +35,7 @@ class _DesignDrawingPageState extends State<DesignDrawingPage>
     final Color appBarForeground =
         theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
 
-    return Scaffold(
+    return AppListScaffold(
       appBar: AppBar(
         title: const Text('Design & Drawing'),
         bottom: TabBar(
