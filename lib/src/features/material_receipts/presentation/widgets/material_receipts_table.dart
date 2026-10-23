@@ -442,7 +442,8 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = Theme.of(context).colorScheme.primary;
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final Color accent = colors.primary;
     return SizedBox.fromSize(
       size: _kActionButtonSize,
       child: IconButton(
@@ -451,7 +452,7 @@ class _ActionButton extends StatelessWidget {
         onPressed: onPressed,
         style: IconButton.styleFrom(
           foregroundColor: accent,
-          backgroundColor: Colors.white,
+          backgroundColor: AppPalette.of(context).fieldFill,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
             side: BorderSide(color: accent.withValues(alpha: 0.7)),

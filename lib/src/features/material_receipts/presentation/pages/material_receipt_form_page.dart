@@ -745,7 +745,7 @@ class _MaterialReceiptFormPageState
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -868,11 +868,11 @@ class _MaterialReceiptFormPageState
 
   Widget _itemCard(int index) {
     final MaterialReceiptFormItemDraft item = _items[index];
+    final ColorScheme colors = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        color: AppPalette.of(context).fieldFill,
+        border: Border.all(color: colors.outlineVariant),
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
       ),
       child: Padding(
@@ -884,7 +884,10 @@ class _MaterialReceiptFormPageState
               children: <Widget>[
                 Text(
                   'Sr. No. ${index + 1}',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colors.onSurface,
+                  ),
                 ),
                 const Spacer(),
                 if (!_readOnly)
@@ -1014,12 +1017,19 @@ class _MaterialReceiptFormPageState
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              color: AppPalette.of(context).fieldFill,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               borderRadius: BorderRadius.circular(AppTheme.cardRadius),
             ),
-            child: Text(_docsHint, textAlign: TextAlign.center),
+            child: Text(
+              _docsHint,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppPalette.of(context).mutedText,
+              ),
+            ),
           )
         else
           for (int i = 0; i < _docs.length; i++) _docRow(i),
@@ -1032,46 +1042,46 @@ class _MaterialReceiptFormPageState
     final String fileLabel = doc.hasNewFile
         ? doc.localFileName
         : (doc.existingFileName.isEmpty ? 'No file' : doc.existingFileName);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(
-          doc.hasFile ? Icons.insert_drive_file_outlined : Icons.attach_file,
-          color: doc.hasFile
-              ? AppPalette.of(context).success
-              : Theme.of(context).colorScheme.primary,
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final AppPalette palette = AppPalette.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: palette.fieldFill,
+          borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+          border: Border.all(color: colors.outlineVariant),
         ),
-        title: Text(
-          '${doc.documentName}${doc.mandatory ? ' *' : ''}',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: doc.mandatory
-                ? Theme.of(context).colorScheme.onSurface
-                : null,
+        child: ListTile(
+          leading: Icon(
+            doc.hasFile ? Icons.insert_drive_file_outlined : Icons.attach_file,
+            color: doc.hasFile ? palette.success : colors.primary,
           ),
-        ),
-        subtitle: Text(
-          fileLabel,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: doc.hasFile
-                ? AppPalette.of(context).success
-                : AppPalette.of(context).mutedText,
+          title: Text(
+            '${doc.documentName}${doc.mandatory ? ' *' : ''}',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: colors.onSurface,
+            ),
           ),
+          subtitle: Text(
+            fileLabel,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: doc.hasFile ? palette.success : palette.mutedText,
+            ),
+          ),
+          trailing: _readOnly
+              ? (doc.hasFile
+                    ? Icon(Icons.check_circle, color: palette.success)
+                    : null)
+              : IconButton(
+                  tooltip: 'Upload',
+                  onPressed: () => _pickDocFile(index),
+                  icon: Icon(Icons.attach_file, color: colors.primary),
+                ),
         ),
-        trailing: _readOnly
-            ? (doc.hasFile
-                  ? Icon(
-                      Icons.check_circle,
-                      color: AppPalette.of(context).success,
-                    )
-                  : null)
-            : IconButton(
-                tooltip: 'Upload',
-                onPressed: () => _pickDocFile(index),
-                icon: const Icon(Icons.attach_file),
-              ),
       ),
     );
   }
@@ -1118,7 +1128,8 @@ class _MaterialReceiptFormPageState
     return IgnorePointer(
       ignoring: !enabled,
       child: Opacity(
-        opacity: enabled ? 1 : 0.55,
+        // Keep disabled fields readable in dark mode (avoid washing out text).
+        opacity: enabled ? 1 : 0.72,
         child: RfiFilterField(
           label: required ? '$label *' : label,
           emptyLabel: 'Select $label',

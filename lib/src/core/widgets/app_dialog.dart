@@ -225,6 +225,7 @@ class _AppDialogBody extends StatelessWidget {
   }
 
   Widget _primaryButton(BuildContext context, Color buttonFill) {
+    // Brand navy/red fills always pair with white labels for WCAG contrast.
     return FilledButton(
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(44),

@@ -217,9 +217,8 @@ class _ProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: isDark ? AppTheme.cardDark : AppTheme.surfaceLight,
+      color: AppPalette.of(context).cardSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         side: BorderSide(color: colors.outlineVariant),

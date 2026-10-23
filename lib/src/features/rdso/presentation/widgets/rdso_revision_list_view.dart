@@ -687,10 +687,9 @@ class _DateField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppPalette palette = AppPalette.of(context);
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
     final BorderRadius radius = BorderRadius.circular(AppTheme.cardRadius);
     return Material(
-      color: dark ? AppTheme.cardDark : AppTheme.surfaceLight,
+      color: palette.fieldFill,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
         side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),

@@ -191,14 +191,13 @@ InputDecoration mailSearchDecoration({
   Widget? suffix,
 }) {
   final ColorScheme scheme = Theme.of(context).colorScheme;
-  final bool isDark = scheme.brightness == Brightness.dark;
   return InputDecoration(
     hintText: hint,
     prefixIcon: const Icon(Icons.search_rounded, size: 20),
     suffixIcon: suffix,
     isDense: true,
     filled: true,
-    fillColor: isDark ? AppTheme.cardDark : AppTheme.surfaceLight,
+    fillColor: AppPalette.of(context).fieldFill,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(999),
       borderSide: BorderSide(color: scheme.outlineVariant),

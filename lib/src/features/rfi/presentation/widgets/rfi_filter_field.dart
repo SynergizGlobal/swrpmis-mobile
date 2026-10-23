@@ -74,7 +74,7 @@ class RfiFilterField extends StatelessWidget {
     final ColorScheme colors = Theme.of(context).colorScheme;
 
     return Material(
-      color: dark ? AppTheme.cardDark : AppTheme.surfaceLight,
+      color: palette.fieldFill,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
@@ -116,7 +116,11 @@ class RfiFilterField extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         height: 1.2,
-                        color: hasValue ? colors.onSurface : palette.mutedText,
+                        color: hasValue
+                            ? colors.onSurface
+                            : palette.mutedText.withValues(
+                                alpha: dark ? 0.9 : 1,
+                              ),
                       ),
                     ),
                   ],

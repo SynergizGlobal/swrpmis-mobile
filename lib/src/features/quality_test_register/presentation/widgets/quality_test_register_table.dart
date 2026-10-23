@@ -324,6 +324,7 @@ class _StatusBadge extends StatelessWidget {
     }
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final AppPalette palette = AppPalette.of(context);
+    final bool dark = scheme.brightness == Brightness.dark;
     final String key = status.trim().toUpperCase().replaceAll(' ', '_');
     final Color foreground;
     final Color fill;
@@ -332,8 +333,12 @@ class _StatusBadge extends StatelessWidget {
         foreground = scheme.primary;
         fill = scheme.primary.withValues(alpha: 0.14);
       case 'PENDING':
-        foreground = const Color(0xFFB45309);
-        fill = const Color(0xFFFFF3CD);
+        foreground = dark
+            ? const Color(0xFFFBBF24)
+            : const Color(0xFFB45309);
+        fill = dark
+            ? const Color(0xFFFBBF24).withValues(alpha: 0.18)
+            : const Color(0xFFFFF3CD);
       case 'APPROVED':
         foreground = palette.success;
         fill = palette.success.withValues(alpha: 0.16);
@@ -341,17 +346,17 @@ class _StatusBadge extends StatelessWidget {
         foreground = scheme.error;
         fill = scheme.error.withValues(alpha: 0.14);
       case 'RETURNED':
-        foreground = const Color(0xFFC2410C);
-        fill = const Color(0xFFFFEDD5);
+        foreground = dark
+            ? const Color(0xFFFB923C)
+            : const Color(0xFFC2410C);
+        fill = dark
+            ? const Color(0xFFFB923C).withValues(alpha: 0.18)
+            : const Color(0xFFFFEDD5);
       default:
         foreground = scheme.onSurfaceVariant;
         fill = scheme.outlineVariant.withValues(alpha: 0.55);
     }
-    // Dark theme: soften amber/orange fills.
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    final Color bg = dark && (key == 'PENDING' || key == 'RETURNED')
-        ? foreground.withValues(alpha: 0.22)
-        : fill;
+    final Color bg = fill;
     return Align(
       alignment: Alignment.centerLeft,
       child: DecoratedBox(
@@ -381,7 +386,8 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = Theme.of(context).colorScheme.primary;
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final Color accent = colors.primary;
     return Align(
       alignment: Alignment.centerLeft,
       child: SizedBox.fromSize(
@@ -392,7 +398,7 @@ class _Actions extends StatelessWidget {
           onPressed: onView,
           style: IconButton.styleFrom(
             foregroundColor: accent,
-            backgroundColor: Colors.white,
+            backgroundColor: AppPalette.of(context).fieldFill,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
               side: BorderSide(color: accent.withValues(alpha: 0.7)),
