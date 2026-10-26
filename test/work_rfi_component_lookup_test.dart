@@ -115,8 +115,8 @@ void main() {
       ),
     );
     await _until(tester, find.text('Select...'));
-    expect(_onTap(tester, 'Select Component...'), isNull);
-    expect(_onTap(tester, 'Select Element...'), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.componentFieldKey), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.elementFieldKey), isNull);
 
     await _pick(
       tester,
@@ -138,7 +138,7 @@ void main() {
     );
     await _pick(
       tester,
-      field: 'Select Structure...',
+      field: WorkRfiFormPage.structureFieldKey,
       sheet: 'Structure',
       option: 'Structure 170',
     );
@@ -153,12 +153,12 @@ void main() {
       'strip_chart_structure_id_fk': '170',
       'structure_type_fk': 'Minor Bridge',
     });
-    expect(_onTap(tester, 'Select Component...'), isNotNull);
-    expect(_onTap(tester, 'Select Element...'), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.componentFieldKey), isNotNull);
+    expect(_onTap(tester, WorkRfiFormPage.elementFieldKey), isNull);
 
     await _pick(
       tester,
-      field: 'Select Component...',
+      field: WorkRfiFormPage.componentFieldKey,
       sheet: 'Component',
       option: 'Blanketing',
     );
@@ -173,10 +173,10 @@ void main() {
       'strip_chart_component': 'Blanketing',
       'structure_type_fk': 'Minor Bridge',
     });
-    expect(_onTap(tester, 'Select Element...'), isNotNull);
+    expect(_onTap(tester, WorkRfiFormPage.elementFieldKey), isNotNull);
     await _pick(
       tester,
-      field: 'Select Element...',
+      field: WorkRfiFormPage.elementFieldKey,
       sheet: 'Element',
       option: 'CH 25400 to CH 26000',
     );
@@ -190,8 +190,8 @@ void main() {
     );
     expect(find.text('Blanketing'), findsNothing);
     expect(find.text('CH 25400 to CH 26000'), findsNothing);
-    expect(find.text('Select Component...'), findsOneWidget);
-    expect(_onTap(tester, 'Select Element...'), isNull);
+    expect(find.byKey(WorkRfiFormPage.componentFieldKey), findsOneWidget);
+    expect(_onTap(tester, WorkRfiFormPage.elementFieldKey), isNull);
     expect(
       _payload(
         calls
@@ -210,7 +210,7 @@ void main() {
       sheet: 'Structure',
       option: 'Structure 172',
     );
-    await _open(tester, field: 'Select Component...', sheet: 'Component');
+    await _open(tester, field: WorkRfiFormPage.componentFieldKey, sheet: 'Component');
     expect(find.text('No components'), findsOneWidget);
     Navigator.of(
       tester.element(find.text('No components')),
@@ -224,8 +224,8 @@ void main() {
       sheet: 'Structure Type',
       option: 'Important Bridge',
     );
-    expect(find.text('Select Structure...'), findsOneWidget);
-    expect(_onTap(tester, 'Select Component...'), isNull);
+    expect(find.byKey(WorkRfiFormPage.structureFieldKey), findsOneWidget);
+    expect(_onTap(tester, WorkRfiFormPage.componentFieldKey), isNull);
     expect(find.textContaining('Chainage From'), findsNothing);
     _expectReadOnlyLookups(calls);
   });
@@ -274,18 +274,18 @@ void main() {
     expect(find.text('Earthwork'), findsNWidgets(3));
     expect(find.textContaining('Chainage From'), findsOneWidget);
     expect(find.textContaining('Chainage To'), findsOneWidget);
-    expect(find.text('Select Layer...'), findsOneWidget);
+    expect(find.byKey(WorkRfiFormPage.layerFieldKey), findsOneWidget);
 
     await _pick(
       tester,
-      field: 'Select Structure...',
+      field: WorkRfiFormPage.structureFieldKey,
       sheet: 'Structure',
       option: 'Structure 170',
     );
 
     expect(find.text('Earthwork'), findsNWidgets(3));
     expect(find.textContaining('Chainage From'), findsOneWidget);
-    expect(find.text('Select Layer...'), findsOneWidget);
+    expect(find.byKey(WorkRfiFormPage.layerFieldKey), findsOneWidget);
     expect(find.text('e.g. 12+500'), findsOneWidget);
     expect(
       _payload(_single(calls, ApiConstants.activitiesUpdateComponentsPath)),
@@ -349,7 +349,7 @@ void main() {
       ),
     );
     await _until(tester, find.text('Select...'));
-    expect(_onTap(tester, 'Select RFI description(s)...'), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.descriptionFieldKey), isNull);
 
     await _pick(
       tester,
@@ -363,7 +363,7 @@ void main() {
       sheet: 'Contract',
       option: 'Contract Alpha',
     );
-    expect(_onTap(tester, 'Select RFI description(s)...'), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.descriptionFieldKey), isNull);
     await _pick(
       tester,
       field: 'Select...',
@@ -380,11 +380,11 @@ void main() {
     expect(descriptions.queryParameters['activity'], 'Blanketing');
     expect(descriptions.queryParameters['rfitype'], 'WORK');
     expect(descriptions.uri.toString().startsWith('http'), isFalse);
-    expect(_onTap(tester, 'Select RFI description(s)...'), isNotNull);
+    expect(_onTap(tester, WorkRfiFormPage.descriptionFieldKey), isNotNull);
 
     await _pick(
       tester,
-      field: 'Select RFI description(s)...',
+      field: WorkRfiFormPage.descriptionFieldKey,
       sheet: 'RFI Description',
       option: 'Formation - Blanketing',
     );
@@ -397,7 +397,7 @@ void main() {
       option: 'Earthwork',
     );
     expect(find.text('Formation - Blanketing'), findsNothing);
-    expect(_onTap(tester, 'Select RFI description(s)...'), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.descriptionFieldKey), isNull);
     final List<RequestOptions> descriptionCalls = calls
         .where(
           (RequestOptions call) =>
@@ -486,7 +486,7 @@ void main() {
       ),
     );
     await _until(tester, find.text('Select...'));
-    expect(_onTap(tester, 'Select activities...'), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNull);
 
     await _pick(
       tester,
@@ -508,13 +508,13 @@ void main() {
     );
     await _pick(
       tester,
-      field: 'Select Structure...',
+      field: WorkRfiFormPage.structureFieldKey,
       sheet: 'Structure',
       option: 'MNB CH 63+200 (RCC Box)',
     );
     await _pick(
       tester,
-      field: 'Select Component...',
+      field: WorkRfiFormPage.componentFieldKey,
       sheet: 'Component',
       option: 'Excavation & Levelling',
     );
@@ -525,11 +525,11 @@ void main() {
       ),
       isEmpty,
     );
-    expect(_onTap(tester, 'Select activities...'), isNull);
+    expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNull);
 
     await _pick(
       tester,
-      field: 'Select Element...',
+      field: WorkRfiFormPage.elementFieldKey,
       sheet: 'Element',
       option: 'Excavation',
     );
@@ -547,9 +547,9 @@ void main() {
       'strip_chart_component_id': 'Excavation',
     });
     expect(activities.uri.toString().startsWith('http'), isFalse);
-    expect(_onTap(tester, 'Select activities...'), isNotNull);
+    expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNotNull);
 
-    await _open(tester, field: 'Select activities...', sheet: 'Activity');
+    await _open(tester, field: WorkRfiFormPage.activityFieldKey, sheet: 'Activity');
     expect(
       find.descendant(
         of: find.byType(ListTile),
@@ -565,7 +565,7 @@ void main() {
 
     await _pick(
       tester,
-      field: 'Select activities...',
+      field: WorkRfiFormPage.activityFieldKey,
       sheet: 'Activity',
       option: 'Excavation',
     );
@@ -576,11 +576,11 @@ void main() {
     expect(descriptions.method, 'GET');
     expect(descriptions.queryParameters['activity'], 'Excavation');
     expect(descriptions.queryParameters['rfitype'], 'WORK');
-    expect(_onTap(tester, 'Select RFI description(s)...'), isNotNull);
+    expect(_onTap(tester, WorkRfiFormPage.descriptionFieldKey), isNotNull);
 
     await _pick(
       tester,
-      field: 'Select RFI description(s)...',
+      field: WorkRfiFormPage.descriptionFieldKey,
       sheet: 'RFI Description',
       option: 'Box excavation check',
     );
@@ -588,7 +588,7 @@ void main() {
 
     await _pick(tester, field: 'Excavation', sheet: 'Element', option: 'PCC');
     expect(find.text('Box excavation check'), findsNothing);
-    expect(find.text('Select activities...'), findsOneWidget);
+    expect(find.byKey(WorkRfiFormPage.activityFieldKey), findsOneWidget);
     final List<RequestOptions> activityCalls = calls
         .where(
           (RequestOptions call) =>
@@ -597,8 +597,8 @@ void main() {
         .toList(growable: false);
     expect(activityCalls, hasLength(2));
     expect(_payload(activityCalls.last)['strip_chart_component_id'], 'PCC');
-    expect(_onTap(tester, 'Select activities...'), isNotNull);
-    await _open(tester, field: 'Select activities...', sheet: 'Activity');
+    expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNotNull);
+    await _open(tester, field: WorkRfiFormPage.activityFieldKey, sheet: 'Activity');
     expect(find.text('PCC Layer'), findsOneWidget);
     expect(find.text('Excavation'), findsNothing);
     Navigator.of(
@@ -613,9 +613,9 @@ void main() {
       sheet: 'Structure',
       option: 'MNB CH 64+000',
     );
-    expect(find.text('Select Component...'), findsOneWidget);
-    expect(find.text('Select activities...'), findsOneWidget);
-    expect(_onTap(tester, 'Select activities...'), isNull);
+    expect(find.byKey(WorkRfiFormPage.componentFieldKey), findsOneWidget);
+    expect(find.byKey(WorkRfiFormPage.activityFieldKey), findsOneWidget);
+    expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNull);
     expect(find.text('PCC Layer'), findsNothing);
     expect(
       calls.where(
@@ -817,19 +817,26 @@ void _expectReadOnlyLookups(List<RequestOptions> calls) {
   }
 }
 
-VoidCallback? _onTap(WidgetTester tester, String text) {
-  return tester
-      .widget<InkWell>(
-        find
-            .ancestor(of: find.text(text), matching: find.byType(InkWell))
-            .first,
-      )
-      .onTap;
+Finder _fieldTarget(Object field) {
+  if (field is Key) {
+    return find.descendant(
+      of: find.byKey(field),
+      matching: find.byType(InkWell),
+    );
+  }
+  return find.ancestor(
+    of: find.text(field as String),
+    matching: find.byType(InkWell),
+  );
+}
+
+VoidCallback? _onTap(WidgetTester tester, Object field) {
+  return tester.widget<InkWell>(_fieldTarget(field).first).onTap;
 }
 
 Future<void> _pick(
   WidgetTester tester, {
-  required String field,
+  required Object field,
   required String sheet,
   required String option,
 }) async {
@@ -843,11 +850,13 @@ Future<void> _pick(
 
 Future<void> _open(
   WidgetTester tester, {
-  required String field,
+  required Object field,
   required String sheet,
 }) async {
   await _settle(tester);
-  final Finder target = find.text(field).hitTestable();
+  final Finder target = field is Key
+      ? _fieldTarget(field).hitTestable()
+      : find.text(field as String).hitTestable();
   await _until(tester, target);
   await tester.ensureVisible(target.first);
   await tester.tap(target.first);

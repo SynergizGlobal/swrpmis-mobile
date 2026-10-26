@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/data/datasources/rdso_remote_data_source.dart';
@@ -30,6 +31,8 @@ class RdsoRevisionListView extends ConsumerStatefulWidget {
 
 class _RdsoRevisionListViewState extends ConsumerState<RdsoRevisionListView> {
   final TextEditingController _search = TextEditingController();
+  final GlobalKey<AppFilterSectionState> _filtersKey =
+      GlobalKey<AppFilterSectionState>();
   RdsoDrawingRow? _busyRow;
   static final DateFormat _apiDate = DateFormat('yyyy-MM-dd');
   static final DateFormat _displayDate = DateFormat('dd/MM/yyyy');
@@ -211,45 +214,55 @@ class _RdsoRevisionListViewState extends ConsumerState<RdsoRevisionListView> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                _FilterBar(
-                  state: state,
-                  search: _search,
-                  enabled: filtersEnabled,
-                  displayDate: _displayDate,
-                  onSearchChanged: (String value) {
-                    ref
-                        .read(rdsoRevisionControllerProvider.notifier)
-                        .setDraftSearch(value);
-                    setState(() {});
-                  },
-                  onCategory: (String? value) {
-                    ref
-                        .read(rdsoRevisionControllerProvider.notifier)
-                        .setDraftCategory(value ?? '');
-                  },
-                  onStatus: (String? value) {
-                    ref
-                        .read(rdsoRevisionControllerProvider.notifier)
-                        .setDraftStatus(value ?? '');
-                  },
-                  onPickDate: _pickDate,
-                  onClearDate: () {
-                    ref
-                        .read(rdsoRevisionControllerProvider.notifier)
-                        .setDraftDate('');
-                  },
-                  onSearch: () {
-                    ref
-                        .read(rdsoRevisionControllerProvider.notifier)
-                        .applySearch();
-                  },
-                  onReset: () {
-                    _search.clear();
-                    ref
-                        .read(rdsoRevisionControllerProvider.notifier)
-                        .resetFilters();
-                    setState(() {});
-                  },
+                AppFilterSection(
+                  key: _filtersKey,
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.draft.q,
+                    state.draft.categoryId,
+                    state.draft.status,
+                    state.draft.date,
+                  ]),
+                  child: _FilterBar(
+                    state: state,
+                    search: _search,
+                    enabled: filtersEnabled,
+                    displayDate: _displayDate,
+                    onSearchChanged: (String value) {
+                      ref
+                          .read(rdsoRevisionControllerProvider.notifier)
+                          .setDraftSearch(value);
+                      setState(() {});
+                    },
+                    onCategory: (String? value) {
+                      ref
+                          .read(rdsoRevisionControllerProvider.notifier)
+                          .setDraftCategory(value ?? '');
+                    },
+                    onStatus: (String? value) {
+                      ref
+                          .read(rdsoRevisionControllerProvider.notifier)
+                          .setDraftStatus(value ?? '');
+                    },
+                    onPickDate: _pickDate,
+                    onClearDate: () {
+                      ref
+                          .read(rdsoRevisionControllerProvider.notifier)
+                          .setDraftDate('');
+                    },
+                    onSearch: () {
+                      ref
+                          .read(rdsoRevisionControllerProvider.notifier)
+                          .applySearch();
+                      _filtersKey.currentState?.collapse();
+                    },
+                    onReset: () {
+                      _search.clear();
+                      ref
+                          .read(rdsoRevisionControllerProvider.notifier)
+                          .resetFilters();
+                      setState(() {});
+                    },
+                  ),
                 ),
               ],
             ),

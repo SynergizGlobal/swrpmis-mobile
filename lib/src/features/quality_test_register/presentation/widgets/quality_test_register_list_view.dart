@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_list.dart';
@@ -143,45 +144,6 @@ class _QualityTestRegisterListViewState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _FilterBar(
-                  state: state,
-                  enabled: !state.loading,
-                  onProject: (String? value) {
-                    ref
-                        .read(qualityTestRegisterControllerProvider.notifier)
-                        .selectProject(value ?? '');
-                  },
-                  onSection: (String? value) {
-                    ref
-                        .read(qualityTestRegisterControllerProvider.notifier)
-                        .selectSection(value ?? '');
-                  },
-                  onContract: (String? value) {
-                    ref
-                        .read(qualityTestRegisterControllerProvider.notifier)
-                        .selectContract(value ?? '');
-                  },
-                  onMaterial: (String? value) {
-                    ref
-                        .read(qualityTestRegisterControllerProvider.notifier)
-                        .selectMaterial(value ?? '');
-                  },
-                  onTestStatus: (String? value) {
-                    ref
-                        .read(qualityTestRegisterControllerProvider.notifier)
-                        .selectTestStatus(value ?? '');
-                  },
-                  onDateRange: _pickDateRange,
-                  onClearDateRange: _clearDateRange,
-                  onClear: () {
-                    _search.clear();
-                    ref
-                        .read(qualityTestRegisterControllerProvider.notifier)
-                        .clearFilters();
-                    setState(() {});
-                  },
-                ),
-                const SizedBox(height: 8),
                 // Create is intrinsic-width only — never Expanded / never share a
                 // Row with the search field (unbounded Expanded flex crash).
                 Align(
@@ -196,34 +158,103 @@ class _QualityTestRegisterListViewState
                     label: const Text('Create'),
                   ),
                 ),
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 8),
-                  // Full-width search alone (Issues / Material Receipts pattern).
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (String value) {
-                      _onSearchChanged(value);
-                      setState(() {});
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                _onSearchChanged('');
-                                setState(() {});
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
+                const SizedBox(height: 8),
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.query.projectId,
+                    state.query.sectionId,
+                    state.query.contractId,
+                    state.query.materialCode,
+                    state.query.testStatus,
+                    state.query.dateFrom.isNotEmpty ||
+                            state.query.dateTo.isNotEmpty
+                        ? 'range'
+                        : '',
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _FilterBar(
+                        state: state,
+                        enabled: !state.loading,
+                        onProject: (String? value) {
+                          ref
+                              .read(
+                                qualityTestRegisterControllerProvider.notifier,
+                              )
+                              .selectProject(value ?? '');
+                        },
+                        onSection: (String? value) {
+                          ref
+                              .read(
+                                qualityTestRegisterControllerProvider.notifier,
+                              )
+                              .selectSection(value ?? '');
+                        },
+                        onContract: (String? value) {
+                          ref
+                              .read(
+                                qualityTestRegisterControllerProvider.notifier,
+                              )
+                              .selectContract(value ?? '');
+                        },
+                        onMaterial: (String? value) {
+                          ref
+                              .read(
+                                qualityTestRegisterControllerProvider.notifier,
+                              )
+                              .selectMaterial(value ?? '');
+                        },
+                        onTestStatus: (String? value) {
+                          ref
+                              .read(
+                                qualityTestRegisterControllerProvider.notifier,
+                              )
+                              .selectTestStatus(value ?? '');
+                        },
+                        onDateRange: _pickDateRange,
+                        onClearDateRange: _clearDateRange,
+                        onClear: () {
+                          _search.clear();
+                          ref
+                              .read(
+                                qualityTestRegisterControllerProvider.notifier,
+                              )
+                              .clearFilters();
+                          setState(() {});
+                        },
+                      ),
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (String value) {
+                            _onSearchChanged(value);
+                            setState(() {});
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      _onSearchChanged('');
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -335,31 +366,31 @@ class _FilterBar extends StatelessWidget {
         child: RfiFilterGrid(
           children: <Widget>[
             _field(
-              label: 'Select Project',
+              label: 'Project',
               options: snapshot.projects,
               selected: query.projectId,
               onChanged: onProject,
             ),
             _field(
-              label: 'Select Section',
+              label: 'Section',
               options: snapshot.sections,
               selected: query.sectionId,
               onChanged: onSection,
             ),
             _field(
-              label: 'Select Contract',
+              label: 'Contract',
               options: snapshot.contracts,
               selected: query.contractId,
               onChanged: onContract,
             ),
             _field(
-              label: 'Select Material',
+              label: 'Material',
               options: snapshot.materials,
               selected: query.materialCode,
               onChanged: onMaterial,
             ),
             _field(
-              label: 'All',
+              label: 'Status',
               emptyLabel: 'All',
               options: qualityTestStatusOptions,
               selected: query.testStatus,
@@ -390,8 +421,7 @@ class _FilterBar extends StatelessWidget {
     final String? selectedId = selected.isEmpty ? null : selected;
     return RfiFilterField(
       label: label,
-      emptyLabel: emptyLabel ?? label,
-      showLabel: false,
+      emptyLabel: emptyLabel ?? 'Select',
       value: _optionLabel(options, selectedId),
       options: <RfiFilterOption>[
         for (final QualityTestOption option in options)

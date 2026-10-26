@@ -15,6 +15,7 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/design/data/datasources/design_remote_data_source.dart';
@@ -322,52 +323,67 @@ class _DesignsListViewState extends ConsumerState<DesignsListView> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _FilterBar(
-                  state: state,
-                  enabled: !state.loading && !_toolbarBusy,
-                  onContract: (String? value) {
-                    ref
-                        .read(designsControllerProvider.notifier)
-                        .selectContract(value ?? '');
-                  },
-                  onStructureType: (String? value) {
-                    ref
-                        .read(designsControllerProvider.notifier)
-                        .selectStructureType(value ?? '');
-                  },
-                  onDrawingType: (String? value) {
-                    ref
-                        .read(designsControllerProvider.notifier)
-                        .selectDrawingType(value ?? '');
-                  },
-                  onClear: () {
-                    ref.read(designsControllerProvider.notifier).clearFilters();
-                  },
-                ),
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: _onSearchChanged,
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                _onSearchChanged('');
-                                setState(() {});
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.query.contractId,
+                    state.query.structureType,
+                    state.query.drawingType,
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _FilterBar(
+                        state: state,
+                        enabled: !state.loading && !_toolbarBusy,
+                        onContract: (String? value) {
+                          ref
+                              .read(designsControllerProvider.notifier)
+                              .selectContract(value ?? '');
+                        },
+                        onStructureType: (String? value) {
+                          ref
+                              .read(designsControllerProvider.notifier)
+                              .selectStructureType(value ?? '');
+                        },
+                        onDrawingType: (String? value) {
+                          ref
+                              .read(designsControllerProvider.notifier)
+                              .selectDrawingType(value ?? '');
+                        },
+                        onClear: () {
+                          ref
+                              .read(designsControllerProvider.notifier)
+                              .clearFilters();
+                        },
+                      ),
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: _onSearchChanged,
+                          decoration: InputDecoration(
+                            hintText: 'Search',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      _onSearchChanged('');
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -463,19 +479,19 @@ class _FilterBar extends StatelessWidget {
         child: RfiFilterGrid(
           children: <Widget>[
             _field(
-              label: 'Select Contract',
+              label: 'Contract',
               options: snapshot.contracts,
               selected: query.contractId,
               onChanged: onContract,
             ),
             _field(
-              label: 'Select Structure Type',
+              label: 'Structure Type',
               options: snapshot.structureTypes,
               selected: query.structureType,
               onChanged: onStructureType,
             ),
             _field(
-              label: 'Select Drawing Type',
+              label: 'Drawing Type',
               options: snapshot.drawingTypes,
               selected: query.drawingType,
               onChanged: onDrawingType,
@@ -499,8 +515,6 @@ class _FilterBar extends StatelessWidget {
     final String? selectedId = selected.isEmpty ? null : selected;
     return RfiFilterField(
       label: label,
-      emptyLabel: label,
-      showLabel: false,
       value: _label(options, selectedId),
       options: <RfiFilterOption>[
         for (final DesignOption option in options)

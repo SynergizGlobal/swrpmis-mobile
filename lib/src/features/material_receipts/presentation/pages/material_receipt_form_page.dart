@@ -1132,7 +1132,7 @@ class _MaterialReceiptFormPageState
         opacity: enabled ? 1 : 0.72,
         child: RfiFilterField(
           label: required ? '$label *' : label,
-          emptyLabel: 'Select $label',
+          emptyLabel: 'Select',
           value: _optionLabel(options, selectedId),
           options: <RfiFilterOption>[
             for (final MaterialReceiptOption option in options)

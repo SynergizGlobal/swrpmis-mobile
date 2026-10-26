@@ -11,6 +11,7 @@ import 'package:swr_pmis_mobile/src/app/config/app_config_controller.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/data/datasources/material_receipt_remote_data_source.dart';
@@ -245,38 +246,6 @@ class _MaterialReceiptsListViewState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _FilterBar(
-                  state: state,
-                  enabled: !state.loading && !busy,
-                  onProject: (String? value) {
-                    ref
-                        .read(materialReceiptsControllerProvider.notifier)
-                        .selectProject(value ?? '');
-                  },
-                  onSection: (String? value) {
-                    ref
-                        .read(materialReceiptsControllerProvider.notifier)
-                        .selectSection(value ?? '');
-                  },
-                  onContract: (String? value) {
-                    ref
-                        .read(materialReceiptsControllerProvider.notifier)
-                        .selectContract(value ?? '');
-                  },
-                  onMaterial: (String? value) {
-                    ref
-                        .read(materialReceiptsControllerProvider.notifier)
-                        .selectMaterial(value ?? '');
-                  },
-                  onDateRange: _pickDateRange,
-                  onClearDateRange: _clearDateRange,
-                  onClear: () {
-                    ref
-                        .read(materialReceiptsControllerProvider.notifier)
-                        .clearFilters();
-                  },
-                ),
-                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
@@ -285,33 +254,83 @@ class _MaterialReceiptsListViewState
                     label: const Text('Add'),
                   ),
                 ),
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (String value) {
-                      _onSearchChanged(value);
-                      setState(() {});
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                _onSearchChanged('');
-                                setState(() {});
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
+                const SizedBox(height: 12),
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.query.projectId,
+                    state.query.sectionId,
+                    state.query.contractId,
+                    state.query.materialId,
+                    state.query.deliveryDateFrom.isNotEmpty ||
+                            state.query.deliveryDateTo.isNotEmpty
+                        ? 'range'
+                        : '',
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _FilterBar(
+                        state: state,
+                        enabled: !state.loading && !busy,
+                        onProject: (String? value) {
+                          ref
+                              .read(materialReceiptsControllerProvider.notifier)
+                              .selectProject(value ?? '');
+                        },
+                        onSection: (String? value) {
+                          ref
+                              .read(materialReceiptsControllerProvider.notifier)
+                              .selectSection(value ?? '');
+                        },
+                        onContract: (String? value) {
+                          ref
+                              .read(materialReceiptsControllerProvider.notifier)
+                              .selectContract(value ?? '');
+                        },
+                        onMaterial: (String? value) {
+                          ref
+                              .read(materialReceiptsControllerProvider.notifier)
+                              .selectMaterial(value ?? '');
+                        },
+                        onDateRange: _pickDateRange,
+                        onClearDateRange: _clearDateRange,
+                        onClear: () {
+                          ref
+                              .read(materialReceiptsControllerProvider.notifier)
+                              .clearFilters();
+                        },
+                      ),
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (String value) {
+                            _onSearchChanged(value);
+                            setState(() {});
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      _onSearchChanged('');
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -430,25 +449,25 @@ class _FilterBar extends StatelessWidget {
         child: RfiFilterGrid(
           children: <Widget>[
             _field(
-              label: 'Select Project',
+              label: 'Project',
               options: snapshot.projects,
               selected: query.projectId,
               onChanged: onProject,
             ),
             _field(
-              label: 'Select Section',
+              label: 'Section',
               options: snapshot.sections,
               selected: query.sectionId,
               onChanged: onSection,
             ),
             _field(
-              label: 'Select Contract',
+              label: 'Contract',
               options: snapshot.contracts,
               selected: query.contractId,
               onChanged: onContract,
             ),
             _field(
-              label: 'Select Material',
+              label: 'Material',
               options: snapshot.materials,
               selected: query.materialId,
               onChanged: onMaterial,
@@ -477,8 +496,6 @@ class _FilterBar extends StatelessWidget {
     final String? selectedId = selected.isEmpty ? null : selected;
     return RfiFilterField(
       label: label,
-      emptyLabel: label,
-      showLabel: false,
       value: _optionLabel(options, selectedId),
       options: <RfiFilterOption>[
         for (final MaterialReceiptOption option in options)

@@ -43,6 +43,9 @@ class RfiFilterGrid extends StatelessWidget {
   }
 }
 
+/// Filter dropdown chip: [label] is the field name; empty state uses a short
+/// generic [emptyLabel] (default `Select`) — never `Select $label` when the
+/// label is shown.
 class RfiFilterField extends StatelessWidget {
   const RfiFilterField({
     super.key,

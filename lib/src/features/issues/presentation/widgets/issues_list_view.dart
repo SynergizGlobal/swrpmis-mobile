@@ -8,6 +8,7 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/issues/data/issue_export_file.dart';
@@ -197,39 +198,54 @@ class _IssuesListViewState extends ConsumerState<IssuesListView> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _FilterBar(
-                  state: state,
-                  enabled: !state.loading && !_exporting,
-                  onContract: _selectContract,
-                  onHod: _selectHod,
-                  onDepartment: _selectDepartment,
-                  onCategory: _selectCategory,
-                  onStatus: _selectStatus,
-                  onClear: _clearFilters,
-                ),
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (_) => _resetPage(),
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                _resetPage();
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.query.contractId,
+                    state.query.hodId,
+                    state.query.departmentId,
+                    state.query.categoryId,
+                    state.query.statusId,
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _FilterBar(
+                        state: state,
+                        enabled: !state.loading && !_exporting,
+                        onContract: _selectContract,
+                        onHod: _selectHod,
+                        onDepartment: _selectDepartment,
+                        onCategory: _selectCategory,
+                        onStatus: _selectStatus,
+                        onClear: _clearFilters,
+                      ),
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (_) => _resetPage(),
+                          decoration: InputDecoration(
+                            hintText: 'Search',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      _resetPage();
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -326,31 +342,31 @@ class _FilterBar extends StatelessWidget {
         child: RfiFilterGrid(
           children: <Widget>[
             _field(
-              label: 'Select Contract',
+              label: 'Contract',
               options: snapshot.contracts,
               selected: query.contractId,
               onChanged: onContract,
             ),
             _field(
-              label: 'Select HOD',
+              label: 'HOD',
               options: snapshot.hods,
               selected: query.hodId,
               onChanged: onHod,
             ),
             _field(
-              label: 'Select Department',
+              label: 'Department',
               options: snapshot.departments,
               selected: query.departmentId,
               onChanged: onDepartment,
             ),
             _field(
-              label: 'Select Category',
+              label: 'Category',
               options: snapshot.categories,
               selected: query.categoryId,
               onChanged: onCategory,
             ),
             _field(
-              label: 'Select Status',
+              label: 'Status',
               options: snapshot.statuses,
               selected: query.statusId,
               onChanged: onStatus,
@@ -374,8 +390,6 @@ class _FilterBar extends StatelessWidget {
     final String? selectedId = selected.isEmpty ? null : selected;
     return RfiFilterField(
       label: label,
-      emptyLabel: label,
-      showLabel: false,
       value: _label(options, selectedId),
       options: <RfiFilterOption>[
         for (final IssueOption option in options)

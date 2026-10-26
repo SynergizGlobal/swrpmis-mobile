@@ -7,6 +7,7 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
@@ -223,45 +224,58 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                _FilterBar(
-                  state: validation,
-                  enabled: !validation.loading && !_busy,
-                  onClearFilters: () => ref
-                      .read(rfiValidationControllerProvider.notifier)
-                      .clearFilters(),
-                  onCategory: (String? value) => ref
-                      .read(rfiValidationControllerProvider.notifier)
-                      .selectCategory(value),
-                  onProject: (String? value) => ref
-                      .read(rfiValidationControllerProvider.notifier)
-                      .selectProject(value),
-                  onContract: (String? value) => ref
-                      .read(rfiValidationControllerProvider.notifier)
-                      .selectContract(value),
-                ),
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (_) => setState(() => _page = 1),
-                    decoration: InputDecoration(
-                      hintText: 'Search...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                setState(() => _page = 1);
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    validation.filter.rfiCategory,
+                    validation.filter.projectId,
+                    validation.filter.contractId,
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _FilterBar(
+                        state: validation,
+                        enabled: !validation.loading && !_busy,
+                        onClearFilters: () => ref
+                            .read(rfiValidationControllerProvider.notifier)
+                            .clearFilters(),
+                        onCategory: (String? value) => ref
+                            .read(rfiValidationControllerProvider.notifier)
+                            .selectCategory(value),
+                        onProject: (String? value) => ref
+                            .read(rfiValidationControllerProvider.notifier)
+                            .selectProject(value),
+                        onContract: (String? value) => ref
+                            .read(rfiValidationControllerProvider.notifier)
+                            .selectContract(value),
+                      ),
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (_) => setState(() => _page = 1),
+                          decoration: InputDecoration(
+                            hintText: 'Search...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() => _page = 1);
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -668,7 +682,6 @@ class _FilterBar extends StatelessWidget {
     final List<Widget> chips = <Widget>[
       RfiFilterField(
         label: 'RFI Category',
-        emptyLabel: 'Select RFI Category',
         value: _label(state.catalog.categories, filter.rfiCategory),
         options: state.catalog.categories,
         selectedId: _selected(filter.rfiCategory),
@@ -677,7 +690,6 @@ class _FilterBar extends StatelessWidget {
       ),
       RfiFilterField(
         label: 'Project',
-        emptyLabel: 'Select Project',
         value: _label(state.catalog.projects, filter.projectId),
         options: state.catalog.projects,
         selectedId: _selected(filter.projectId),
@@ -686,7 +698,6 @@ class _FilterBar extends StatelessWidget {
       ),
       RfiFilterField(
         label: 'Contract',
-        emptyLabel: 'Select Contract',
         value: _label(state.catalog.contracts, filter.contractId),
         options: state.catalog.contracts,
         selectedId: _selected(filter.contractId),

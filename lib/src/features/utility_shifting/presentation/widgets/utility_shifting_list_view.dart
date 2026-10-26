@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
@@ -326,59 +327,73 @@ class _UtilityShiftingListViewState
                   ),
                 ),
                 const SizedBox(height: 12),
-                _FilterBar(
-                  state: state,
-                  enabled: !state.loading && !_toolbarBusy,
-                  onLocation: (String? value) {
-                    ref
-                        .read(utilityShiftingControllerProvider.notifier)
-                        .selectLocation(value ?? '');
-                  },
-                  onCategory: (String? value) {
-                    ref
-                        .read(utilityShiftingControllerProvider.notifier)
-                        .selectCategory(value ?? '');
-                  },
-                  onUtilityType: (String? value) {
-                    ref
-                        .read(utilityShiftingControllerProvider.notifier)
-                        .selectUtilityType(value ?? '');
-                  },
-                  onStatus: (String? value) {
-                    ref
-                        .read(utilityShiftingControllerProvider.notifier)
-                        .selectStatus(value ?? '');
-                  },
-                  onClear: () {
-                    ref
-                        .read(utilityShiftingControllerProvider.notifier)
-                        .clearFilters();
-                  },
-                ),
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: _onSearchChanged,
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                _onSearchChanged('');
-                                setState(() {});
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.query.locationName,
+                    state.query.utilityCategory,
+                    state.query.utilityType,
+                    state.query.status,
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _FilterBar(
+                        state: state,
+                        enabled: !state.loading && !_toolbarBusy,
+                        onLocation: (String? value) {
+                          ref
+                              .read(utilityShiftingControllerProvider.notifier)
+                              .selectLocation(value ?? '');
+                        },
+                        onCategory: (String? value) {
+                          ref
+                              .read(utilityShiftingControllerProvider.notifier)
+                              .selectCategory(value ?? '');
+                        },
+                        onUtilityType: (String? value) {
+                          ref
+                              .read(utilityShiftingControllerProvider.notifier)
+                              .selectUtilityType(value ?? '');
+                        },
+                        onStatus: (String? value) {
+                          ref
+                              .read(utilityShiftingControllerProvider.notifier)
+                              .selectStatus(value ?? '');
+                        },
+                        onClear: () {
+                          ref
+                              .read(utilityShiftingControllerProvider.notifier)
+                              .clearFilters();
+                        },
+                      ),
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: _onSearchChanged,
+                          decoration: InputDecoration(
+                            hintText: 'Search',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      _onSearchChanged('');
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -483,25 +498,25 @@ class _FilterBar extends StatelessWidget {
         child: RfiFilterGrid(
           children: <Widget>[
             _field(
-              label: 'Select Location',
+              label: 'Location',
               options: snapshot.locations,
               selected: query.locationName,
               onChanged: onLocation,
             ),
             _field(
-              label: 'Select Utility Category',
+              label: 'Utility Category',
               options: snapshot.categories,
               selected: query.utilityCategory,
               onChanged: onCategory,
             ),
             _field(
-              label: 'Select Utility Type',
+              label: 'Utility Type',
               options: snapshot.utilityTypes,
               selected: query.utilityType,
               onChanged: onUtilityType,
             ),
             _field(
-              label: 'Select Status',
+              label: 'Status',
               options: snapshot.statuses,
               selected: query.status,
               onChanged: onStatus,
@@ -525,8 +540,6 @@ class _FilterBar extends StatelessWidget {
     final String? selectedId = selected.isEmpty ? null : selected;
     return RfiFilterField(
       label: label,
-      emptyLabel: label,
-      showLabel: false,
       value: _label(options, selectedId),
       options: <RfiFilterOption>[
         for (final UtilityShiftingOption option in options)

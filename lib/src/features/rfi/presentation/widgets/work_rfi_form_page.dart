@@ -16,6 +16,16 @@ class WorkRfiFormPage extends ConsumerStatefulWidget {
 
   final int? rfiId;
 
+  /// Test / semantics keys for labeled select fields (empty hint is generic).
+  static const Key structureFieldKey = ValueKey<String>('work_rfi_structure');
+  static const Key componentFieldKey = ValueKey<String>('work_rfi_component');
+  static const Key elementFieldKey = ValueKey<String>('work_rfi_element');
+  static const Key layerFieldKey = ValueKey<String>('work_rfi_layer');
+  static const Key activityFieldKey = ValueKey<String>('work_rfi_activity');
+  static const Key descriptionFieldKey = ValueKey<String>(
+    'work_rfi_description',
+  );
+
   @override
   ConsumerState<WorkRfiFormPage> createState() => _WorkRfiFormPageState();
 }
@@ -815,7 +825,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         _labeled(
           'Structure',
           child: _selectBox(
-            hint: 'Select Structure...',
+            key: WorkRfiFormPage.structureFieldKey,
+            hint: 'Select...',
             value: _optionLabel(_structures, _structureId),
             enabled: _structureType.isNotEmpty && !_submitting,
             onTap: () => _pickSingle(
@@ -830,7 +841,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         _labeled(
           'Component',
           child: _selectBox(
-            hint: 'Select Component...',
+            key: WorkRfiFormPage.componentFieldKey,
+            hint: 'Select...',
             value: _optionLabel(_components, _component),
             enabled: _structureId.isNotEmpty && !_submitting,
             onTap: () => _pickSingle(
@@ -845,7 +857,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         _labeled(
           'Element',
           child: _selectBox(
-            hint: 'Select Element...',
+            key: WorkRfiFormPage.elementFieldKey,
+            hint: 'Select...',
             value: _optionLabel(_elements, _element),
             enabled: _component.isNotEmpty && !_submitting,
             onTap: () => _pickSingle(
@@ -911,7 +924,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
               _labeled(
                 'Layer',
                 child: _selectBox(
-                  hint: 'Select Layer...',
+                  key: WorkRfiFormPage.layerFieldKey,
+                  hint: 'Select...',
                   value: _optionLabel(_layers, _layerId),
                   enabled: _layers.isNotEmpty && !_submitting,
                   onTap: () => _pickSingle(
@@ -956,7 +970,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         _labeled(
           'Activity',
           child: _multiBox(
-            hint: 'Select activities...',
+            key: WorkRfiFormPage.activityFieldKey,
+            hint: 'Select...',
             selected: _selectedActivities,
             enabled: _element.isNotEmpty && !_submitting,
             onTap: _pickActivities,
@@ -977,7 +992,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         _labeled(
           'RFI Description',
           child: _multiBox(
-            hint: 'Select RFI description(s)...',
+            key: WorkRfiFormPage.descriptionFieldKey,
+            hint: 'Select...',
             selected: _optionsFor(_descriptionOptions, _descriptionIds),
             enabled: _selectedActivities.isNotEmpty && !_submitting,
             onTap: _pickDescriptions,
@@ -1018,7 +1034,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           _labeled(
             "Name of Contractor's Representative",
             child: _selectBox(
-              hint: 'Select Representative...',
+              hint: 'Select...',
               value: _optionLabel(_representatives, _representativeId),
               enabled: !_submitting,
               onTap: _pickRepresentative,
@@ -1063,7 +1079,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           _labeled(
             'Enclosures',
             child: _multiBox(
-              hint: 'Select enclosures...',
+              hint: 'Select...',
               selected: _optionsFor(_enclosureOptions, _enclosureIds),
               enabled: _descriptionIds.isNotEmpty && !_submitting,
               onTap: _pickEnclosures,
@@ -1128,7 +1144,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         _labeled(
           'Activity',
           child: _selectBox(
-            hint: 'Select activities...',
+            key: WorkRfiFormPage.activityFieldKey,
+            hint: 'Select...',
             value: activityLabel,
             enabled:
                 (chainage
@@ -1147,7 +1164,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         _labeled(
           'RFI Description',
           child: _selectBox(
-            hint: 'Select RFI description(s)...',
+            key: WorkRfiFormPage.descriptionFieldKey,
+            hint: 'Select...',
             value: _descriptionIds.isEmpty
                 ? null
                 : <String>[
@@ -1191,7 +1209,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           _labeled(
             "Name of Contractor's Representative",
             child: _selectBox(
-              hint: 'Select Representative...',
+              hint: 'Select...',
               value: _optionLabel(_representatives, _representativeId),
               enabled: !_submitting,
               onTap: _pickRepresentative,
@@ -1236,7 +1254,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           _labeled(
             'Enclosures',
             child: _multiBox(
-              hint: 'Select enclosures...',
+              hint: 'Select...',
               selected: _optionsFor(_enclosureOptions, _enclosureIds),
               enabled: _descriptionIds.isNotEmpty && !_submitting,
               onTap: _pickEnclosures,
@@ -1691,6 +1709,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Widget _selectBox({
+    Key? key,
     required String hint,
     required String? value,
     required bool enabled,
@@ -1698,6 +1717,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }) {
     final bool hasValue = value != null && value.isNotEmpty;
     return _WorkRfiBox(
+      key: key,
       enabled: enabled,
       selected: hasValue,
       onTap: onTap,
@@ -1714,6 +1734,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Widget _multiBox({
+    Key? key,
     required String hint,
     required List<WorkRfiOption> selected,
     required bool enabled,
@@ -1727,6 +1748,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         : AppTheme.brandPrimary;
     final Color chipText = dark ? const Color(0xFF071422) : Colors.white;
     return _WorkRfiBox(
+      key: key,
       enabled: enabled,
       selected: selected.isNotEmpty,
       onTap: onTap,
@@ -3068,6 +3090,7 @@ ThemeData _menuCheckboxTheme(BuildContext context) {
 
 class _WorkRfiBox extends StatefulWidget {
   const _WorkRfiBox({
+    super.key,
     required this.enabled,
     required this.selected,
     required this.onTap,

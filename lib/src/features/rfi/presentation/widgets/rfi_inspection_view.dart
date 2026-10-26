@@ -7,6 +7,7 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
@@ -162,49 +163,70 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                _FilterBar(
-                  state: inspection,
-                  enabled: !inspection.loading && !_submitting,
-                  onClearFilters: () => ref
-                      .read(rfiInspectionControllerProvider.notifier)
-                      .clearFilters(),
-                  onSubmit: _submitReady,
-                  submitting: _submitting,
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    inspection.filter.rfiCategory,
+                    inspection.filter.projectId,
+                    inspection.filter.contractId,
+                    inspection.filter.structureType,
+                    inspection.filter.structureId?.toString(),
+                    inspection.filter.itemId?.toString(),
+                    inspection.filter.materialId?.toString(),
+                    inspection.filter.qualityOrSafetyId?.toString(),
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _FilterBar(
+                        state: inspection,
+                        enabled: !inspection.loading && !_submitting,
+                        onClearFilters: () => ref
+                            .read(rfiInspectionControllerProvider.notifier)
+                            .clearFilters(),
+                        onSubmit: _submitReady,
+                        submitting: _submitting,
+                      ),
+                      if (rfiDashboardStatusCaption(
+                            inspection.filter.filterStatus,
+                          )
+                          case final String statusCaption) ...<Widget>[
+                        const SizedBox(height: 8),
+                        Text(
+                          statusCaption,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppPalette.of(context).mutedText,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (_) => setState(() => _page = 1),
+                          decoration: InputDecoration(
+                            hintText: 'Search RFI...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() => _page = 1);
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                if (rfiDashboardStatusCaption(inspection.filter.filterStatus)
-                    case final String statusCaption) ...<Widget>[
-                  const SizedBox(height: 8),
-                  Text(
-                    statusCaption,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppPalette.of(context).mutedText,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (_) => setState(() => _page = 1),
-                    decoration: InputDecoration(
-                      hintText: 'Search RFI...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                setState(() => _page = 1);
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

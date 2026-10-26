@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/domain/rdso_list.dart';
@@ -27,6 +28,8 @@ class RdsoLibraryListView extends ConsumerStatefulWidget {
 
 class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
   final TextEditingController _search = TextEditingController();
+  final GlobalKey<AppFilterSectionState> _filtersKey =
+      GlobalKey<AppFilterSectionState>();
   bool _syncBusy = false;
 
   @override
@@ -110,40 +113,68 @@ class _RdsoLibraryListViewState extends ConsumerState<RdsoLibraryListView> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _LibraryFilterBar(
-                  state: state,
-                  search: _search,
-                  enabled: filtersEnabled,
-                  onImportStatus: _onImportStatus,
-                  onSyncNow: _onSyncNow,
-                  onSearchChanged: (String value) {
-                    ref
-                        .read(rdsoLibraryControllerProvider.notifier)
-                        .setDraftSearch(value);
-                    setState(() {});
-                  },
-                  onCategory: (String? value) {
-                    ref
-                        .read(rdsoLibraryControllerProvider.notifier)
-                        .setDraftCategory(value ?? '');
-                  },
-                  onStatus: (String? value) {
-                    ref
-                        .read(rdsoLibraryControllerProvider.notifier)
-                        .setDraftStatus(value ?? '');
-                  },
-                  onSearch: () {
-                    ref
-                        .read(rdsoLibraryControllerProvider.notifier)
-                        .applySearch();
-                  },
-                  onReset: () {
-                    _search.clear();
-                    ref
-                        .read(rdsoLibraryControllerProvider.notifier)
-                        .resetFilters();
-                    setState(() {});
-                  },
+                _LibraryFilterTwoColumnRow(
+                  children: <Widget>[
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(AppTheme.fieldHeight),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: filtersEnabled ? _onImportStatus : null,
+                      child: const Text('Import Status'),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(AppTheme.fieldHeight),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: filtersEnabled ? _onSyncNow : null,
+                      child: const Text('Sync Now'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                AppFilterSection(
+                  key: _filtersKey,
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.draft.q,
+                    state.draft.categoryId,
+                    state.draft.status,
+                  ]),
+                  child: _LibraryFilterBar(
+                    state: state,
+                    search: _search,
+                    enabled: filtersEnabled,
+                    onSearchChanged: (String value) {
+                      ref
+                          .read(rdsoLibraryControllerProvider.notifier)
+                          .setDraftSearch(value);
+                      setState(() {});
+                    },
+                    onCategory: (String? value) {
+                      ref
+                          .read(rdsoLibraryControllerProvider.notifier)
+                          .setDraftCategory(value ?? '');
+                    },
+                    onStatus: (String? value) {
+                      ref
+                          .read(rdsoLibraryControllerProvider.notifier)
+                          .setDraftStatus(value ?? '');
+                    },
+                    onSearch: () {
+                      ref
+                          .read(rdsoLibraryControllerProvider.notifier)
+                          .applySearch();
+                      _filtersKey.currentState?.collapse();
+                    },
+                    onReset: () {
+                      _search.clear();
+                      ref
+                          .read(rdsoLibraryControllerProvider.notifier)
+                          .resetFilters();
+                      setState(() {});
+                    },
+                  ),
                 ),
               ],
             ),
@@ -262,8 +293,6 @@ class _LibraryFilterBar extends StatelessWidget {
     required this.state,
     required this.search,
     required this.enabled,
-    required this.onImportStatus,
-    required this.onSyncNow,
     required this.onSearchChanged,
     required this.onCategory,
     required this.onStatus,
@@ -274,8 +303,6 @@ class _LibraryFilterBar extends StatelessWidget {
   final RdsoLibraryState state;
   final TextEditingController search;
   final bool enabled;
-  final VoidCallback onImportStatus;
-  final Future<void> Function() onSyncNow;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onCategory;
   final ValueChanged<String?> onStatus;
@@ -318,21 +345,6 @@ class _LibraryFilterBar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            _LibraryFilterTwoColumnRow(
-              children: <Widget>[
-                OutlinedButton(
-                  style: _outlinedControlStyle(),
-                  onPressed: enabled ? onImportStatus : null,
-                  child: const Text('Import Status'),
-                ),
-                FilledButton(
-                  style: _filledControlStyle(),
-                  onPressed: enabled ? onSyncNow : null,
-                  child: const Text('Sync Now'),
-                ),
-              ],
-            ),
-            const SizedBox(height: _controlGap),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[

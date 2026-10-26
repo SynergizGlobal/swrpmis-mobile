@@ -7,6 +7,7 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_log_remote_data_source.dart';
@@ -163,54 +164,73 @@ class _RfiLogViewState extends ConsumerState<RfiLogView> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                RfiLogFilterBar(
-                  filter: log.filter,
-                  catalog: log.catalog,
-                  enabled: !log.loading && _downloadingRow == null,
-                  onClear: controller.clearFilters,
-                  onCategory: controller.selectCategory,
-                  onProject: controller.selectProject,
-                  onContract: controller.selectContract,
-                  onStructureType: controller.selectStructureType,
-                  onStructure: controller.selectStructure,
-                  onItem: controller.selectItem,
-                  onMaterial: controller.selectMaterial,
-                  onQuality: controller.selectQuality,
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    log.filter.rfiCategory,
+                    log.filter.projectId,
+                    log.filter.contractId,
+                    log.filter.structureType,
+                    log.filter.structureId?.toString(),
+                    log.filter.itemId?.toString(),
+                    log.filter.materialId?.toString(),
+                    log.filter.qualityOrSafetyId?.toString(),
+                  ]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      RfiLogFilterBar(
+                        filter: log.filter,
+                        catalog: log.catalog,
+                        enabled: !log.loading && _downloadingRow == null,
+                        onClear: controller.clearFilters,
+                        onCategory: controller.selectCategory,
+                        onProject: controller.selectProject,
+                        onContract: controller.selectContract,
+                        onStructureType: controller.selectStructureType,
+                        onStructure: controller.selectStructure,
+                        onItem: controller.selectItem,
+                        onMaterial: controller.selectMaterial,
+                        onQuality: controller.selectQuality,
+                      ),
+                      if (rfiDashboardStatusCaption(log.filter.filterStatus)
+                          case final String statusCaption) ...<Widget>[
+                        const SizedBox(height: 8),
+                        Text(
+                          statusCaption,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppPalette.of(context).mutedText,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                      if (showSearch) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (_) => setState(() => _page = 1),
+                          decoration: InputDecoration(
+                            hintText: 'Search RFI...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _search.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() => _page = 1);
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                if (rfiDashboardStatusCaption(log.filter.filterStatus)
-                    case final String statusCaption) ...<Widget>[
-                  const SizedBox(height: 8),
-                  Text(
-                    statusCaption,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppPalette.of(context).mutedText,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                if (showSearch) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (_) => setState(() => _page = 1),
-                    decoration: InputDecoration(
-                      hintText: 'Search RFI...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear',
-                              onPressed: () {
-                                _search.clear();
-                                setState(() => _page = 1);
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      isDense: true,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

@@ -1,5 +1,5 @@
 /// Placeholder shown in RDSO filter dropdowns when nothing is selected.
-const String rdsoFilterEmptyLabel = '-- Select --';
+const String rdsoFilterEmptyLabel = 'Select';
 
 class RdsoCategory {
   const RdsoCategory({

@@ -195,7 +195,7 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
       title: 'Select Form',
       emptyMessage: 'No forms',
       options: <({String id, String label})>[
-        (id: '', label: '-- Select --'),
+        (id: '', label: 'Select'),
         for (final RfiReferenceForm form in RfiReferenceForm.values)
           (id: form.name, label: form.label),
       ],
@@ -1007,18 +1007,18 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
                     ),
                   ),
                 _PickerField(
-                  label: 'Select Form:',
+                  label: 'Form',
                   value: data.form?.label,
-                  placeholder: '-- Select --',
+                  placeholder: 'Select',
                   enabled: !_busy,
                   onTap: _pickForm,
                 ),
                 if (data.form == RfiReferenceForm.checklist) ...<Widget>[
                   const SizedBox(height: 12),
                   _PickerField(
-                    label: 'Sub Option:',
+                    label: 'Sub Option',
                     value: data.selectedEnclosure?.encloserName,
-                    placeholder: '-- Select Enclosure --',
+                    placeholder: 'Select',
                     enabled:
                         !_busy && (data.subOptions.isNotEmpty || !data.loading),
                     onTap: () => _pickSubOption(data),
@@ -1166,7 +1166,7 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
             controller: _activity,
             enabled: !_busy,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(hintText: 'Activity'),
+            decoration: const InputDecoration(hintText: 'Enter activity'),
           )
         else
           TextField(controller: _activityLocked, enabled: false),
@@ -1186,8 +1186,8 @@ class _RfiReferenceViewState extends ConsumerState<RfiReferenceView> {
               ? _enclosureSummary()
               : null,
           placeholder: categoryChosen
-              ? 'Select Enclosures'
-              : 'Select RFI Category first',
+              ? 'Select'
+              : 'Select category first',
           enabled: !_busy && namesReady,
           onTap: _pickDescriptionEnclosures,
         ),

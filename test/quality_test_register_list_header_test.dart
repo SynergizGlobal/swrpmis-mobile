@@ -34,9 +34,7 @@ void main() {
                         RfiFilterGrid(
                           children: <Widget>[
                             RfiFilterField(
-                              label: 'Select Contract',
-                              emptyLabel: 'Select Contract',
-                              showLabel: false,
+                              label: 'Contract',
                               value: null,
                               options: const <RfiFilterOption>[],
                               selectedId: null,
@@ -44,9 +42,7 @@ void main() {
                               onPick: _noopPick,
                             ),
                             RfiFilterField(
-                              label: 'Select Material',
-                              emptyLabel: 'Select Material',
-                              showLabel: false,
+                              label: 'Material',
                               value: null,
                               options: const <RfiFilterOption>[],
                               selectedId: null,
@@ -54,9 +50,8 @@ void main() {
                               onPick: _noopPick,
                             ),
                             RfiFilterField(
-                              label: 'All',
+                              label: 'Status',
                               emptyLabel: 'All',
-                              showLabel: false,
                               value: null,
                               options: const <RfiFilterOption>[],
                               selectedId: null,
