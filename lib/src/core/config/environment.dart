@@ -30,6 +30,5 @@ class Environment {
 
   static Uri get swrOriginUri => ApiHosts.originUriFor(swrBaseUrl);
 
-  static String get privacyPolicyUrl =>
-      ApiHosts.privacyPolicyUrlFor(swrBaseUrl);
+  static String get privacyPolicyUrl => ApiHosts.privacyPolicyUrl;
 }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:swr_pmis_mobile/src/app/config/app_config_controller.dart';
 import 'package:swr_pmis_mobile/src/app/theme/theme_mode_provider.dart';
-import 'package:swr_pmis_mobile/src/core/config/env.dart';
+import 'package:swr_pmis_mobile/src/core/config/environment.dart';
 import 'package:swr_pmis_mobile/src/core/constants/api_hosts.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/privacy_policy_page.dart';
 
@@ -16,7 +15,6 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeMode mode = ref.watch(themeModeProvider);
-    final Env environment = ref.watch(appEnvironmentProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -64,33 +62,31 @@ class SettingsPage extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Text(
-            'API environment',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              title: Text(environment == Env.qa ? 'QA' : 'Production'),
-              subtitle: Text(
-                environment == Env.qa
-                    ? ApiHosts.qaBaseUrl
-                    : ApiHosts.prodBaseUrl,
+          if (Environment.isQa) ...<Widget>[
+            const SizedBox(height: 24),
+            Text(
+              'API environment',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                title: const Text('QA'),
+                subtitle: Text(ApiHosts.qaBaseUrl),
+                trailing: const Icon(Icons.lock_outline_rounded),
               ),
-              trailing: const Icon(Icons.lock_outline_rounded),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-            child: Text(
-              'Set in lib/main.dart via Environment.init(Env.qa) or '
-              'Environment.init(Env.prod), then rebuild — same as WR/WCR.',
-              style: Theme.of(context).textTheme.bodySmall,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+              child: Text(
+                'Set in lib/main.dart via Environment.init(Env.qa) or '
+                'Environment.init(Env.prod), then rebuild — same as WR/WCR.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 24),
           Text(
             'Legal',

@@ -8,21 +8,9 @@ class ApiHosts {
   static const String qaBaseUrl =
       'http://115.124.125.151:8443/swrpmis_qa/';
 
-  /// Hosted privacy policy (deploy [docs/swr-pmis-privacy-policy.html] here).
-  static const String privacyPolicyRelativePath =
-      'legal/swr-pmis-privacy-policy.html';
-
-  static String absoluteUrlFor(String baseUrl, String relativePath) {
-    final String trimmed = baseUrl.trim();
-    final String root = trimmed.endsWith('/') ? trimmed : '$trimmed/';
-    final String path = relativePath.startsWith('/')
-        ? relativePath.substring(1)
-        : relativePath;
-    return '$root$path';
-  }
-
-  static String privacyPolicyUrlFor(String baseUrl) =>
-      absoluteUrlFor(baseUrl, privacyPolicyRelativePath);
+  /// Hosted privacy policy (same document as [docs/swr-pmis-privacy-policy.html]).
+  static const String privacyPolicyUrl =
+      'https://syntrackpro.com/images/swr-pmis-privacy-policy.html';
 
   static Uri originUriFor(String baseUrl) {
     final Uri parsed = Uri.parse(baseUrl);
