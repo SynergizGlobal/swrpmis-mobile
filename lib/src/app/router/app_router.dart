@@ -20,6 +20,8 @@ import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipts_page.dart';
+import 'package:swr_pmis_mobile/src/features/ncr_observations/presentation/pages/ncr_observation_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/ncr_observations/presentation/pages/ncr_observations_page.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_detail_page.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
@@ -461,6 +463,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const MaterialReceiptsPage()
                 : module.routeName == QualityTestRegisterPage.routeName
                 ? const QualityTestRegisterPage()
+                : module.routeName == NcrObservationsPage.routeName
+                ? const NcrObservationsPage()
                 : module.routeName == RdsoRevisionMonitorPage.routeName
                 ? const RdsoRevisionMonitorPage()
                 : module.routeName == RdsoLibraryPage.routeName
@@ -510,6 +514,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                         key: state.pageKey,
                         child: QualityTestRegisterDetailPage(
                           obligationId: obligationId,
+                        ),
+                      );
+                    },
+                  ),
+                ]
+              : module.routeName == NcrObservationsPage.routeName
+              ? <RouteBase>[
+                  GoRoute(
+                    path: 'item/:observationId',
+                    name: NcrObservationDetailPage.routeName,
+                    pageBuilder: (BuildContext context, GoRouterState state) {
+                      final int observationId =
+                          int.tryParse(
+                            state.pathParameters['observationId'] ?? '',
+                          ) ??
+                          0;
+                      return fadeSlidePage(
+                        key: state.pageKey,
+                        child: NcrObservationDetailPage(
+                          observationId: observationId,
                         ),
                       );
                     },

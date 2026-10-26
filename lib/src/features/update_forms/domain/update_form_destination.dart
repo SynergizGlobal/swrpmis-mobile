@@ -9,6 +9,8 @@ const Map<String, String> _updateFormAliases = <String, String>{
   'qualitytestregister': 'forms-quality-test-register',
   'testregister': 'forms-quality-test-register',
   'testobligations': 'forms-quality-test-register',
+  'ncrobservations': 'forms-quality-ncr-observations',
+  'ncrobservation': 'forms-quality-ncr-observations',
 };
 
 String? updateFormRouteName(FormMenuNode node) {

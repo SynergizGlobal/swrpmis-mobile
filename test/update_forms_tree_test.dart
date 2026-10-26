@@ -204,6 +204,47 @@ void main() {
     expect(updateFormRouteName(byMasterUrl), isNull);
     expect(updateFormRouteName(byMasterCompactUrl), isNull);
   });
+
+  test('NCR / Observations under Quality Inspections routes', () {
+    const FormMenuNode byCompactUrl = FormMenuNode(
+      formId: '1400',
+      formName: 'Other label',
+      webFormUrl: 'ncrobservations',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byHyphenUrl = FormMenuNode(
+      formId: '1400',
+      formName: 'Other label',
+      webFormUrl: 'ncr-observations',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode byName = FormMenuNode(
+      formId: '1400',
+      formName: 'NCR / Observations',
+      webFormUrl: '',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+
+    expect(updateFormRouteName(byCompactUrl), 'forms-quality-ncr-observations');
+    expect(updateFormRouteName(byHyphenUrl), 'forms-quality-ncr-observations');
+    expect(updateFormRouteName(byName), 'forms-quality-ncr-observations');
+    expect(
+      ModuleCatalog.byRouteName('forms-quality-ncr-observations')?.id,
+      'ncrobservations',
+    );
+    expect(
+      ModuleCatalog.routable.any(
+        (AppModule module) => module.id == 'ncrobservations',
+      ),
+      isTrue,
+    );
+  });
 }
 
 Set<String> _names(List<FormMenuNode> nodes) {

@@ -138,6 +138,15 @@ class ModuleCatalog {
           routePath: '/module/quality/test-register',
           group: ModuleGroup.updateForms,
         ),
+        AppModule(
+          id: 'ncrobservations',
+          title: 'NCR / Observations',
+          subtitle: 'Non-conformance and observations',
+          icon: Icons.report_problem_rounded,
+          routeName: 'forms-quality-ncr-observations',
+          routePath: '/module/quality/ncr-observations',
+          group: ModuleGroup.updateForms,
+        ),
       ],
     ),
     AppModule(

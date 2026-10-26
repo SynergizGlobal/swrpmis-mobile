@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/device_id_store.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/device_token_payload.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/fcm_messaging_service.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/swr_device_token_data_source.dart';
@@ -11,9 +12,13 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/providers/auth_to
 ///
 /// Must not read [authControllerProvider] — that provider depends on this one.
 class DeviceTokenSync {
-  DeviceTokenSync(this._ref);
+  DeviceTokenSync(
+    this._ref, {
+    this._deviceIdStore = const DeviceIdStore(),
+  });
 
   final Ref _ref;
+  final DeviceIdStore _deviceIdStore;
   Future<void>? _fcmReadyFuture;
 
   FcmMessagingService get _fcm => _ref.read(fcmMessagingServiceProvider);
@@ -98,14 +103,17 @@ class DeviceTokenSync {
     }
   }
 
+  /// Call while the SWR session cookie is still valid (before logout clear).
   Future<void> deactivate() async {
-    await ensureFcmReady();
-    final DeviceTokenPayload? payload = await _fcm.buildPayload();
-    if (payload == null) {
-      return;
-    }
     try {
-      await _remote.deactivate(payload);
+      final String deviceId = await _deviceIdStore.getOrCreate();
+      if (deviceId.trim().isEmpty) {
+        if (kDebugMode) {
+          debugPrint('FCM deactivate skipped: empty deviceId');
+        }
+        return;
+      }
+      await _remote.deactivate(deviceId: deviceId);
       if (kDebugMode) {
         debugPrint('FCM device deactivated on SWR');
       }

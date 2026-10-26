@@ -99,6 +99,21 @@ class ApiConstants {
   static String qualityTestObligationDetailPath(int id) =>
       '/api/quality/test-obligations/$id';
 
+  /// Rich obligation payload used by NCR reference panel.
+  static String qualityTestObligationDetailViewPath(int id) =>
+      '/api/quality/test-obligations/$id/detail';
+
+  static const String ncrObservationsPath = '/api/quality/ncr-observations';
+
+  static String ncrObservationDetailPath(int id) =>
+      '/api/quality/ncr-observations/$id';
+
+  static String ncrObservationAttachmentsPath(int id) =>
+      '/api/quality/ncr-observations/$id/attachments';
+
+  static String ncrObservationVerifyPath(int id) =>
+      '/api/quality/ncr-observations/$id/verify';
+
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';
@@ -200,9 +215,10 @@ class ApiConstants {
   static String rfiDescriptionDeletePath(int id) =>
       '/rfi/delete-rfi-description/$id';
 
-  static const String deviceTokenRegisterPath = 'wcr/device-tokens/register';
+  /// SWR backend: `@RequestMapping("/swr/device-tokens")`.
+  static const String deviceTokenRegisterPath = '/swr/device-tokens/register';
   static const String deviceTokenDeactivatePath =
-      'wcr/device-tokens/deactivate';
+      '/swr/device-tokens/deactivate';
 
   static const String rdsoCategoriesPath = '/api/rdso/categories';
   static const String rdsoDrawingsRegisterPath = '/api/rdso/drawings/register';
