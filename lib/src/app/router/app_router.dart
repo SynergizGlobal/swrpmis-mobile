@@ -24,6 +24,7 @@ import 'package:swr_pmis_mobile/src/features/ncr_observations/presentation/pages
 import 'package:swr_pmis_mobile/src/features/ncr_observations/presentation/pages/ncr_observations_page.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_detail_page.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_page.dart';
+import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_traceability_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
@@ -517,6 +518,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                         ),
                       );
                     },
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'traceability',
+                        name: QualityTestRegisterTraceabilityPage.routeName,
+                        pageBuilder:
+                            (BuildContext context, GoRouterState state) {
+                              final int obligationId =
+                                  int.tryParse(
+                                    state.pathParameters['obligationId'] ?? '',
+                                  ) ??
+                                  0;
+                              return fadeSlidePage(
+                                key: state.pageKey,
+                                child: QualityTestRegisterTraceabilityPage(
+                                  obligationId: obligationId,
+                                ),
+                              );
+                            },
+                      ),
+                    ],
                   ),
                 ]
               : module.routeName == NcrObservationsPage.routeName

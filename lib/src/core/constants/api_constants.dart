@@ -99,6 +99,9 @@ class ApiConstants {
   static String qualityTestObligationDetailPath(int id) =>
       '/api/quality/test-obligations/$id';
 
+  static String qualityTestObligationTraceabilityPath(int id) =>
+      '/traceability/test-obligation/$id';
+
   /// Rich obligation payload used by NCR reference panel.
   static String qualityTestObligationDetailViewPath(int id) =>
       '/api/quality/test-obligations/$id/detail';

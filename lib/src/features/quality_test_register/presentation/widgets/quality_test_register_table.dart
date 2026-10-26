@@ -3,10 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
+import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_actions.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_list.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_parse.dart';
 
-const double _kActionColumnMinWidth = 72;
+const double _kActionColumnMinWidth = 96;
 const Size _kActionButtonSize = Size(32, 32);
 
 class QualityTestRegisterTableColumn {
@@ -25,7 +26,12 @@ class QualityTestRegisterTableColumn {
 }
 
 List<QualityTestRegisterTableColumn> qualityTestRegisterTableColumns({
-  required void Function(QualityTestObligationRow row) onView,
+  required bool isContractor,
+  required void Function(
+    QualityTestObligationRow row,
+    QualityTestRegisterAction action,
+  )
+  onAction,
 }) {
   return <QualityTestRegisterTableColumn>[
     QualityTestRegisterTableColumn(
@@ -35,7 +41,7 @@ List<QualityTestRegisterTableColumn> qualityTestRegisterTableColumns({
       buildCell: (BuildContext context, QualityTestObligationRow row) {
         return _LinkCell(
           label: row.obligationCode,
-          onTap: () => onView(row),
+          onTap: () => onAction(row, QualityTestRegisterAction.viewDetails),
         );
       },
     ),
@@ -110,7 +116,11 @@ List<QualityTestRegisterTableColumn> qualityTestRegisterTableColumns({
       minWidth: _kActionColumnMinWidth,
       read: (_) => '',
       buildCell: (BuildContext context, QualityTestObligationRow row) {
-        return _Actions(onView: () => onView(row));
+        return _Actions(
+          isContractor: isContractor,
+          row: row,
+          onAction: onAction,
+        );
       },
     ),
   ];
@@ -120,16 +130,25 @@ class QualityTestRegisterTable extends StatelessWidget {
   const QualityTestRegisterTable({
     super.key,
     required this.rows,
-    required this.onView,
+    required this.isContractor,
+    required this.onAction,
   });
 
   final List<QualityTestObligationRow> rows;
-  final void Function(QualityTestObligationRow row) onView;
+  final bool isContractor;
+  final void Function(
+    QualityTestObligationRow row,
+    QualityTestRegisterAction action,
+  )
+  onAction;
 
   @override
   Widget build(BuildContext context) {
     final List<QualityTestRegisterTableColumn> columns =
-        qualityTestRegisterTableColumns(onView: onView);
+        qualityTestRegisterTableColumns(
+          isContractor: isContractor,
+          onAction: onAction,
+        );
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double viewport = constraints.maxWidth.isFinite
@@ -380,32 +399,76 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class _Actions extends StatelessWidget {
-  const _Actions({required this.onView});
+  const _Actions({
+    required this.isContractor,
+    required this.row,
+    required this.onAction,
+  });
 
-  final VoidCallback onView;
+  final bool isContractor;
+  final QualityTestObligationRow row;
+  final void Function(
+    QualityTestObligationRow row,
+    QualityTestRegisterAction action,
+  )
+  onAction;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final Color accent = colors.primary;
+    final List<QualityTestRegisterAction> items =
+        qualityTestRegisterActionsFor(
+          contractorStatus: row.contractorStatus,
+          isContractor: isContractor,
+        );
+    final ButtonStyle iconStyle = IconButton.styleFrom(
+      foregroundColor: accent,
+      backgroundColor: AppPalette.of(context).fieldFill,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: accent.withValues(alpha: 0.7)),
+      ),
+    );
     return Align(
       alignment: Alignment.centerLeft,
-      child: SizedBox.fromSize(
-        size: _kActionButtonSize,
-        child: IconButton(
-          tooltip: 'View',
-          padding: EdgeInsets.zero,
-          onPressed: onView,
-          style: IconButton.styleFrom(
-            foregroundColor: accent,
-            backgroundColor: AppPalette.of(context).fieldFill,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-              side: BorderSide(color: accent.withValues(alpha: 0.7)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          SizedBox.fromSize(
+            size: _kActionButtonSize,
+            child: IconButton(
+              tooltip: 'View Details',
+              padding: EdgeInsets.zero,
+              onPressed: () =>
+                  onAction(row, QualityTestRegisterAction.viewDetails),
+              style: iconStyle,
+              icon: const Icon(Icons.visibility_outlined, size: 16),
             ),
           ),
-          icon: const Icon(Icons.visibility_outlined, size: 16),
-        ),
+          const SizedBox(width: 4),
+          SizedBox.fromSize(
+            size: _kActionButtonSize,
+            child: PopupMenuButton<QualityTestRegisterAction>(
+              tooltip: 'More Actions',
+              padding: EdgeInsets.zero,
+              style: iconStyle,
+              icon: const Icon(Icons.arrow_drop_down, size: 18),
+              onSelected: (QualityTestRegisterAction action) {
+                onAction(row, action);
+              },
+              itemBuilder: (BuildContext context) {
+                return <PopupMenuEntry<QualityTestRegisterAction>>[
+                  for (final QualityTestRegisterAction action in items)
+                    PopupMenuItem<QualityTestRegisterAction>(
+                      value: action,
+                      child: Text(qualityTestRegisterActionLabel(action)),
+                    ),
+                ];
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -12,8 +12,11 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
+import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_actions.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_list.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_traceability_page.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/providers/quality_test_register_provider.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/widgets/quality_test_register_table.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
@@ -64,11 +67,36 @@ class _QualityTestRegisterListViewState
     );
   }
 
-  Future<void> _onView(QualityTestObligationRow row) async {
+  Future<void> _onAction(
+    QualityTestObligationRow row,
+    QualityTestRegisterAction action,
+  ) async {
     if (!mounted) {
       return;
     }
-    await context.push(QualityTestRegisterDetailPage.locationFor(row.id));
+    switch (action) {
+      case QualityTestRegisterAction.viewDetails:
+        await context.push(QualityTestRegisterDetailPage.locationFor(row.id));
+      case QualityTestRegisterAction.viewTraceability:
+        await context.push(
+          QualityTestRegisterTraceabilityPage.locationFor(row.id),
+        );
+      case QualityTestRegisterAction.review:
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.info,
+          title: 'Review',
+          message: 'Engineer review for this obligation will be added next.',
+        );
+      case QualityTestRegisterAction.viewUpdate:
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.info,
+          title: 'View / Update',
+          message:
+              'Contractor view / update for this obligation will be added next.',
+        );
+    }
   }
 
   Future<void> _pickDateRange() async {
@@ -131,6 +159,9 @@ class _QualityTestRegisterListViewState
         : 'Showing ${start + 1} to $end of $total entries';
     final bool showFooter = !failed && !state.loading;
     final bool showSearch = !failed;
+    final bool isContractor = qualityTestRegisterIsContractorRole(
+      ref.watch(authControllerProvider).valueOrNull?.userRoleNameFk ?? '',
+    );
 
     return PagedTableColumn(
       header: Column(
@@ -274,7 +305,11 @@ class _QualityTestRegisterListViewState
               message: 'No test obligations found.',
               onRetry: _retry,
             )
-          : QualityTestRegisterTable(rows: rows, onView: _onView),
+          : QualityTestRegisterTable(
+              rows: rows,
+              isContractor: isContractor,
+              onAction: _onAction,
+            ),
       footer: showFooter
           ? TablePaginationFooter(
               label: label,
