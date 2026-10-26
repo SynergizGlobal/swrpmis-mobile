@@ -7,7 +7,7 @@ import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/qualit
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_list.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_parse.dart';
 
-const double _kActionColumnMinWidth = 96;
+const double _kActionColumnMinWidth = 72;
 const Size _kActionButtonSize = Size(32, 32);
 
 class QualityTestRegisterTableColumn {
@@ -432,43 +432,26 @@ class _Actions extends StatelessWidget {
     );
     return Align(
       alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          SizedBox.fromSize(
-            size: _kActionButtonSize,
-            child: IconButton(
-              tooltip: 'View Details',
-              padding: EdgeInsets.zero,
-              onPressed: () =>
-                  onAction(row, QualityTestRegisterAction.viewDetails),
-              style: iconStyle,
-              icon: const Icon(Icons.visibility_outlined, size: 16),
-            ),
-          ),
-          const SizedBox(width: 4),
-          SizedBox.fromSize(
-            size: _kActionButtonSize,
-            child: PopupMenuButton<QualityTestRegisterAction>(
-              tooltip: 'More Actions',
-              padding: EdgeInsets.zero,
-              style: iconStyle,
-              icon: const Icon(Icons.arrow_drop_down, size: 18),
-              onSelected: (QualityTestRegisterAction action) {
-                onAction(row, action);
-              },
-              itemBuilder: (BuildContext context) {
-                return <PopupMenuEntry<QualityTestRegisterAction>>[
-                  for (final QualityTestRegisterAction action in items)
-                    PopupMenuItem<QualityTestRegisterAction>(
-                      value: action,
-                      child: Text(qualityTestRegisterActionLabel(action)),
-                    ),
-                ];
-              },
-            ),
-          ),
-        ],
+      child: SizedBox.fromSize(
+        size: _kActionButtonSize,
+        child: PopupMenuButton<QualityTestRegisterAction>(
+          tooltip: 'More Actions',
+          padding: EdgeInsets.zero,
+          style: iconStyle,
+          icon: const Icon(Icons.arrow_drop_down, size: 18),
+          onSelected: (QualityTestRegisterAction action) {
+            onAction(row, action);
+          },
+          itemBuilder: (BuildContext context) {
+            return <PopupMenuEntry<QualityTestRegisterAction>>[
+              for (final QualityTestRegisterAction action in items)
+                PopupMenuItem<QualityTestRegisterAction>(
+                  value: action,
+                  child: Text(qualityTestRegisterActionLabel(action)),
+                ),
+            ];
+          },
+        ),
       ),
     );
   }
