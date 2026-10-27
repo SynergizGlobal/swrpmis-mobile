@@ -15,6 +15,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/add_design_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_drawing_page.dart';
+import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/add_utility_shifting_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/utility_shifting_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
@@ -315,6 +316,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             child: AddDesignFormPage(
               designId: state.uri.queryParameters['designId'] ?? '',
               prefill: AddDesignFormPage.prefillFromExtra(state.extra),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AddUtilityShiftingFormPage.routePath,
+        name: AddUtilityShiftingFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddUtilityShiftingFormPage(
+              utilityShiftingId:
+                  state.uri.queryParameters['utilityShiftingId'] ?? '',
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AddUtilityShiftingFormPage.editRoutePath,
+        name: AddUtilityShiftingFormPage.editRouteName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddUtilityShiftingFormPage(
+              utilityShiftingId:
+                  state.pathParameters['utilityShiftingId'] ?? '',
             ),
           );
         },

@@ -68,6 +68,18 @@ class ApiConstants {
       '/utility-shifting/utility-shifting-template';
   static const String utilityShiftingUploadPath =
       '/utility-shifting/upload-utility-shifting';
+  static const String utilityShiftingAddFormPath =
+      '/utility-shifting/ajax/form/add-utility-shifting';
+  static const String utilityShiftingReqStageListPath =
+      '/utility-shifting/ajax/getReqStageListForUSForm';
+  static const String utilityShiftingImpactedElementListPath =
+      '/utility-shifting/ajax/getImpactedElementListForUSForm';
+  static const String utilityShiftingAddPath =
+      '/utility-shifting/addUtilityShifting';
+  static const String utilityShiftingGetPath =
+      '/utility-shifting/ajax/get-utility-shifting';
+  static const String utilityShiftingUpdatePath =
+      '/utility-shifting/updateUtilityShifting';
   static const String materialReceiptListPath =
       '/material-receipt/ajax/getMaterialReceipts';
   static const String materialReceiptFilterOptionsPath =

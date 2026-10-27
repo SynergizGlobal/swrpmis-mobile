@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
@@ -22,6 +23,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter
 import 'package:swr_pmis_mobile/src/features/utility_shifting/data/datasources/utility_shifting_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/data/utility_shifting_export_file.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/domain/utility_shifting_list.dart';
+import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/add_utility_shifting_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/providers/utility_shifting_provider.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/widgets/utility_shifting_table.dart';
 
@@ -66,21 +68,33 @@ class _UtilityShiftingListViewState
   }
 
   Future<void> _onAdd() async {
-    await AppDialog.show(
-      context,
-      title: 'Add Utility Shifting',
-      message: 'Add utility shifting will be available later.',
+    final Object? saved = await context.push<Object?>(
+      AddUtilityShiftingFormPage.routePath,
     );
+    if (!mounted || saved != true) {
+      return;
+    }
+    await _retry();
   }
 
   Future<void> _onEdit(UtilityShiftingRow row) async {
-    await AppDialog.show(
-      context,
-      title: 'Edit Utility Shifting',
-      message: row.utilityShiftingId.isEmpty
-          ? 'Edit utility shifting will be available later.'
-          : 'Edit utility shifting ${row.utilityShiftingId} will be available later.',
+    final String id = row.utilityShiftingId.trim();
+    if (id.isEmpty) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.warning,
+        title: 'Edit Utility Shifting',
+        message: 'This row has no utility shifting id to edit.',
+      );
+      return;
+    }
+    final Object? saved = await context.push<Object?>(
+      AddUtilityShiftingFormPage.location(utilityShiftingId: id),
     );
+    if (!mounted || saved != true) {
+      return;
+    }
+    await _retry();
   }
 
   Future<void> _onUpload() async {
