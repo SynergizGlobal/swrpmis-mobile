@@ -79,8 +79,6 @@ class NcrObservationRemoteDataSource {
     );
   }
 
-  /// Matches web `NcrVerificationRequest`:
-  /// `{ approved, verificationRemarks, verifiedBy }`.
   Future<NcrObservationDetail> verify({
     required int id,
     required bool approved,

@@ -1,10 +1,6 @@
 import 'package:swr_pmis_mobile/src/core/forms/form_menu_tree.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
 
-/// Compact URL / form-name aliases → [AppModule.routeName].
-///
-/// Do not alias Quality Test Master (`quality-test-master`) here — that is a
-/// separate leaf from Quality Test Register (`qualitytestregister`).
 const Map<String, String> _updateFormAliases = <String, String>{
   'qualitytestregister': 'forms-quality-test-register',
   'testregister': 'forms-quality-test-register',
@@ -21,7 +17,6 @@ String? updateFormRouteName(FormMenuNode node) {
   final String name = node.formName.trim().toLowerCase();
   final String compactName = _compact(name);
 
-  // Known API URLs / names first so nested catalog mistakes cannot hide a leaf.
   for (final String key in <String>[
     compactUrl,
     url,

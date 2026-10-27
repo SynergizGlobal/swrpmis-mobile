@@ -524,7 +524,6 @@ class _FilterBar extends StatelessWidget {
     required this.submitting,
   });
 
-  /// Hidden for now on the inspection list screen.
   static const bool _showSubmit15 = false;
 
   final RfiInspectionState state;

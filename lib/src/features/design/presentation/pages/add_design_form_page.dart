@@ -251,13 +251,6 @@ class _AddDesignFormPageState extends ConsumerState<AddDesignFormPage> {
     if (!mounted) {
       return;
     }
-    await AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: _editing ? 'Update' : 'Add',
-      message:
-          'Save is not yet connected. The form was checked on this device and was not sent to the server.',
-    );
   }
 
   void _addStatusRow() {

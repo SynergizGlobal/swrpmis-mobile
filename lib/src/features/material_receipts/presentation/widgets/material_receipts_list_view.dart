@@ -14,10 +14,13 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
+import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
+import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/data/datasources/material_receipt_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/data/material_receipt_file_actions.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/data/material_receipt_pdf_builder.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipt_list.dart';
+import 'package:swr_pmis_mobile/src/features/material_receipts/domain/material_receipts_permissions.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/providers/material_receipts_provider.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/widgets/material_receipts_table.dart';
@@ -233,6 +236,11 @@ class _MaterialReceiptsListViewState
     final bool showFooter = !failed && !state.loading;
     final bool showSearch = !failed;
     final bool busy = _busyReceiptId != null;
+    final AuthSession? authSession =
+        ref.watch(authControllerProvider).valueOrNull;
+    final MaterialReceiptsPermissions permissions =
+        MaterialReceiptsPermissions.fromSession(authSession);
+    final bool canCreate = permissions.canCreate;
 
     return PagedTableColumn(
       header: Column(
@@ -246,15 +254,17 @@ class _MaterialReceiptsListViewState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    onPressed: busy ? null : _onAdd,
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text('Add'),
+                if (canCreate) ...<Widget>[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: busy ? null : _onAdd,
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Add'),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                ],
                 AppFilterSection(
                   activeCount: AppFilterSection.countActive(<String?>[
                     state.query.projectId,

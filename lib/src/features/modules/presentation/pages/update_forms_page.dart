@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/forms/form_menu_tree.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/update_forms/domain/entities/update_forms_tree.dart';
 import 'package:swr_pmis_mobile/src/features/update_forms/domain/update_form_destination.dart';
@@ -88,17 +87,10 @@ class _UpdateFormsPageState extends ConsumerState<UpdateFormsPage> {
 
   Future<void> _open(FormMenuNode node) async {
     final String? routeName = updateFormRouteName(node);
-    if (routeName != null) {
-      context.pushNamed(routeName);
+    if (routeName == null) {
       return;
     }
-    final String name = node.formName.isEmpty ? 'This form' : node.formName;
-    await AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: name,
-      message: '$name will be added next.',
-    );
+    context.pushNamed(routeName);
   }
 }
 

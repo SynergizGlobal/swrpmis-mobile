@@ -8,13 +8,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
+import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_actions.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_list.dart';
+import 'package:swr_pmis_mobile/src/features/quality_test_register/domain/quality_test_register_permissions.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_detail_page.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/pages/quality_test_register_traceability_page.dart';
 import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/providers/quality_test_register_provider.dart';
@@ -58,14 +59,7 @@ class _QualityTestRegisterListViewState
     return ref.read(qualityTestRegisterControllerProvider.notifier).load();
   }
 
-  Future<void> _onCreate() async {
-    await AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: 'Create Test Obligation',
-      message: 'Create Test Obligation will be added next.',
-    );
-  }
+  Future<void> _onCreate() async {}
 
   Future<void> _onAction(
     QualityTestObligationRow row,
@@ -82,20 +76,8 @@ class _QualityTestRegisterListViewState
           QualityTestRegisterTraceabilityPage.locationFor(row.id),
         );
       case QualityTestRegisterAction.review:
-        await AppDialog.show(
-          context,
-          variant: AppDialogVariant.info,
-          title: 'Review',
-          message: 'Engineer review for this obligation will be added next.',
-        );
       case QualityTestRegisterAction.viewUpdate:
-        await AppDialog.show(
-          context,
-          variant: AppDialogVariant.info,
-          title: 'View / Update',
-          message:
-              'Contractor view / update for this obligation will be added next.',
-        );
+        return;
     }
   }
 
@@ -159,9 +141,12 @@ class _QualityTestRegisterListViewState
         : 'Showing ${start + 1} to $end of $total entries';
     final bool showFooter = !failed && !state.loading;
     final bool showSearch = !failed;
-    final bool isContractor = qualityTestRegisterIsContractorRole(
-      ref.watch(authControllerProvider).valueOrNull?.userRoleNameFk ?? '',
-    );
+    final AuthSession? authSession =
+        ref.watch(authControllerProvider).valueOrNull;
+    final QualityTestRegisterPermissions permissions =
+        QualityTestRegisterPermissions.fromSession(authSession);
+    final bool isContractor = permissions.isContractorRole;
+    final bool canCreate = permissions.canCreate;
 
     return PagedTableColumn(
       header: Column(
@@ -175,21 +160,21 @@ class _QualityTestRegisterListViewState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                // Create is intrinsic-width only — never Expanded / never share a
-                // Row with the search field (unbounded Expanded flex crash).
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    onPressed: _onCreate,
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                if (canCreate) ...<Widget>[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: _onCreate,
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Create'),
                     ),
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text('Create'),
                   ),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 AppFilterSection(
                   activeCount: AppFilterSection.countActive(<String?>[
                     state.query.projectId,

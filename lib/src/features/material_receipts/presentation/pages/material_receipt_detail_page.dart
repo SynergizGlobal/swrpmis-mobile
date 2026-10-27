@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_form_page.dart';
 
-/// Compatibility alias — edit/view now share [MaterialReceiptFormPage].
 class MaterialReceiptDetailPage extends StatelessWidget {
   const MaterialReceiptDetailPage({super.key, required this.receiptId});
 

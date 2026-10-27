@@ -49,12 +49,6 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
 
   Future<void> _onAdd() async {
     if (widget.kind != RfiListKind.work) {
-      await AppDialog.show(
-        context,
-        variant: AppDialogVariant.info,
-        title: 'Create',
-        message: 'Create will be added next.',
-      );
       return;
     }
     await _openWorkForm(null);
@@ -154,12 +148,6 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     if (!confirmed || !mounted) {
       return;
     }
-    AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: 'Delete',
-      message: 'Delete will be added next.',
-    );
   }
 
   @override

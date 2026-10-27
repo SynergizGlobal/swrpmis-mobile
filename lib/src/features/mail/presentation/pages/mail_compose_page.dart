@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_parse.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
@@ -132,14 +131,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
     });
   }
 
-  Future<void> _stubAction(String action) async {
-    await AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: action,
-      message: 'API not available yet.',
-    );
-  }
+  Future<void> _noopAction() async {}
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +142,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
         title: const Text('Compose Mail'),
         actions: <Widget>[
           TextButton.icon(
-            onPressed: () => _stubAction('Save Draft'),
+            onPressed: _noopAction,
             icon: const Icon(Icons.save_outlined),
             label: const Text('Save Draft'),
           ),
@@ -227,7 +219,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                   label: const Text('Attach File'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () => _stubAction('From Repository'),
+                  onPressed: _noopAction,
                   icon: const Icon(Icons.folder_open_outlined),
                   label: const Text('From Repository'),
                 ),
@@ -323,7 +315,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: <Widget>[
                 OutlinedButton.icon(
-                  onPressed: () => _stubAction('Preview'),
+                  onPressed: _noopAction,
                   icon: const Icon(Icons.visibility_outlined),
                   label: const Text('Preview'),
                 ),
@@ -333,7 +325,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                     backgroundColor: MailTheme.composeSecondaryButton(context),
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () => _stubAction('Save Draft'),
+                  onPressed: _noopAction,
                   icon: const Icon(Icons.save),
                   label: const Text('Save Draft'),
                 ),
@@ -343,7 +335,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                     backgroundColor: MailTheme.composePrimaryButton(context),
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () => _stubAction('Send'),
+                  onPressed: _noopAction,
                   icon: const Icon(Icons.send_rounded),
                   label: const Text('Send'),
                 ),
@@ -388,7 +380,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
           },
         ),
         TextButton(
-          onPressed: () => _stubAction('New Category'),
+          onPressed: _noopAction,
           child: const Text('+ New Category'),
         ),
       ],

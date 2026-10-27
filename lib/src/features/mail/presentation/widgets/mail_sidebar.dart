@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
@@ -87,14 +86,7 @@ class MailSidebar extends ConsumerWidget {
           _NavTile(
             icon: Icons.inventory_2_outlined,
             label: 'My Repository',
-            onTap: () async {
-              await AppDialog.show(
-                context,
-                variant: AppDialogVariant.info,
-                title: 'My Repository',
-                message: 'Repository integration is coming soon.',
-              );
-            },
+            onTap: () {},
           ),
           const SizedBox(height: 16),
           _sectionTitle(context, 'VIEWS'),
@@ -111,14 +103,7 @@ class MailSidebar extends ConsumerWidget {
               IconButton(
                 tooltip: 'Add label',
                 icon: Icon(Icons.add, size: 18, color: MailTheme.linkAccent(context)),
-                onPressed: () async {
-                  await AppDialog.show(
-                    context,
-                    variant: AppDialogVariant.info,
-                    title: 'New label',
-                    message: 'Creating labels is coming soon.',
-                  );
-                },
+                onPressed: () {},
               ),
             ],
           ),

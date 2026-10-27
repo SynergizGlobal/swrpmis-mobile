@@ -65,15 +65,7 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
     return ref.read(rfiValidationControllerProvider.notifier).load();
   }
 
-  Future<void> _reportLater(String title) {
-    return AppDialog.show(
-      context,
-      variant: AppDialogVariant.info,
-      title: title,
-      message:
-          'Preview and download will be added when the report is available.',
-    );
-  }
+  Future<void> _reportLater() async {}
 
   Future<void> _decide(
     RfiValidationRow row,
@@ -375,7 +367,7 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
             tooltip: 'Preview',
             icon: Icons.visibility_outlined,
             color: const Color(0xFF2563EB),
-            onPressed: () => _reportLater('Preview'),
+            onPressed: _reportLater,
           );
         },
       ),
@@ -388,7 +380,7 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
             tooltip: 'Download',
             icon: Icons.download_rounded,
             color: const Color(0xFF14B8A6),
-            onPressed: () => _reportLater('Download'),
+            onPressed: _reportLater,
           );
         },
       ),
