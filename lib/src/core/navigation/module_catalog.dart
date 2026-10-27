@@ -271,8 +271,13 @@ class ModuleCatalog {
     group: ModuleGroup.more,
   );
 
+  static const Set<String> _hiddenMenuIds = <String>{'help'};
+
   static List<AppModule> byGroup(ModuleGroup group) {
-    return all.where((AppModule module) => module.group == group).toList();
+    return all
+        .where((AppModule module) => module.group == group)
+        .where((AppModule module) => !_hiddenMenuIds.contains(module.id))
+        .toList();
   }
 
   /// Leaf modules used for routing and Update Forms matching.

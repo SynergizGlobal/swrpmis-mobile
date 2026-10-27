@@ -92,7 +92,7 @@ class _RfiPageState extends ConsumerState<RfiPage> {
         floatingActionButton: creates.isEmpty || sectionId != RfiMenuId.home
             ? null
             : FloatingActionButton(
-                tooltip: 'Create RFI',
+                tooltip: 'RFI',
                 onPressed: () => _openCreateSheet(creates),
                 child: const Icon(Icons.add_rounded),
               ),

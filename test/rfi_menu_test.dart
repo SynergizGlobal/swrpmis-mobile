@@ -4,7 +4,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 
 void main() {
   test(
-    'contractor nav is dashboard, inspection, and log, with three create actions',
+    'contractor nav is dashboard, inspection, and log, with three RFI list shortcuts',
     () {
       final RfiUserRole role = RfiUserRoleResolver.fromFields(
         userTypeFk: 'Contractor',
@@ -18,9 +18,9 @@ void main() {
       expect(
         RfiMenuItem.createItemsFor(role).map((RfiMenuItem item) => item.title),
         <String>[
-          'Create Material RFI',
-          'Create Work RFI',
-          'Create Quality/Safety RFI',
+          'Material RFI',
+          'Work RFI',
+          'Quality/Safety RFI',
         ],
       );
       expect(RfiMenuItem.navBarFor(role).overflow, isEmpty);
@@ -46,9 +46,33 @@ void main() {
           RfiMenuId.assignExecutive,
         ],
       );
-      expect(RfiMenuItem.createItemsFor(role), isEmpty);
+      expect(
+        RfiMenuItem.createItemsFor(role).map((RfiMenuItem item) => item.id),
+        <RfiMenuId>[
+          RfiMenuId.createMaterial,
+          RfiMenuId.createWork,
+          RfiMenuId.createQuality,
+        ],
+      );
     },
   );
+
+  test('super user gets FAB list shortcuts without create permission', () {
+    final RfiUserRole role = RfiUserRoleResolver.fromFields(
+      userTypeFk: 'HOD',
+      userRoleNameFk: 'Super User',
+    );
+
+    expect(role.canCreateRfi, isFalse);
+    expect(
+      RfiMenuItem.createItemsFor(role).map((RfiMenuItem item) => item.title),
+      <String>[
+        'Material RFI',
+        'Work RFI',
+        'Quality/Safety RFI',
+      ],
+    );
+  });
 
   test('IT admin sees every RFI menu item', () {
     final RfiUserRole role = RfiUserRoleResolver.fromFields(

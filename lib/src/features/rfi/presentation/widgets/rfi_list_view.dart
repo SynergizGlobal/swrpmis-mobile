@@ -9,9 +9,11 @@ import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
+import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/work_rfi_export_file.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_permissions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_providers.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
@@ -48,7 +50,10 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
   }
 
   Future<void> _onAdd() async {
-    if (widget.kind != RfiListKind.work) {
+    final bool canCreate = RfiPermissions.fromSession(
+      ref.read(authControllerProvider).valueOrNull,
+    ).canCreate;
+    if (!canCreate || widget.kind != RfiListKind.work) {
       return;
     }
     await _openWorkForm(null);
@@ -155,6 +160,9 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     final AsyncValue<List<RfiListItem>> asyncList = ref.watch(
       rfiListProvider(widget.kind),
     );
+    final bool canCreate = RfiPermissions.fromSession(
+      ref.watch(authControllerProvider).valueOrNull,
+    ).canCreate;
     final List<RfiListItem>? loaded = asyncList.hasValue && !asyncList.hasError
         ? asyncList.requireValue
         : null;
@@ -192,7 +200,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
                 _ListHeader(
                   title: widget.kind.title,
                   countLabel: showSearch ? _countLabel(visible.length) : null,
-                  onAdd: _onAdd,
+                  onAdd: canCreate ? _onAdd : null,
                 ),
                 if (showSearch) ...<Widget>[
                   const SizedBox(height: 12),
@@ -444,7 +452,7 @@ class _ListHeader extends StatelessWidget {
 
   final String title;
   final String? countLabel;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -474,15 +482,16 @@ class _ListHeader extends StatelessWidget {
             ],
           ),
         ),
-        IconButton.filled(
-          tooltip: 'Add',
-          style: IconButton.styleFrom(
-            backgroundColor: AppTheme.railwayRed,
-            foregroundColor: Colors.white,
+        if (onAdd != null)
+          IconButton.filled(
+            tooltip: 'Add',
+            style: IconButton.styleFrom(
+              backgroundColor: AppTheme.railwayRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_rounded),
           ),
-          onPressed: onAdd,
-          icon: const Icon(Icons.add_rounded),
-        ),
       ],
     );
   }

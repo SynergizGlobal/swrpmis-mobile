@@ -26,9 +26,6 @@ class _MorePageState extends State<MorePage> {
     final AppModule mail = modules.firstWhere(
       (AppModule module) => module.id == 'mail',
     );
-    final AppModule help = modules.firstWhere(
-      (AppModule module) => module.id == 'help',
-    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -52,12 +49,6 @@ class _MorePageState extends State<MorePage> {
           title: mail.title,
           icon: mail.icon,
           onTap: () => context.pushNamed(mail.routeName),
-        ),
-        const SizedBox(height: 10),
-        _LeafRow(
-          title: help.title,
-          icon: help.icon,
-          onTap: () => context.pushNamed(help.routeName),
         ),
       ],
     );

@@ -32,17 +32,17 @@ class RfiMenuItem {
     ),
     RfiMenuItem(
       id: RfiMenuId.createMaterial,
-      title: 'Create Material RFI',
+      title: 'Material RFI',
       icon: Icons.inventory_2_outlined,
     ),
     RfiMenuItem(
       id: RfiMenuId.createWork,
-      title: 'Create Work RFI',
+      title: 'Work RFI',
       icon: Icons.construction_outlined,
     ),
     RfiMenuItem(
       id: RfiMenuId.createQuality,
-      title: 'Create Quality/Safety RFI',
+      title: 'Quality/Safety RFI',
       icon: Icons.health_and_safety_outlined,
     ),
     RfiMenuItem(
@@ -121,7 +121,7 @@ class RfiMenuItem {
     RfiMenuId.createMaterial ||
     RfiMenuId.createWork ||
     RfiMenuId.createQuality =>
-      'The create form will follow the same steps as the other RFI apps.',
+      'This RFI list will open here.',
     RfiMenuId.inspection =>
       'Inspection will follow the same list and actions as the other RFI apps.',
     RfiMenuId.validation =>
@@ -137,7 +137,7 @@ class RfiMenuItem {
       RfiMenuId.home => true,
       RfiMenuId.createMaterial ||
       RfiMenuId.createWork ||
-      RfiMenuId.createQuality => role.canCreateRfi,
+      RfiMenuId.createQuality => true,
       RfiMenuId.inspection => role.canViewInspection,
       RfiMenuId.validation => role.canViewValidation,
       RfiMenuId.log => role.canViewRfiLog,
