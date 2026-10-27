@@ -28,6 +28,7 @@ import 'package:swr_pmis_mobile/src/features/quality_test_register/presentation/
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_repository_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/module_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/modules/presentation/pages/update_forms_page.dart';
 import 'package:swr_pmis_mobile/src/features/more/presentation/pages/more_page.dart';
@@ -352,11 +353,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: MailModulePage.routeName,
         redirect: (BuildContext context, GoRouterState state) {
           if (state.uri.path == MailModulePage.routePath) {
-            return MailModulePage.folderPath(MailFolder.inbox);
+            return MailModulePage.folderPath(MailFolder.dashboard);
           }
           return null;
         },
         routes: <RouteBase>[
+          GoRoute(
+            path: 'dashboard',
+            name: 'mail-dashboard',
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.dashboard),
+              );
+            },
+          ),
           GoRoute(
             path: 'inbox',
             name: 'mail-inbox',
@@ -414,6 +425,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               return fadeSlidePage(
                 key: state.pageKey,
                 child: const MailModulePage(folder: MailFolder.important),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'repository',
+            name: MailRepositoryPage.routeName,
+            pageBuilder: (BuildContext context, GoRouterState state) {
+              return fadeSlidePage(
+                key: state.pageKey,
+                child: const MailModulePage(folder: MailFolder.repository),
               );
             },
           ),

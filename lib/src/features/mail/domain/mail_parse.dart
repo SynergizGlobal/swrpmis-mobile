@@ -1,4 +1,7 @@
 import 'package:intl/intl.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/document_repository.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_compose.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_dashboard.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 
 List<MailLabel> parseMailLabels(dynamic data) {
@@ -59,6 +62,39 @@ String? mailApiMessage(dynamic data) {
     return data.trim();
   }
   return null;
+}
+
+List<MailRecipient> parseMailRecipients(dynamic data) {
+  final List<MailRecipient> out = <MailRecipient>[];
+  for (final Map<String, dynamic> json in _maps(data)) {
+    final String email = _display(json['emailId'] ?? json['email']);
+    if (email.isEmpty) {
+      continue;
+    }
+    out.add(
+      MailRecipient(
+        emailId: email,
+        userId: _display(json['userId']),
+        username: _display(json['username'] ?? json['name']),
+      ),
+    );
+  }
+  return out;
+}
+
+String parseMailReference(dynamic data) {
+  if (data is String) {
+    return data.trim();
+  }
+  if (data is Map) {
+    final String fromKeys = _display(
+      data['referenceId'] ?? data['reference'] ?? data['data'] ?? data['message'],
+    );
+    if (fromKeys.isNotEmpty) {
+      return fromKeys;
+    }
+  }
+  return data?.toString().trim() ?? '';
 }
 
 DateTime? parseMailDateTime(dynamic value) {
@@ -397,4 +433,89 @@ int? _int(dynamic value) {
     return value.toInt();
   }
   return int.tryParse(value.toString().trim());
+}
+
+MailDashboardData parseMailDashboard(dynamic data) {
+  final Map<String, dynamic> root = data is Map<String, dynamic>
+      ? data
+      : data is Map
+      ? Map<String, dynamic>.from(data)
+      : <String, dynamic>{};
+  final Map<String, dynamic> summaryMap = root['summary'] is Map
+      ? Map<String, dynamic>.from(root['summary'] as Map)
+      : <String, dynamic>{};
+  final MailDashboardSummary summary = MailDashboardSummary(
+    totalMail: _int(summaryMap['totalMail']) ?? 0,
+    replyRequired: _int(summaryMap['replyRequired']) ?? 0,
+    replied: _int(summaryMap['replied']) ?? 0,
+    pendingToReply: _int(summaryMap['pendingToReply']) ?? 0,
+    pendingWithOthers: _int(summaryMap['pendingWithOthers']) ?? 0,
+    overdueMails: _int(summaryMap['overdueMails']) ?? 0,
+  );
+  final List<MailCorrespondenceRow> rows = <MailCorrespondenceRow>[];
+  for (final Map<String, dynamic> json in _maps(root['rows'] ?? root)) {
+    final int id = _int(json['id']) ?? _int(json['mailId']) ?? 0;
+    if (id == 0 && _display(json['mailNo']).isEmpty) {
+      continue;
+    }
+    rows.add(
+      MailCorrespondenceRow(
+        id: id,
+        mailId: _int(json['mailId']) ?? id,
+        contract: _display(json['contract']),
+        contractor: _display(json['contractor']),
+        mailNo: _display(json['mailNo']),
+        reference: _display(json['reference']),
+        date: _display(json['date']),
+        replyRequired: _display(json['replyRequired']),
+        dueDate: _dash(_display(json['dueDate'])),
+        person: _display(json['person']),
+        replied: _dash(_display(json['replied'])),
+        replyMailNo: _dash(_display(json['replyMailNo'])),
+        subject: _display(json['subject']),
+        status: _display(json['status']),
+        mailType: _display(json['mailType']),
+      ),
+    );
+  }
+  return MailDashboardData(summary: summary, rows: rows);
+}
+
+List<RepositoryItem> parseRepositoryItems(dynamic data) {
+  final List<RepositoryItem> out = <RepositoryItem>[];
+  for (final Map<String, dynamic> json in _maps(data)) {
+    final int id = _int(json['id']) ?? 0;
+    if (id == 0) {
+      continue;
+    }
+    out.add(
+      RepositoryItem(
+        id: id,
+        documentName: _display(json['documentName']),
+        fileName: _nullableText(json['fileName']),
+        filePath: _nullableText(json['filePath']),
+        category: _display(json['category']),
+        parentId: _int(json['parentId']),
+        isFolder: _bool(json['isFolder']),
+        fileSize: _int(json['fileSize']),
+        mimeType: _nullableText(json['mimeType']),
+      ),
+    );
+  }
+  return out;
+}
+
+RepositoryItem? parseRepositoryItem(dynamic data) {
+  if (data is! Map) {
+    return null;
+  }
+  final List<RepositoryItem> items = parseRepositoryItems(<dynamic>[data]);
+  return items.isEmpty ? null : items.first;
+}
+
+String _dash(String value) {
+  if (value.isEmpty || value == '—') {
+    return '—';
+  }
+  return value;
 }

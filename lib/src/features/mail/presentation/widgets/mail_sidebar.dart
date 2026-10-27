@@ -5,6 +5,7 @@ import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_add_label_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_ui_helpers.dart';
 
 class MailSidebar extends ConsumerWidget {
@@ -50,6 +51,12 @@ class MailSidebar extends ConsumerWidget {
           const SizedBox(height: 20),
           _sectionTitle(context, 'MAILBOX'),
           _NavTile(
+            icon: Icons.dashboard_outlined,
+            label: 'Dashboard',
+            selected: selected == MailFolder.dashboard,
+            onTap: () => _goFolder(context, MailFolder.dashboard),
+          ),
+          _NavTile(
             icon: Icons.inbox_rounded,
             label: 'Inbox',
             badge: unread,
@@ -86,7 +93,8 @@ class MailSidebar extends ConsumerWidget {
           _NavTile(
             icon: Icons.inventory_2_outlined,
             label: 'My Repository',
-            onTap: () {},
+            selected: selected == MailFolder.repository,
+            onTap: () => _goFolder(context, MailFolder.repository),
           ),
           const SizedBox(height: 16),
           _sectionTitle(context, 'VIEWS'),
@@ -103,7 +111,7 @@ class MailSidebar extends ConsumerWidget {
               IconButton(
                 tooltip: 'Add label',
                 icon: Icon(Icons.add, size: 18, color: MailTheme.linkAccent(context)),
-                onPressed: () {},
+                onPressed: () => showMailAddLabelDialog(context, ref),
               ),
             ],
           ),

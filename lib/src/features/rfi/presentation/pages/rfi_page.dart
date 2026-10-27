@@ -8,10 +8,12 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_dashboard_card.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_menu_access.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_menu.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_log_provider.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_menu_access_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_section_launch.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_assign_executive_view.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_dashboard_view.dart';
@@ -67,13 +69,36 @@ class _RfiPageState extends ConsumerState<RfiPage> {
       userTypeFk: session?.userTypeFk ?? '',
       userRoleNameFk: session?.userRoleNameFk ?? '',
     );
+    final AsyncValue<RfiMenuAccess> menuAccess = ref.watch(
+      rfiMenuAccessProvider,
+    );
+    final RfiMenuAccess? access = menuAccess.asData?.value;
+    ref.listen<AsyncValue<RfiMenuAccess>>(rfiMenuAccessProvider, (
+      AsyncValue<RfiMenuAccess>? previous,
+      AsyncValue<RfiMenuAccess> next,
+    ) {
+      final RfiMenuAccess? loaded = next.asData?.value;
+      if (loaded == null) {
+        return;
+      }
+      final RfiMenuId current = ref.read(rfiCurrentSectionProvider);
+      final RfiMenuItem? item = RfiMenuItem.byId(current.name);
+      if (item != null && !item.isVisible(role, access: loaded)) {
+        ref.read(rfiCurrentSectionProvider.notifier).select(RfiMenuId.home);
+      }
+    });
     final ({List<RfiMenuItem> bar, List<RfiMenuItem> overflow}) nav =
-        RfiMenuItem.navBarFor(role);
-    final List<RfiMenuItem> creates = RfiMenuItem.createItemsFor(role);
+        RfiMenuItem.navBarFor(role, access: access);
+    final List<RfiMenuItem> creates = RfiMenuItem.createItemsFor(
+      role,
+      access: access,
+    );
     final RfiMenuId sectionId = ref.watch(rfiCurrentSectionProvider);
     final RfiMenuItem? section = RfiMenuItem.byId(sectionId.name);
     final RfiListKind? listKind = RfiListKind.fromMenuId(section?.id);
     final bool interceptBack = _interceptSystemBack;
+    final bool sectionAllowed =
+        section == null || section.isVisible(role, access: access);
 
     return PopScope(
       canPop: !interceptBack,
@@ -105,7 +130,9 @@ class _RfiPageState extends ConsumerState<RfiPage> {
                 selected: sectionId,
                 onSelected: _selectSection,
               ),
-        body: listKind != null
+        body: !sectionAllowed
+            ? RfiDashboardView(onOpenCard: _openCard)
+            : listKind != null
             ? RfiListView(key: ValueKey<RfiListKind>(listKind), kind: listKind)
             : section?.id == RfiMenuId.inspection
             ? const RfiInspectionView()

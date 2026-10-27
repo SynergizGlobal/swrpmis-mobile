@@ -677,11 +677,26 @@ class _MailStarredListViewState extends ConsumerState<MailStarredListView> {
   }
 }
 
-class MailTrashListView extends ConsumerWidget {
+class MailTrashListView extends ConsumerStatefulWidget {
   const MailTrashListView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MailTrashListView> createState() => _MailTrashListViewState();
+}
+
+class _MailTrashListViewState extends ConsumerState<MailTrashListView> {
+  final TextEditingController _search = TextEditingController();
+  int _page = 1;
+  int _pageSize = TablePage.defaultPageSize;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final AsyncValue<List<MailMessage>> trash = ref.watch(mailTrashProvider);
     return trash.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -692,22 +707,187 @@ class MailTrashListView extends ConsumerWidget {
         onRetry: () => ref.invalidate(mailTrashProvider),
       ),
       data: (List<MailMessage> items) {
-        if (items.isEmpty) {
-          return const Center(child: Text('Trash is empty'));
-        }
-        return ListView.separated(
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (BuildContext context, int index) {
-            final MailMessage message = items[index];
-            return ListTile(
-              title: Text(message.displaySubject),
-              subtitle: Text(message.toDisplay),
-              onTap: () => showMailDetailSheet(context, message),
-            );
-          },
+        final List<MailMessage> filtered = items
+            .where((MailMessage m) => mailMatchesQuery(m, _search.text))
+            .toList(growable: false);
+        final TablePage<MailMessage> page = TablePage.slice(
+          filtered,
+          page: _page,
+          pageSize: _pageSize,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Trash',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: MailTheme.heading(context),
+                          ),
+                        ),
+                        Text(
+                          '${filtered.length} deleted items',
+                          style: MailTheme.mutedStyle(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 220,
+                    child: TextField(
+                      controller: _search,
+                      decoration: mailSearchDecoration(
+                        context: context,
+                        hint: 'Search trash...',
+                      ),
+                      onChanged: (_) => setState(() => _page = 1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: filtered.isEmpty
+                  ? const Center(child: Text('Trash is empty'))
+                  : ListView(
+                      children: <Widget>[
+                        const Divider(height: 1),
+                        for (final MailMessage message in page.items)
+                          _TrashRow(
+                            message: message,
+                            onRestore: () =>
+                                mailRestoreAction(context, ref, message),
+                            onDelete: () => mailPermanentDeleteAction(
+                              context,
+                              ref,
+                              message,
+                            ),
+                            onOpen: () =>
+                                showMailDetailSheet(context, message),
+                          ),
+                      ],
+                    ),
+            ),
+            if (filtered.isNotEmpty) ...<Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        mailRestoreAllAction(context, ref, filtered),
+                    icon: const Icon(Icons.restore_rounded),
+                    label: const Text('Restore All'),
+                  ),
+                ),
+              ),
+              TablePaginationFooter(
+                label: page.label,
+                total: page.total,
+                page: page.page,
+                pageCount: page.pageCount,
+                pageSize: page.pageSize,
+                onPageChanged: (int value) => setState(() => _page = value),
+                onPageSizeChanged: (int value) => setState(() {
+                  _pageSize = value;
+                  _page = 1;
+                }),
+              ),
+            ],
+          ],
         );
       },
+    );
+  }
+}
+
+class _TrashRow extends StatelessWidget {
+  const _TrashRow({
+    required this.message,
+    required this.onRestore,
+    required this.onDelete,
+    required this.onOpen,
+  });
+
+  final MailMessage message;
+  final VoidCallback onRestore;
+  final VoidCallback onDelete;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime? when = message.lastModified;
+    return Column(
+      children: <Widget>[
+        InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        message.displaySubject,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      if (message.snippet.isNotEmpty)
+                        Text(
+                          message.snippet,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: MailTheme.mutedStyle(context),
+                        ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(formatMailDateShort(when)),
+                      Text(
+                        formatMailTime(when),
+                        style: MailTheme.mutedStyle(context, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    IconButton(
+                      tooltip: 'Restore',
+                      icon: const Icon(Icons.restore_rounded),
+                      onPressed: onRestore,
+                    ),
+                    IconButton(
+                      tooltip: 'Delete permanently',
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      onPressed: onDelete,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+      ],
     );
   }
 }

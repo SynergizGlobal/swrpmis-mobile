@@ -139,6 +139,59 @@ void main() {
     );
   });
 
+  test('org highlight is self plus direct reportees only', () {
+    final HomeDashboardData data = HomeDashboardData.fromApiLists(
+      projectList: const <Map<String, dynamic>>[],
+      usersByType: <Map<String, dynamic>>[
+        <String, dynamic>{
+          'userId': 'PMIS_SU_001',
+          'designation': 'CAO/CN/BNC',
+          'userTypeFk': 'CAO',
+          'reportingToIdSrfk': 'PMIS_SU_001',
+          'projectCount': 1,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_SU_009',
+          'designation': 'CE/CN/II/UBL',
+          'userTypeFk': 'HOD',
+          'reportingToIdSrfk': 'PMIS_SU_001',
+          'projectCount': 1,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_CE_001',
+          'designation': 'CE/CN/I/UBL',
+          'userTypeFk': 'HOD',
+          'reportingToIdSrfk': 'PMIS_SU_001',
+          'projectCount': 0,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_IU_035',
+          'designation': 'XEN/C/KURJ',
+          'userTypeFk': 'OTHER',
+          'reportingToIdSrfk': 'PMIS_SU_009',
+          'projectCount': 0,
+        },
+        <String, dynamic>{
+          'userId': 'PMIS_IU_036',
+          'designation': 'AXEN/C/Khajuraho',
+          'userTypeFk': 'OTHER',
+          'reportingToIdSrfk': 'PMIS_SU_009',
+          'projectCount': 5,
+        },
+      ],
+      projectTypes: const <Map<String, dynamic>>[],
+      projectListByType: const <Map<String, dynamic>>[],
+    );
+
+    expect(
+      data.orgHighlightIds('PMIS_SU_009'),
+      <String>{'PMIS_SU_009', 'PMIS_IU_035', 'PMIS_IU_036'},
+    );
+    expect(data.orgHighlightIds('PMIS_SU_009'), isNot(contains('PMIS_SU_001')));
+    expect(data.orgHighlightIds('PMIS_SU_009'), isNot(contains('PMIS_CE_001')));
+    expect(data.orgHighlightIds(''), isEmpty);
+  });
+
   test('missing parent ids follow CAO then HOD then DYHOD', () {
     final HomeDashboardData data = HomeDashboardData.fromApiLists(
       projectList: const <Map<String, dynamic>>[],

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 enum MailFolder {
+  dashboard,
   inbox,
   sent,
   drafts,
@@ -9,6 +10,7 @@ enum MailFolder {
   important,
   label,
   compose,
+  repository,
 }
 
 @immutable

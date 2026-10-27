@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_menu_access.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 
 enum RfiMenuId {
@@ -70,22 +71,38 @@ class RfiMenuItem {
 
   static const int maxNavSlots = 5;
 
-  static List<RfiMenuItem> visibleFor(RfiUserRole role) {
-    return all.where((RfiMenuItem item) => item.isVisible(role)).toList();
+  static List<RfiMenuItem> visibleFor(
+    RfiUserRole role, {
+    RfiMenuAccess? access,
+  }) {
+    return all
+        .where((RfiMenuItem item) => item.isVisible(role, access: access))
+        .toList();
   }
 
-  static List<RfiMenuItem> navItemsFor(RfiUserRole role) {
-    return visibleFor(role).where((RfiMenuItem item) => item.isNav).toList();
+  static List<RfiMenuItem> navItemsFor(
+    RfiUserRole role, {
+    RfiMenuAccess? access,
+  }) {
+    return visibleFor(role, access: access)
+        .where((RfiMenuItem item) => item.isNav)
+        .toList();
   }
 
-  static List<RfiMenuItem> createItemsFor(RfiUserRole role) {
-    return visibleFor(role).where((RfiMenuItem item) => item.isCreate).toList();
+  static List<RfiMenuItem> createItemsFor(
+    RfiUserRole role, {
+    RfiMenuAccess? access,
+  }) {
+    return visibleFor(role, access: access)
+        .where((RfiMenuItem item) => item.isCreate)
+        .toList();
   }
 
   static ({List<RfiMenuItem> bar, List<RfiMenuItem> overflow}) navBarFor(
-    RfiUserRole role,
-  ) {
-    final List<RfiMenuItem> items = navItemsFor(role);
+    RfiUserRole role, {
+    RfiMenuAccess? access,
+  }) {
+    final List<RfiMenuItem> items = navItemsFor(role, access: access);
     if (items.length <= maxNavSlots) {
       return (bar: items, overflow: const <RfiMenuItem>[]);
     }
@@ -132,12 +149,26 @@ class RfiMenuItem {
       'The inspection reference form will open here.',
   };
 
-  bool isVisible(RfiUserRole role) {
+  bool isVisible(RfiUserRole role, {RfiMenuAccess? access}) {
+    if (access != null) {
+      return switch (id) {
+        RfiMenuId.home => access.showHome,
+        RfiMenuId.createMaterial => access.showMaterialRfi,
+        RfiMenuId.createWork => access.showWorkRfi,
+        RfiMenuId.createQuality => access.showQualitySafetyRfi,
+        RfiMenuId.inspection => access.showInspection,
+        RfiMenuId.validation => access.showValidation,
+        RfiMenuId.log => access.showRfiLog,
+        RfiMenuId.assignExecutive => access.showAssignExecutive,
+        RfiMenuId.inspectionReference => access.showReferenceForms,
+      };
+    }
     return switch (id) {
       RfiMenuId.home => true,
       RfiMenuId.createMaterial ||
       RfiMenuId.createWork ||
-      RfiMenuId.createQuality => true,
+      RfiMenuId.createQuality =>
+        true,
       RfiMenuId.inspection => role.canViewInspection,
       RfiMenuId.validation => role.canViewValidation,
       RfiMenuId.log => role.canViewRfiLog,

@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_repository_page.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_dashboard_view.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_folder_views.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_notifications_menu.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_sidebar.dart';
+
 class MailModulePage extends ConsumerStatefulWidget {
   const MailModulePage({
     super.key,
@@ -22,6 +25,8 @@ class MailModulePage extends ConsumerStatefulWidget {
 
   static String folderPath(MailFolder folder) {
     switch (folder) {
+      case MailFolder.dashboard:
+        return '$routePath/dashboard';
       case MailFolder.inbox:
         return '$routePath/inbox';
       case MailFolder.sent:
@@ -34,6 +39,8 @@ class MailModulePage extends ConsumerStatefulWidget {
         return '$routePath/starred';
       case MailFolder.important:
         return '$routePath/important';
+      case MailFolder.repository:
+        return MailRepositoryPage.routePath;
       case MailFolder.label:
         return routePath;
       case MailFolder.compose:
@@ -52,7 +59,7 @@ class MailModulePage extends ConsumerStatefulWidget {
       );
     }
     final String segment =
-        segments.length >= 3 ? segments[2] : 'inbox';
+        segments.length >= 3 ? segments[2] : 'dashboard';
     return MailModulePage(
       folder: _folderFromSegment(segment),
       labelName: null,
@@ -61,6 +68,8 @@ class MailModulePage extends ConsumerStatefulWidget {
 
   static MailFolder _folderFromSegment(String segment) {
     switch (segment) {
+      case 'dashboard':
+        return MailFolder.dashboard;
       case 'sent':
         return MailFolder.sent;
       case 'drafts':
@@ -71,6 +80,8 @@ class MailModulePage extends ConsumerStatefulWidget {
         return MailFolder.starred;
       case 'important':
         return MailFolder.important;
+      case 'repository':
+        return MailFolder.repository;
       case 'inbox':
       default:
         return MailFolder.inbox;
@@ -90,6 +101,8 @@ class _MailModulePageState extends ConsumerState<MailModulePage> {
 
   Widget _folderBody() {
     switch (widget.folder) {
+      case MailFolder.dashboard:
+        return const MailDashboardView();
       case MailFolder.inbox:
         return const MailInboxListView();
       case MailFolder.drafts:
@@ -104,6 +117,8 @@ class _MailModulePageState extends ConsumerState<MailModulePage> {
         return const MailStarredListView(title: 'Important');
       case MailFolder.label:
         return MailLabelListView(labelName: widget.labelName ?? '');
+      case MailFolder.repository:
+        return const MailRepositoryPage(embedded: true);
       case MailFolder.compose:
         return const SizedBox.shrink();
     }

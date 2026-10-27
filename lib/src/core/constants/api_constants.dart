@@ -117,6 +117,7 @@ class ApiConstants {
   static String ncrObservationVerifyPath(int id) =>
       '/api/quality/ncr-observations/$id/verify';
 
+  static const String rfiMenuAccessPath = '/rfi/menu-access';
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';
@@ -265,7 +266,13 @@ class ApiConstants {
   static const String mailSentPath = '/api/mail/sent';
   static const String mailTrashPath = '/api/mail/trash';
   static const String mailStarredPath = '/api/mail/starred';
+  static const String mailDashboardPath = '/api/mail/dashboard';
   static const String mailLabelsPath = '/api/labels';
+  static const String mailRecipientsSearchPath = '/api/mail/recipients/search';
+  static const String mailGenerateReferencePath = '/api/mail/generate-reference';
+  static const String mailDraftPath = '/api/mail/draft';
+  static const String mailSendPath = '/api/mail/send';
+  static const String documentsRepositoryPath = '/api/documents/repository';
 
   static String mailLabelMailsPath(String labelName) =>
       '/api/labels/label/${Uri.encodeComponent(labelName.trim())}';
@@ -273,6 +280,29 @@ class ApiConstants {
   static String mailStarPath(int mailId) => '/api/mail/$mailId/star';
 
   static String mailTrashActionPath(int mailId) => '/api/mail/$mailId/trash';
+
+  static String mailRestorePath(int mailId) => '/api/mail/$mailId/restore';
+
+  static String mailPermanentDeletePath(int mailId) =>
+      '/api/mail/$mailId/permanent';
+
+  static String documentsRepositoryFolderPath(int folderId) =>
+      '/api/documents/repository/folder/$folderId';
+
+  static const String documentsRepositoryCreateFolderPath =
+      '/api/documents/repository/folder';
+
+  static const String documentsRepositoryUploadPath =
+      '/api/documents/repository/upload';
+
+  static String documentsRepositoryRenamePath(int id) =>
+      '/api/documents/repository/$id/rename';
+
+  static String documentsRepositoryDownloadPath(int id) =>
+      '/api/documents/repository/$id/download';
+
+  static String documentsRepositoryDeletePath(int id) =>
+      '/api/documents/repository/$id';
 
   static const Duration connectTimeout = Duration(seconds: 20);
   static const Duration receiveTimeout = Duration(seconds: 45);

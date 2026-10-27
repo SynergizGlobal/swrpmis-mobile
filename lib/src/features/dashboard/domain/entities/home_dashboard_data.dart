@@ -43,6 +43,19 @@ class HomeDashboardData {
 
   List<OrgChartNode> get orgForest => buildOrgForest(orgUsers);
 
+  /// Self plus users whose [DashboardOrgUser.reportingToId] is the viewer.
+  Set<String> orgHighlightIds(String viewerUserId) {
+    final String viewer = viewerUserId.trim();
+    if (viewer.isEmpty) {
+      return const <String>{};
+    }
+    return <String>{
+      viewer,
+      for (final DashboardOrgUser user in orgUsers)
+        if (user.reportingToId == viewer) user.userId,
+    };
+  }
+
   List<DashboardOrgUser> _byType(String type) {
     return orgUsers
         .where((DashboardOrgUser user) => user.userTypeFk == type)

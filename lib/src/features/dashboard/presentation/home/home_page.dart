@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_assets.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/domain/entities/home_dashboard_data.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/providers/home_dashboard_provider.dart';
 
@@ -19,6 +20,8 @@ class HomePage extends ConsumerWidget {
     final AsyncValue<HomeDashboardData> dashboard = ref.watch(
       homeDashboardProvider,
     );
+    final String viewerUserId =
+        ref.watch(authControllerProvider).valueOrNull?.userId.trim() ?? '';
     final NumberFormat numberFormat = NumberFormat('#,##0.00');
 
     return LayoutBuilder(
@@ -71,8 +74,11 @@ class HomePage extends ConsumerWidget {
                     ),
                   );
                 },
-                data: (HomeDashboardData data) =>
-                    _DashboardBody(data: data, numberFormat: numberFormat),
+                data: (HomeDashboardData data) => _DashboardBody(
+                  data: data,
+                  numberFormat: numberFormat,
+                  viewerUserId: viewerUserId,
+                ),
               ),
             ),
           ),
@@ -83,10 +89,15 @@ class HomePage extends ConsumerWidget {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({required this.data, required this.numberFormat});
+  const _DashboardBody({
+    required this.data,
+    required this.numberFormat,
+    required this.viewerUserId,
+  });
 
   final HomeDashboardData data;
   final NumberFormat numberFormat;
+  final String viewerUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -205,6 +216,7 @@ class _DashboardBody extends StatelessWidget {
               const SizedBox(height: 16),
               _OrgChart(
                 data: data,
+                highlightIds: data.orgHighlightIds(viewerUserId),
                 onSelect: (DashboardOrgUser user) =>
                     _showOrgUserSheet(context, user),
               ),
@@ -296,9 +308,14 @@ class _DashboardBody extends StatelessWidget {
 }
 
 class _OrgChart extends StatefulWidget {
-  const _OrgChart({required this.data, required this.onSelect});
+  const _OrgChart({
+    required this.data,
+    required this.highlightIds,
+    required this.onSelect,
+  });
 
   final HomeDashboardData data;
+  final Set<String> highlightIds;
   final ValueChanged<DashboardOrgUser> onSelect;
 
   @override
@@ -386,7 +403,11 @@ class _OrgChartState extends State<_OrgChart> {
                     index++
                   ) ...<Widget>[
                     if (index > 0) const SizedBox(height: 16),
-                    _OrgRoot(node: forest[index], onSelect: widget.onSelect),
+                    _OrgRoot(
+                      node: forest[index],
+                      highlightIds: widget.highlightIds,
+                      onSelect: widget.onSelect,
+                    ),
                   ],
                 ],
               ),
@@ -399,12 +420,17 @@ class _OrgChartState extends State<_OrgChart> {
 }
 
 class _OrgRoot extends StatelessWidget {
-  const _OrgRoot({required this.node, required this.onSelect});
+  const _OrgRoot({
+    required this.node,
+    required this.highlightIds,
+    required this.onSelect,
+  });
 
   static const double columnWidth = 148;
   static const double gap = 12;
 
   final OrgChartNode node;
+  final Set<String> highlightIds;
   final ValueChanged<DashboardOrgUser> onSelect;
 
   @override
@@ -416,7 +442,7 @@ class _OrgRoot extends StatelessWidget {
       children: <Widget>[
         _OrgCard(
           user: node.user,
-          emphasized: true,
+          highlighted: _isHighlighted(node.user.userId, highlightIds),
           width: columnWidth,
           onTap: () => onSelect(node.user),
         ),
@@ -434,7 +460,11 @@ class _OrgRoot extends StatelessWidget {
                 if (index > 0) const SizedBox(width: gap),
                 SizedBox(
                   width: columnWidth,
-                  child: _OrgBranch(node: children[index], onSelect: onSelect),
+                  child: _OrgBranch(
+                    node: children[index],
+                    highlightIds: highlightIds,
+                    onSelect: onSelect,
+                  ),
                 ),
               ],
             ],
@@ -445,10 +475,19 @@ class _OrgRoot extends StatelessWidget {
   }
 }
 
+bool _isHighlighted(String userId, Set<String> highlightIds) {
+  return highlightIds.isEmpty || highlightIds.contains(userId);
+}
+
 class _OrgBranch extends StatelessWidget {
-  const _OrgBranch({required this.node, required this.onSelect});
+  const _OrgBranch({
+    required this.node,
+    required this.highlightIds,
+    required this.onSelect,
+  });
 
   final OrgChartNode node;
+  final Set<String> highlightIds;
   final ValueChanged<DashboardOrgUser> onSelect;
 
   @override
@@ -457,7 +496,11 @@ class _OrgBranch extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _OrgCard(user: node.user, onTap: () => onSelect(node.user)),
+        _OrgCard(
+          user: node.user,
+          highlighted: _isHighlighted(node.user.userId, highlightIds),
+          onTap: () => onSelect(node.user),
+        ),
         if (node.children.isNotEmpty)
           for (
             int index = 0;
@@ -465,7 +508,11 @@ class _OrgBranch extends StatelessWidget {
             index++
           ) ...<Widget>[
             const _OrgStem(),
-            _OrgBranch(node: node.children[index], onSelect: onSelect),
+            _OrgBranch(
+              node: node.children[index],
+              highlightIds: highlightIds,
+              onSelect: onSelect,
+            ),
           ],
       ],
     );
@@ -591,13 +638,13 @@ class _OrgCard extends StatelessWidget {
   const _OrgCard({
     required this.user,
     required this.onTap,
-    this.emphasized = false,
+    this.highlighted = false,
     this.width,
   });
 
   final DashboardOrgUser user;
   final VoidCallback onTap;
-  final bool emphasized;
+  final bool highlighted;
   final double? width;
 
   @override
@@ -607,52 +654,63 @@ class _OrgCard extends StatelessWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool hasProjects = user.projectCount > 0;
     final BorderRadius radius = BorderRadius.circular(AppTheme.cardRadius);
-    return SizedBox(
-      width: width ?? double.infinity,
-      height: 96,
-      child: Material(
-        color: palette.cardSurface,
-        elevation: 0,
-        borderRadius: radius,
-        child: InkWell(
-          onTap: onTap,
+    final Color surface = highlighted
+        ? (isDark ? colors.surface : Colors.white)
+        : palette.cardSurface.withValues(alpha: isDark ? 0.42 : 0.55);
+    return Opacity(
+      opacity: highlighted ? 1 : 0.55,
+      child: SizedBox(
+        width: width ?? double.infinity,
+        height: 96,
+        child: Material(
+          color: surface,
+          elevation: highlighted ? 2 : 0,
+          shadowColor: Colors.black26,
           borderRadius: radius,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              border: Border.all(
-                width: emphasized ? 1.5 : 1,
-                color: hasProjects
-                    ? colors.primary.withValues(alpha: isDark ? 0.7 : 0.45)
-                    : colors.outlineVariant,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: radius,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(
+                  width: highlighted ? 1.5 : 1,
+                  color: highlighted
+                      ? (hasProjects
+                            ? colors.primary.withValues(
+                                alpha: isDark ? 0.7 : 0.45,
+                              )
+                            : colors.outlineVariant)
+                      : colors.outlineVariant.withValues(alpha: 0.55),
+                ),
               ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  user.designation.isEmpty ? user.userName : user.designation,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    height: 1.2,
-                    color: isDark ? colors.onSurface : AppTheme.brandPrimary,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    user.designation.isEmpty ? user.userName : user.designation,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      height: 1.2,
+                      color: isDark ? colors.onSurface : AppTheme.brandPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${user.projectCount} ${user.projectCount == 1 ? 'Project' : 'Projects'}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: palette.mutedText,
+                  const SizedBox(height: 6),
+                  Text(
+                    '${user.projectCount} ${user.projectCount == 1 ? 'Project' : 'Projects'}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: palette.mutedText,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
