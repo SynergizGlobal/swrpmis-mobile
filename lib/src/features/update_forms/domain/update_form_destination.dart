@@ -2,11 +2,30 @@ import 'package:swr_pmis_mobile/src/core/forms/form_menu_tree.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
 
 const Map<String, String> _updateFormAliases = <String, String>{
+  // Add Project (webFormUrl: project) → Projects list.
+  'project': 'works-projects',
+  'addproject': 'works-projects',
+  // Add Structure (webFormUrl: structure) → Structures list.
+  'structure': 'works-structures',
+  'addstructure': 'works-structures',
+  // Update Structure (webFormUrl: structure-form) → Structure Form list.
+  'structureform': 'forms-structure-form',
+  'structure-form': 'forms-structure-form',
+  'updatestructure': 'forms-structure-form',
+  // Contracts / Tenders.
+  'contract': 'forms-contracts',
+  'contracts': 'forms-contracts',
+  'addcontract': 'forms-contracts',
+  'contractstenders': 'forms-contracts',
   'qualitytestregister': 'forms-quality-test-register',
   'testregister': 'forms-quality-test-register',
   'testobligations': 'forms-quality-test-register',
   'ncrobservations': 'forms-quality-ncr-observations',
   'ncrobservation': 'forms-quality-ncr-observations',
+  // Contractor (webFormUrl: contractor) → Contractors list.
+  'contractor': 'forms-contractors',
+  'contractors': 'forms-contractors',
+  'addcontractor': 'forms-contractors',
 };
 
 String? updateFormRouteName(FormMenuNode node) {

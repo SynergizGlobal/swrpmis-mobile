@@ -32,7 +32,7 @@ class ModuleCatalog {
   static const List<AppModule> all = <AppModule>[
     AppModule(
       id: 'structures',
-      title: 'Structures',
+      title: 'Structure',
       subtitle: 'Works and structure inventory',
       icon: Icons.domain_rounded,
       routeName: 'works-structures',
@@ -58,12 +58,12 @@ class ModuleCatalog {
       group: ModuleGroup.updateForms,
     ),
     AppModule(
-      id: 'works-forms',
-      title: 'Works',
-      subtitle: 'Structure and work updates',
-      icon: Icons.construction_rounded,
-      routeName: 'forms-works',
-      routePath: '/module/works-forms',
+      id: 'structureform',
+      title: 'Structure Form',
+      subtitle: 'Update structure form records',
+      icon: Icons.domain_add_rounded,
+      routeName: 'forms-structure-form',
+      routePath: '/module/structure-form',
       group: ModuleGroup.updateForms,
     ),
     AppModule(
@@ -73,6 +73,15 @@ class ModuleCatalog {
       icon: Icons.draw_rounded,
       routeName: 'forms-contracts',
       routePath: '/module/contracts',
+      group: ModuleGroup.updateForms,
+    ),
+    AppModule(
+      id: 'contractor',
+      title: 'Contractor',
+      subtitle: 'Contractor and trader master',
+      icon: Icons.engineering_rounded,
+      routeName: 'forms-contractors',
+      routePath: '/module/contractors',
       group: ModuleGroup.updateForms,
     ),
     AppModule(

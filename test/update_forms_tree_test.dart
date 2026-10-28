@@ -86,10 +86,63 @@ void main() {
       (FormMenuNode node) => node.formName == 'Land Acquisition',
     );
 
-    expect(updateFormRouteName(projects.children.single), isNull);
-    expect(updateFormRouteName(works.children.first), isNull);
+    expect(updateFormRouteName(projects.children.single), 'works-projects');
+    expect(updateFormRouteName(works.children.first), 'works-structures');
+    expect(updateFormRouteName(works.children.last), 'forms-structure-form');
     expect(updateFormRouteName(design), 'forms-design');
     expect(updateFormRouteName(land), 'forms-land');
+  });
+
+  test('Add Project and Add Structure route via webFormUrl aliases', () {
+    const FormMenuNode addProject = FormMenuNode(
+      formId: '11',
+      formName: 'Add Project',
+      webFormUrl: 'project',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode addProjectByName = FormMenuNode(
+      formId: '11',
+      formName: 'Add Project',
+      webFormUrl: '',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode addStructure = FormMenuNode(
+      formId: '21',
+      formName: 'Add Structure',
+      webFormUrl: 'structure',
+      mobileFormUrl: '',
+      priority: 1,
+      children: <FormMenuNode>[],
+    );
+    const FormMenuNode updateStructure = FormMenuNode(
+      formId: '22',
+      formName: 'Update Structure',
+      webFormUrl: 'structure-form',
+      mobileFormUrl: '',
+      priority: 2,
+      children: <FormMenuNode>[],
+    );
+
+    expect(updateFormRouteName(addProject), 'works-projects');
+    expect(updateFormRouteName(addProjectByName), 'works-projects');
+    expect(updateFormRouteName(addStructure), 'works-structures');
+    expect(updateFormRouteName(updateStructure), 'forms-structure-form');
+    expect(
+      ModuleCatalog.byRouteName('works-projects')?.routePath,
+      '/module/projects',
+    );
+    expect(
+      ModuleCatalog.byRouteName('works-structures')?.routePath,
+      '/module/structures',
+    );
+    expect(
+      ModuleCatalog.byRouteName('forms-structure-form')?.routePath,
+      '/module/structure-form',
+    );
   });
 
   test('Material Receipts under Quality Inspections routes to forms-quality', () {

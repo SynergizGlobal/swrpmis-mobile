@@ -19,6 +19,16 @@ import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/utility_shifting_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/issues_page.dart';
+import 'package:swr_pmis_mobile/src/features/contracts/presentation/pages/add_contract_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/contracts/presentation/pages/contracts_page.dart';
+import 'package:swr_pmis_mobile/src/features/contractors/presentation/pages/add_contractor_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/contractors/presentation/pages/contractors_page.dart';
+import 'package:swr_pmis_mobile/src/features/projects/presentation/pages/add_project_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/projects/presentation/pages/projects_page.dart';
+import 'package:swr_pmis_mobile/src/features/structure_form/presentation/pages/structure_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/structure_form/presentation/pages/update_structure_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/structures/presentation/pages/add_structure_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/structures/presentation/pages/structures_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipt_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/material_receipts/presentation/pages/material_receipts_page.dart';
 import 'package:swr_pmis_mobile/src/features/ncr_observations/presentation/pages/ncr_observation_detail_page.dart';
@@ -308,6 +318,55 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AddProjectFormPage.routePath,
+        name: AddProjectFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddProjectFormPage(
+              projectId: state.uri.queryParameters['projectId'] ?? '',
+              prefill: AddProjectFormPage.prefillFromExtra(state.extra),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AddContractFormPage.routePath,
+        name: AddContractFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: const AddContractFormPage(),
+          );
+        },
+      ),
+      GoRoute(
+        path: AddContractorFormPage.routePath,
+        name: AddContractorFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddContractorFormPage(
+              contractorId: state.uri.queryParameters['contractorId'] ?? '',
+              prefill: AddContractorFormPage.prefillFromExtra(state.extra),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AddContractorFormPage.editRoutePath,
+        name: AddContractorFormPage.editRouteName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddContractorFormPage(
+              contractorId: state.pathParameters['contractorId'] ?? '',
+              prefill: AddContractorFormPage.prefillFromExtra(state.extra),
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: AddDesignFormPage.routePath,
         name: AddDesignFormPage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
@@ -342,6 +401,42 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             child: AddUtilityShiftingFormPage(
               utilityShiftingId:
                   state.pathParameters['utilityShiftingId'] ?? '',
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AddStructureFormPage.routePath,
+        name: AddStructureFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddStructureFormPage(
+              projectId: state.uri.queryParameters['projectId'] ?? '',
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AddStructureFormPage.editRoutePath,
+        name: AddStructureFormPage.editRouteName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: AddStructureFormPage(
+              projectId: state.pathParameters['projectId'] ?? '',
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: UpdateStructureFormPage.routePath,
+        name: UpdateStructureFormPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: UpdateStructureFormPage(
+              structureId: state.pathParameters['structureId'] ?? '',
             ),
           );
         },
@@ -508,6 +603,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const DesignDrawingPage()
                 : module.routeName == UtilityShiftingPage.routeName
                 ? const UtilityShiftingPage()
+                : module.routeName == ProjectsPage.routeName
+                ? const ProjectsPage()
+                : module.routeName == StructuresPage.routeName
+                ? const StructuresPage()
+                : module.routeName == StructureFormPage.routeName
+                ? const StructureFormPage()
+                : module.routeName == ContractsPage.routeName
+                ? const ContractsPage()
+                : module.routeName == ContractorsPage.routeName
+                ? const ContractorsPage()
                 : module.routeName == MaterialReceiptsPage.routeName
                 ? const MaterialReceiptsPage()
                 : module.routeName == QualityTestRegisterPage.routeName

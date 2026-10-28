@@ -18,7 +18,7 @@ void main() {
           .toList(),
       <String>[
         'Projects',
-        'Works',
+        'Structure Form',
         'Contracts/Tenders',
         'Execution & Monitoring',
         'Design & Drawing',

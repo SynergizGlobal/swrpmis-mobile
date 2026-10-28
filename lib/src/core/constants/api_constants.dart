@@ -8,7 +8,30 @@ class ApiConstants {
   static const String forgotVerifyOtpPath = '/api/forgot/verify-otp';
   static const String forgotResetPasswordPath = '/api/forgot/reset-password';
   static const String projectsListPath = '/projects/api/getProjectList';
+  /// Compact project id/name list used by Structure (and similar) forms.
+  static const String projectsGetProjectsPath = '/projects/api/getProjects';
   static const String projectTypesPath = '/projects/api/projectTypes';
+  static const String structuresAllProjectSummariesPath =
+      '/structures/allProjectSummaries';
+  static const String structuresTypesPath = '/structures/types';
+  static const String structuresSaveOrUpdatePath = '/structures/saveOrUpdate';
+
+  static String structuresProjectChainagePath(String projectId) =>
+      '/structures/project-chainage/${Uri.encodeComponent(projectId.trim())}';
+
+  static String structuresFullPath(String projectId) =>
+      '/structures/full/${Uri.encodeComponent(projectId.trim())}';
+
+  static const String projectDivisionsPath = '/projects/api/divisions';
+  static const String projectRailwayZonesPath = '/projects/api/railwayZones';
+  static const String projectSectionsPath = '/projects/api/sections';
+  static const String projectYearListPath = '/projects/api/yearList';
+  static const String projectCheckNamePath = '/projects/api/checkProjectName';
+  static const String projectGetDivisionsPath = '/projects/api/get-divisions';
+  static const String projectAddPath = '/projects/api/addProject';
+  static const String projectUpdatePath = '/projects/api/updateProject';
+  static const String projectDeletePath = '/projects/api/deleteProject';
+  static const String projectUploadChainagesPath = '/projects/upload-chainages';
   static const String usersByTypePath = '/projects/api/usersByType';
   static const String projectListByTypePath =
       '/projects/api/getProjectListByType';
@@ -80,6 +103,48 @@ class ApiConstants {
       '/utility-shifting/ajax/get-utility-shifting';
   static const String utilityShiftingUpdatePath =
       '/utility-shifting/updateUtilityShifting';
+
+  /// Works → Update Structure / Structure Form (distinct from `/structures/*`).
+  static const String structureFormContractsFilterPath =
+      '/ajax/getContractsFilterListInStructure';
+  static const String structureFormStructureTypeFilterPath =
+      '/ajax/getStructureTypeListForFilter';
+  static const String structureFormWorkStatusFilterPath =
+      '/ajax/getWorkStatusListInStructure';
+  static const String structureFormListPath = '/ajax/getStructuresList';
+  static const String structureFormGetPath = '/get-structure-form';
+  static const String structureFormContractsForProjectPath =
+      '/ajax/getContractsListForStructureFrom';
+  static const String structureFormUpdatePath = '/update-structure-form';
+
+  /// Update Forms → Contracts / Tenders.
+  static const String contractProjectsFilterPath =
+      '/contract/ajax/getProjectsFilterListInContract';
+  static const String contractHodFilterPath =
+      '/contract/ajax/getDesignationsFilterListInContract';
+  static const String contractDyHodFilterPath =
+      '/contract/ajax/getDyHODDesignationsFilterListInContract';
+  static const String contractContractorsFilterPath =
+      '/contract/ajax/getContractorsFilterListInContract';
+  static const String contractStatusFilterPath =
+      '/contract/ajax/getContractStatusFilterListInContract';
+  static const String contractWorkStatusFilterPath =
+      '/contract/ajax/getStatusFilterListInContract';
+  static const String contractListPath = '/contract/ajax/getContracts';
+  static const String contractAddFormPath = '/contract/add-contract-form';
+  static const String contractFormStatusPath =
+      '/contract/ajax/getContractStatusListFormContractFom';
+  /// Best-effort save path (QA read-only; confirm against live network if needed).
+  static const String contractAddPath = '/contract/addContract';
+
+  /// Update Forms → Contractor / Traders → Contractor.
+  static const String contractorsPath = '/contractors';
+  static const String contractorsSpecializationsPath =
+      '/contractors/specializations';
+
+  static String contractorByIdPath(String contractorId) =>
+      '/contractors/${Uri.encodeComponent(contractorId.trim())}';
+
   static const String materialReceiptListPath =
       '/material-receipt/ajax/getMaterialReceipts';
   static const String materialReceiptFilterOptionsPath =
