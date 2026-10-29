@@ -37,62 +37,70 @@ class ContractRemoteDataSource {
     int total = previous.total;
     final List<Future<void>> jobs = <Future<void>>[];
 
+    // Filter endpoints soft-fail so one dropdown API error does not blank the
+    // whole Contracts screen; the list call still surfaces hard failures.
     if (calls.contains(ContractListCall.projects)) {
       jobs.add(
-        _get(
-          ApiConstants.contractProjectsFilterPath,
-          query.filterQueryParameters(includeProject: false),
-        ).then((dynamic data) {
+        _softFilter(() async {
+          final dynamic data = await _get(
+            ApiConstants.contractProjectsFilterPath,
+            query.filterQueryParameters(includeProject: false),
+          );
           projects = parseContractProjects(data);
         }),
       );
     }
     if (calls.contains(ContractListCall.hods)) {
       jobs.add(
-        _get(
-          ApiConstants.contractHodFilterPath,
-          query.filterQueryParameters(includeDesignation: false),
-        ).then((dynamic data) {
+        _softFilter(() async {
+          final dynamic data = await _get(
+            ApiConstants.contractHodFilterPath,
+            query.filterQueryParameters(includeDesignation: false),
+          );
           hods = parseContractHods(data);
         }),
       );
     }
     if (calls.contains(ContractListCall.dyHods)) {
       jobs.add(
-        _get(
-          ApiConstants.contractDyHodFilterPath,
-          query.filterQueryParameters(includeDyHod: false),
-        ).then((dynamic data) {
+        _softFilter(() async {
+          final dynamic data = await _get(
+            ApiConstants.contractDyHodFilterPath,
+            query.filterQueryParameters(includeDyHod: false),
+          );
           dyHods = parseContractDyHods(data);
         }),
       );
     }
     if (calls.contains(ContractListCall.contractors)) {
       jobs.add(
-        _get(
-          ApiConstants.contractContractorsFilterPath,
-          query.filterQueryParameters(includeContractor: false),
-        ).then((dynamic data) {
+        _softFilter(() async {
+          final dynamic data = await _get(
+            ApiConstants.contractContractorsFilterPath,
+            query.filterQueryParameters(includeContractor: false),
+          );
           contractors = parseContractContractors(data);
         }),
       );
     }
     if (calls.contains(ContractListCall.contractStatuses)) {
       jobs.add(
-        _get(
-          ApiConstants.contractStatusFilterPath,
-          query.filterQueryParameters(includeContractStatus: false),
-        ).then((dynamic data) {
+        _softFilter(() async {
+          final dynamic data = await _get(
+            ApiConstants.contractStatusFilterPath,
+            query.filterQueryParameters(includeContractStatus: false),
+          );
           contractStatuses = parseContractStatuses(data);
         }),
       );
     }
     if (calls.contains(ContractListCall.workStatuses)) {
       jobs.add(
-        _get(
-          ApiConstants.contractWorkStatusFilterPath,
-          query.filterQueryParameters(includeStatus: false),
-        ).then((dynamic data) {
+        _softFilter(() async {
+          final dynamic data = await _get(
+            ApiConstants.contractWorkStatusFilterPath,
+            query.filterQueryParameters(includeStatus: false),
+          );
           workStatuses = parseContractWorkStatuses(data);
         }),
       );
@@ -228,5 +236,13 @@ class ContractRemoteDataSource {
       queryParameters: queryParameters,
     );
     return response.data;
+  }
+
+  Future<void> _softFilter(Future<void> Function() load) async {
+    try {
+      await load();
+    } on Object {
+      // Keep previous / empty options for this filter.
+    }
   }
 }

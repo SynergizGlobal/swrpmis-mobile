@@ -3,9 +3,10 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 
 /// Collapsible filter panel for list screens that share dropdown / search rows.
 ///
-/// Default is **collapsed** so the table dominates. Filter [child] stays mounted
-/// while collapsed ([Visibility.maintainState]) so parent-owned controllers and
-/// Riverpod filter state are preserved.
+/// Default is **collapsed** so the table dominates. Collapsed filter [child] is
+/// omitted from the tree (not offstage-laid-out) to avoid nested [LayoutBuilder]
+/// work during the host [Scaffold] layout pass. Keep filter values in the parent
+/// (Riverpod / controllers) so they survive collapse.
 ///
 /// Expansion can be uncontrolled ([initiallyExpanded]) or controlled via
 /// [expanded] + [onExpandedChanged]. Call [AppFilterSectionState.collapse] /
@@ -151,16 +152,14 @@ class AppFilterSectionState extends State<AppFilterSection> {
               ),
             ),
           ),
-          Visibility(
-            visible: open,
-            maintainState: true,
-            maintainAnimation: true,
-            maintainSize: false,
-            child: Padding(
+          // Omit collapsed children from the tree so nested LayoutBuilders
+          // (e.g. filter grids) are not laid out during the host Scaffold pass.
+          // Filter values live in parent Riverpod / controllers, not here.
+          if (open)
+            Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: widget.child,
             ),
-          ),
         ],
       ),
     );

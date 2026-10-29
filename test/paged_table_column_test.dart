@@ -20,7 +20,9 @@ void main() {
             text.contains('NEEDS-LAYOUT') ||
             text.contains('NEEDS-PAINT') ||
             text.contains('size MISSING') ||
-            text.contains('hasSize');
+            text.contains('hasSize') ||
+            text.contains('_debugDoingThisLayout') ||
+            text.contains('Cannot hit test');
       }),
       isEmpty,
     );

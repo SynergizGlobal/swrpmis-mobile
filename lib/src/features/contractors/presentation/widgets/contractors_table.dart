@@ -148,15 +148,22 @@ class _HeaderRow extends StatelessWidget {
       color: Colors.white,
       fontWeight: FontWeight.w700,
     );
-    return Container(
+    // Padding lives inside each cell so column widths can sum to the frame
+    // width without overflowing (outer row padding caused a 24px overflow).
+    return ColoredBox(
       color: AppTheme.brandPrimary,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
         children: <Widget>[
           for (int i = 0; i < columns.length; i++)
             SizedBox(
               width: widths[i],
-              child: Text(columns[i].label, style: style),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Text(columns[i].label, style: style),
+              ),
             ),
         ],
       ),
@@ -196,14 +203,17 @@ class _DataRow extends StatelessWidget {
           ),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            for (int i = 0; i < columns.length; i++)
-              SizedBox(
-                width: widths[i],
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          for (int i = 0; i < columns.length; i++)
+            SizedBox(
+              width: widths[i],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: columns[i].buildCell != null
                     ? columns[i].buildCell!(context, row)
                     : Text(
@@ -213,8 +223,8 @@ class _DataRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

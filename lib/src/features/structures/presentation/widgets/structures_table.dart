@@ -70,22 +70,36 @@ class _HeaderRow extends StatelessWidget {
       color: Colors.white,
       fontWeight: FontWeight.w700,
     );
-    return Container(
+    // Padding lives inside each cell so column widths can sum to the frame
+    // width without overflowing (outer row padding caused a 24px overflow).
+    return ColoredBox(
       color: AppTheme.brandPrimary,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
         children: <Widget>[
           SizedBox(
             width: projectWidth,
-            child: Text('Project', style: style),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Text('Project', style: style),
+            ),
           ),
           SizedBox(
             width: structuresWidth,
-            child: Text('Structures', style: style),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Text('Structures', style: style),
+            ),
           ),
           SizedBox(
             width: actionWidth,
-            child: Text('Action', style: style, textAlign: TextAlign.center),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Text(
+                'Action',
+                style: style,
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ],
       ),
@@ -124,22 +138,27 @@ class _DataRow extends StatelessWidget {
           bottom: BorderSide(color: palette.borderSubtle),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            SizedBox(
-              width: projectWidth,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: projectWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Text(
                 row.projectId,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            SizedBox(
-              width: structuresWidth,
+          ),
+          SizedBox(
+            width: structuresWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: row.structureTypes.isEmpty
                   ? Text(
                       '—',
@@ -149,13 +168,17 @@ class _DataRow extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 6,
                       children: <Widget>[
-                        for (final StructureTypeCount item in row.structureTypes)
+                        for (final StructureTypeCount item
+                            in row.structureTypes)
                           _StructureChip(label: item.displayLabel),
                       ],
                     ),
             ),
-            SizedBox(
-              width: actionWidth,
+          ),
+          SizedBox(
+            width: actionWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               child: Center(
                 child: IconButton(
                   tooltip: 'Edit',
@@ -164,8 +187,8 @@ class _DataRow extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

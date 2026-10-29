@@ -164,15 +164,23 @@ class RfiFilterField extends StatelessWidget {
       isScrollControlled: true,
       builder: (BuildContext sheetContext) {
         final double maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.6;
+        final TextStyle? titleStyle = Theme.of(sheetContext)
+            .textTheme
+            .titleMedium
+            ?.copyWith(fontWeight: FontWeight.w800);
         return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: options.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('No options'),
-                  )
-                : ListView(
+          child: options.isEmpty
+              ? SizedBox(
+                  height: maxHeight < 220 ? maxHeight : 220,
+                  width: double.infinity,
+                  child: _EmptyOptionsPane(
+                    title: label,
+                    titleStyle: titleStyle,
+                  ),
+                )
+              : ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  child: ListView(
                     shrinkWrap: true,
                     padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
                     children: <Widget>[
@@ -182,8 +190,7 @@ class RfiFilterField extends StatelessWidget {
                           label,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(sheetContext).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
+                          style: titleStyle,
                         ),
                       ),
                       for (final RfiFilterOption option in options)
@@ -200,12 +207,73 @@ class RfiFilterField extends StatelessWidget {
                         ),
                     ],
                   ),
-          ),
+                ),
         );
       },
     );
     if (picked != null) {
       onPick(picked);
     }
+  }
+}
+
+class _EmptyOptionsPane extends StatelessWidget {
+  const _EmptyOptionsPane({required this.title, required this.titleStyle});
+
+  final String title;
+  final TextStyle? titleStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = AppPalette.of(context);
+    final Color muted = palette.mutedText;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: titleStyle,
+          ),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      Icons.inbox_outlined,
+                      size: 40,
+                      color: muted.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No options available',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Nothing to choose here yet.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: muted.withValues(alpha: 0.9),
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

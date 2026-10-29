@@ -49,7 +49,7 @@ void main() {
     expect(find.text('Filter body'), findsNothing);
   });
 
-  testWidgets('collapse via GlobalKey keeps child state mounted', (
+  testWidgets('collapse via GlobalKey keeps parent controller values', (
     WidgetTester tester,
   ) async {
     final GlobalKey<AppFilterSectionState> key =

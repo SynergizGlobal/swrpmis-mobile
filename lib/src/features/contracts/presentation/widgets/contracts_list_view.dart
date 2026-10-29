@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
@@ -100,7 +101,14 @@ class _ContractsListViewState extends ConsumerState<ContractsListView> {
                     ),
                   ),
                 ),
+                // Hug width: theme Size.fromHeight is infinite min width (invalid in Row).
                 FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size(0, AppTheme.fieldHeight),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
                   onPressed: state.loading ? null : _onAdd,
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: const Text('Add'),
@@ -110,20 +118,20 @@ class _ContractsListViewState extends ConsumerState<ContractsListView> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: AppFilterSection(
-              activeCount: AppFilterSection.countActive(<String?>[
-                state.query.projectIdFk,
-                state.query.designation,
-                state.query.dyHod,
-                state.query.contractorIdFk,
-                state.query.contractStatus,
-                state.query.status,
-              ]),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  _FilterBar(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AppFilterSection(
+                  activeCount: AppFilterSection.countActive(<String?>[
+                    state.query.projectIdFk,
+                    state.query.designation,
+                    state.query.dyHod,
+                    state.query.contractorIdFk,
+                    state.query.contractStatus,
+                    state.query.status,
+                  ]),
+                  child: _FilterBar(
                     state: state,
                     enabled: !state.loading,
                     onProject: (String? value) {
@@ -162,32 +170,35 @@ class _ContractsListViewState extends ConsumerState<ContractsListView> {
                           .clearFilters();
                     },
                   ),
-                  if (showSearch) ...<Widget>[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _search,
-                      textInputAction: TextInputAction.search,
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText: 'Search contracts...',
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        suffixIcon: _search.text.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Clear',
-                                onPressed: () {
-                                  _search.clear();
-                                  _onSearchChanged('');
-                                  setState(() {});
-                                },
-                                icon: const Icon(Icons.close_rounded),
-                              ),
-                        isDense: true,
-                      ),
+                ),
+                if (showSearch) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (String value) {
+                      setState(() {});
+                      _onSearchChanged(value);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search contracts...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear',
+                              onPressed: () {
+                                _search.clear();
+                                _onSearchChanged('');
+                                setState(() {});
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      isDense: true,
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ],
@@ -200,7 +211,7 @@ class _ContractsListViewState extends ConsumerState<ContractsListView> {
               onRetry: _retry,
             )
           : state.loading && rows.isEmpty
-          ? const SizedBox.shrink()
+          ? const _LoadingBody()
           : rows.isEmpty
           ? _message(message: 'No contracts found.', onRetry: _retry)
           : ContractsTable(rows: rows),
@@ -225,33 +236,26 @@ class _ContractsListViewState extends ConsumerState<ContractsListView> {
   }
 
   Widget _message({required String message, required VoidCallback? onRetry}) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double minHeight = constraints.hasBoundedHeight
-            ? constraints.maxHeight
-            : 0;
-        return _FillScroll(
-          minHeight: minHeight,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(message, textAlign: TextAlign.center),
-                  if (onRetry != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: onRetry,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ],
+    // Stay under [PagedTableColumn]'s Expanded — no nested LayoutBuilders that
+    // can re-enter layout while the host Scaffold is still laying out.
+    return Center(
+      child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(message, textAlign: TextAlign.center),
+            if (onRetry != null) ...<Widget>[
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Retry'),
               ),
-            ),
-          ),
-        );
-      },
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -376,29 +380,17 @@ String? _label(List<ContractOption> options, String? id) {
   return id;
 }
 
-class _FillScroll extends StatelessWidget {
-  const _FillScroll({required this.child, required this.minHeight});
-
-  final Widget child;
-  final double minHeight;
+class _LoadingBody extends StatelessWidget {
+  const _LoadingBody();
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double height = constraints.hasBoundedHeight
-            ? constraints.maxHeight
-            : minHeight;
-        return ScrollConfiguration(
-          behavior: ScrollConfiguration.of(
-            context,
-          ).copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            child: SizedBox(height: math.max(height, minHeight), child: child),
-          ),
-        );
-      },
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }
+

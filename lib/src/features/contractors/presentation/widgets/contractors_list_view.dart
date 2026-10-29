@@ -242,7 +242,12 @@ class _ContractorsListViewState extends ConsumerState<ContractorsListView> {
               onRetry: _retry,
             )
           : state.loading
-          ? const SizedBox.shrink()
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
+              ),
+            )
           : visible.isEmpty
           ? _message(
               message: state.query.search.trim().isEmpty

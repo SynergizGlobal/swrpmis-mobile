@@ -60,29 +60,15 @@ class StructureRowDraft {
       'structure': structure.trim(),
       'structureName': structureName.trim(),
       'structureDetails': structureDetails.trim(),
-      'fromChainage': _chainageValue(fromChainage),
-      'toChainage': _chainageValue(toChainage),
+      // Web posts chainages as strings.
+      'fromChainage': fromChainage.trim(),
+      'toChainage': toChainage.trim(),
     };
     final String id = structureId.trim();
     if (includeStructureId && id.isNotEmpty) {
       row['structureId'] = id;
     }
     return row;
-  }
-
-  static Object _chainageValue(String raw) {
-    final String text = raw.trim();
-    if (text.isEmpty) {
-      return '';
-    }
-    final double? number = double.tryParse(text);
-    if (number == null) {
-      return text;
-    }
-    if (number == number.roundToDouble()) {
-      return number.toInt();
-    }
-    return number;
   }
 }
 
@@ -124,7 +110,24 @@ class StructureProjectChainage {
   final double? fromChainage;
   final double? toChainage;
 
-  bool get hasBounds => fromChainage != null || toChainage != null;
+  bool get hasBounds => fromChainage != null && toChainage != null;
+
+  String get rangeLabel {
+    if (!hasBounds) {
+      return '';
+    }
+    return '${_formatBound(fromChainage)} and ${_formatBound(toChainage)}';
+  }
+
+  static String _formatBound(double? value) {
+    if (value == null) {
+      return '—';
+    }
+    if (value == value.roundToDouble()) {
+      return value.toInt().toString();
+    }
+    return value.toString();
+  }
 }
 
 class StructureFullDetail {

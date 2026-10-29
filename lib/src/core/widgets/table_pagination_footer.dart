@@ -51,42 +51,33 @@ class TablePaginationFooter extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double? width = constraints.maxWidth.isFinite
-                  ? constraints.maxWidth
-                  : null;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  _MetaBand(
-                    width: width,
-                    pageSize: size,
-                    control: control,
-                    status: status,
-                    label: label,
-                    onPageSizeChanged: onPageSizeChanged,
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: width,
-                    height: 1,
-                    child: ColoredBox(color: colors.outline),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: width,
-                    child: _PageNav(
-                      page: page,
-                      pageCount: pageCount < 1 ? 1 : pageCount,
-                      enabled: total > 0,
-                      onPageChanged: onPageChanged,
-                    ),
-                  ),
-                ],
-              );
-            },
+          // Build-time width (not LayoutBuilder) avoids rebuild-during-layout
+          // under the host Scaffold body.
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _MetaBand(
+                width: MediaQuery.sizeOf(context).width,
+                pageSize: size,
+                control: control,
+                status: status,
+                label: label,
+                onPageSizeChanged: onPageSizeChanged,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 1,
+                child: ColoredBox(color: colors.outline),
+              ),
+              const SizedBox(height: 12),
+              _PageNav(
+                page: page,
+                pageCount: pageCount < 1 ? 1 : pageCount,
+                enabled: total > 0,
+                onPageChanged: onPageChanged,
+              ),
+            ],
           ),
         ),
       ),
@@ -125,15 +116,17 @@ class _MetaBand extends StatelessWidget {
       style: status,
     );
     final double maxWidth = width ?? double.infinity;
+    // Dropdown chrome (border, padding, icon) is wider than plain text; keep
+    // the estimate conservative so we do not squeeze the summary label.
     final double showWidth =
         _textWidth(context, 'Show', control) +
         8 +
         _textWidth(context, '$pageSize', control) +
-        48 +
+        64 +
         8 +
         _textWidth(context, 'entries', control);
     final double summaryWidth = _textWidth(context, label, status);
-    const double minGap = 32;
+    const double minGap = 24;
     final bool sideBySide =
         maxWidth.isFinite && showWidth + minGap + summaryWidth <= maxWidth;
     if (!sideBySide) {
@@ -142,7 +135,18 @@ class _MetaBand extends StatelessWidget {
         children: <Widget>[show, const SizedBox(height: 10), summary],
       );
     }
-    return Row(children: <Widget>[show, const Spacer(), summary]);
+    return Row(
+      children: <Widget>[
+        show,
+        const SizedBox(width: minGap),
+        Flexible(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: summary,
+          ),
+        ),
+      ],
+    );
   }
 }
 

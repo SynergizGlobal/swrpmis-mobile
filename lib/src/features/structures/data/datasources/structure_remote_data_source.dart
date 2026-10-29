@@ -69,10 +69,19 @@ class StructureRemoteDataSource {
       final dynamic data = await _get(
         ApiConstants.structuresProjectChainagePath(id),
       );
-      return parseStructureProjectChainage(data);
-    } on Object {
-      // Chainage is advisory only; keep form usable when boundaries missing.
-      return StructureProjectChainage.empty;
+      final StructureProjectChainage chainage = parseStructureProjectChainage(
+        data,
+      );
+      if (!chainage.hasBounds) {
+        throw StateError('Project chainage boundaries not found.');
+      }
+      return chainage;
+    } on DioException catch (error) {
+      final String? message = structureApiMessage(error.response?.data);
+      if (message != null && message.isNotEmpty) {
+        throw StateError(message);
+      }
+      throw StateError('Failed to load project chainage.');
     }
   }
 

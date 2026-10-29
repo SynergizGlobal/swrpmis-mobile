@@ -8,8 +8,9 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_table_frame.dart';
 /// instead of pushing it up.
 ///
 /// Parent must give a bounded height ([Scaffold.body], [Expanded], [TabBarView]
-/// tab, etc.). When height is unbounded, clamps to the remaining screen
-/// viewport so the inner [Column] can still host an [Expanded] body.
+/// tab, etc.). Prefer those hosts — this widget intentionally does **not** use a
+/// [LayoutBuilder], so it never rebuilds during [Scaffold] layout (which was
+/// causing `!_debugDoingThisLayout` / FAB hit-test crashes).
 ///
 /// Layout contract:
 /// - Header takes its intrinsic height (no nested vertical scroll band).
@@ -29,46 +30,15 @@ class PagedTableColumn extends StatelessWidget {
   final Widget body;
   final Widget? footer;
 
-  static double _resolveViewportHeight(
-    BuildContext context,
-    BoxConstraints constraints,
-  ) {
-    if (constraints.hasBoundedHeight && constraints.maxHeight.isFinite) {
-      return constraints.maxHeight;
-    }
-    final MediaQueryData media = MediaQuery.of(context);
-    final double top = media.padding.top + kToolbarHeight;
-    final double bottom = media.padding.bottom;
-    return (media.size.height - top - bottom).clamp(200, media.size.height);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double viewportHeight = _resolveViewportHeight(
-          context,
-          constraints,
-        );
-        // Always pass a finite width so header Rows with Expanded (search,
-        // filter fields) never see unbounded horizontal constraints.
-        final double width = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
-
-        return SizedBox(
-          height: viewportHeight,
-          width: width,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              header,
-              Expanded(child: SizedBox.expand(child: body)),
-              ?footer,
-            ],
-          ),
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        header,
+        Expanded(child: body),
+        ?footer,
+      ],
     );
   }
 }
@@ -77,9 +47,8 @@ class PagedTableColumn extends StatelessWidget {
 /// scrolling [ListView.builder] body.
 ///
 /// Must sit under a parent that supplies a finite height (typically
-/// [Expanded] inside [PagedTableColumn]). The vertical [ListView] is always
-/// inside [Expanded] under an explicit tight [SizedBox] height — never under
-/// max-only / unbounded constraints.
+/// [Expanded] inside [PagedTableColumn]). Uses a single [LayoutBuilder] only
+/// to read that tight height for the synced horizontal scroll viewport.
 class TableScrollFrame extends StatelessWidget {
   const TableScrollFrame({
     super.key,
@@ -103,31 +72,22 @@ class TableScrollFrame extends StatelessWidget {
     );
   }
 
-  static double _resolveBodyHeight(
-    BuildContext context,
-    BoxConstraints constraints,
-  ) {
-    if (constraints.hasBoundedHeight && constraints.maxHeight.isFinite) {
-      return constraints.maxHeight;
-    }
-    final MediaQueryData media = MediaQuery.of(context);
-    return (media.size.height * 0.45).clamp(240, media.size.height);
-  }
-
   @override
   Widget build(BuildContext context) {
     final ScrollBehavior behavior = _scrollBehavior(context);
 
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double viewportHeight = _resolveBodyHeight(context, constraints);
-        final double? frameWidth =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : null;
-        final bool tightParent =
-            constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
+    return AppTableFrame(
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double height = constraints.hasBoundedHeight &&
+                  constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : (MediaQuery.sizeOf(context).height * 0.45).clamp(
+                  240.0,
+                  MediaQuery.sizeOf(context).height,
+                );
 
-        final Widget frame = AppTableFrame(
-          child: ScrollConfiguration(
+          return ScrollConfiguration(
             behavior: behavior,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -135,39 +95,27 @@ class TableScrollFrame extends StatelessWidget {
               physics: const ClampingScrollPhysics(),
               child: SizedBox(
                 width: width,
-                height: viewportHeight,
+                height: height,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     header,
                     Expanded(
-                      child: SizedBox.expand(
-                        child: ListView.builder(
-                          primary: false,
-                          physics: const ClampingScrollPhysics(),
-                          padding: EdgeInsets.only(bottom: bottomPadding),
-                          itemCount: itemCount,
-                          itemBuilder: itemBuilder,
-                        ),
+                      child: ListView.builder(
+                        primary: false,
+                        physics: const ClampingScrollPhysics(),
+                        padding: EdgeInsets.only(bottom: bottomPadding),
+                        itemCount: itemCount,
+                        itemBuilder: itemBuilder,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        );
-
-        // Tight height so Expanded → ListView always lays out with finite size.
-        if (tightParent) {
-          return SizedBox.expand(child: frame);
-        }
-        return SizedBox(
-          height: viewportHeight,
-          width: frameWidth,
-          child: frame,
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
