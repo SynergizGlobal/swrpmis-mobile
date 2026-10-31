@@ -11,6 +11,7 @@ void main() {
       'Contracts',
       'Contract-wise Activities',
       'Land Acquisition',
+      'Quality',
       'Utility Shifting',
     ]);
     expect(tree.forms.map((ReportFormNode node) => node.isExpandable), <bool>[
@@ -19,6 +20,7 @@ void main() {
       true,
       false,
       false,
+      true,
       false,
     ]);
 
@@ -77,7 +79,21 @@ void main() {
     expect(land.webFormUrl, 'la-report');
     expect(land.children, isEmpty);
 
-    final ReportFormNode utility = tree.forms[5];
+    final ReportFormNode quality = tree.forms[5];
+    expect(quality.formId, '1400');
+    expect(
+      quality.children.map((ReportFormNode node) => node.formName),
+      <String>[
+        'Quality Control Summary Tests Report',
+        'RFI Summary Report',
+      ],
+    );
+    expect(quality.children.map((ReportFormNode node) => node.formId), <String>[
+      '1404',
+      '1405',
+    ]);
+
+    final ReportFormNode utility = tree.forms[6];
     expect(utility.formId, '1317');
     expect(utility.isExpandable, isFalse);
 
@@ -89,6 +105,9 @@ void main() {
     expect(names, isNot(contains('Should Stay Hidden')));
     expect(names, isNot(contains('Hidden Copy')));
     expect(names, isNot(contains('Old Annex')));
+    expect(names, isNot(contains('Explicit No Report')));
+    expect(names, contains('Quality Control Summary Tests Report'));
+    expect(names, contains('RFI Summary Report'));
   });
 }
 
@@ -114,6 +133,34 @@ List<Map<String, dynamic>> _sampleForms() {
           displayInMobile: 'No',
           parentId: 1317,
           parentName: 'Utility Shifting',
+        ),
+      ],
+    ),
+    _form(
+      formId: 1400,
+      formName: 'Quality',
+      displayInMobile: null,
+      formsSubMenu: <Map<String, dynamic>>[
+        _form(
+          formId: 1404,
+          formName: 'Quality Control Summary Tests Report',
+          displayInMobile: null,
+          parentId: 1400,
+          parentName: 'Quality',
+        ),
+        _form(
+          formId: 1405,
+          formName: 'RFI Summary Report',
+          displayInMobile: '',
+          parentId: 1400,
+          parentName: 'Quality',
+        ),
+        _form(
+          formId: 1406,
+          formName: 'Explicit No Report',
+          displayInMobile: 'No',
+          parentId: 1400,
+          parentName: 'Quality',
         ),
       ],
     ),
@@ -302,7 +349,7 @@ Map<String, dynamic> _form({
   String mobileFormUrl = '',
   Object? priority,
   String statusId = 'Active',
-  String displayInMobile = 'Yes',
+  Object? displayInMobile = 'Yes',
   int? parentId,
   String? parentName,
   Object? formsSubMenu,

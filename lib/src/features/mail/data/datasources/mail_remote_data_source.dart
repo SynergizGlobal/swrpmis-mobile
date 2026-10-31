@@ -135,7 +135,9 @@ class MailRemoteDataSource {
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.mailDraftPath,
       data: await _composeFormData(payload: payload, files: files),
+      options: Options(contentType: 'multipart/form-data'),
     );
+    _throwIfMailError(response.data);
     return mailApiMessage(response.data) ?? 'Draft saved successfully';
   }
 
@@ -146,8 +148,25 @@ class MailRemoteDataSource {
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.mailSendPath,
       data: await _composeFormData(payload: payload, files: files),
+      options: Options(contentType: 'multipart/form-data'),
     );
+    _throwIfMailError(response.data);
     return mailApiMessage(response.data) ?? 'Mail sent successfully';
+  }
+
+  void _throwIfMailError(dynamic data) {
+    if (data is! Map) {
+      return;
+    }
+    final dynamic error = data['error'];
+    if (error == null) {
+      return;
+    }
+    final String text = error.toString().trim();
+    if (text.isEmpty) {
+      return;
+    }
+    throw StateError(text);
   }
 
   Future<FormData> _composeFormData({

@@ -18,10 +18,16 @@ class FormMenuNode {
   bool get isExpandable => children.isNotEmpty;
 }
 
-List<FormMenuNode> parseFormMenu(List<Map<String, dynamic>> items) {
+List<FormMenuNode> parseFormMenu(
+  List<Map<String, dynamic>> items, {
+  bool includeNullDisplayInMobile = false,
+}) {
   final List<FormMenuNode> forms = <FormMenuNode>[];
   for (final Map<String, dynamic> item in items) {
-    final FormMenuNode? node = _visibleParent(item);
+    final FormMenuNode? node = _visibleParent(
+      item,
+      includeNullDisplayInMobile: includeNullDisplayInMobile,
+    );
     if (node != null) {
       forms.add(node);
     }
@@ -30,17 +36,35 @@ List<FormMenuNode> parseFormMenu(List<Map<String, dynamic>> items) {
   return forms;
 }
 
-FormMenuNode? _visibleParent(Map<String, dynamic> json) {
-  if (!_isListed(json)) {
+FormMenuNode? _visibleParent(
+  Map<String, dynamic> json, {
+  required bool includeNullDisplayInMobile,
+}) {
+  if (!_isListed(
+    json,
+    includeNullDisplayInMobile: includeNullDisplayInMobile,
+  )) {
     return null;
   }
-  return _node(json, _childrenFromSubMenu(json));
+  return _node(
+    json,
+    _childrenFromSubMenu(
+      json,
+      includeNullDisplayInMobile: includeNullDisplayInMobile,
+    ),
+  );
 }
 
-List<FormMenuNode> _childrenFromSubMenu(Map<String, dynamic> json) {
+List<FormMenuNode> _childrenFromSubMenu(
+  Map<String, dynamic> json, {
+  required bool includeNullDisplayInMobile,
+}) {
   final List<FormMenuNode> children = <FormMenuNode>[];
   for (final Map<String, dynamic> child in _maps(json['formsSubMenu'])) {
-    final FormMenuNode? node = _visibleChild(child);
+    final FormMenuNode? node = _visibleChild(
+      child,
+      includeNullDisplayInMobile: includeNullDisplayInMobile,
+    );
     if (node != null) {
       children.add(node);
     }
@@ -49,13 +73,22 @@ List<FormMenuNode> _childrenFromSubMenu(Map<String, dynamic> json) {
   return children;
 }
 
-FormMenuNode? _visibleChild(Map<String, dynamic> json) {
-  if (!_isListed(json)) {
+FormMenuNode? _visibleChild(
+  Map<String, dynamic> json, {
+  required bool includeNullDisplayInMobile,
+}) {
+  if (!_isListed(
+    json,
+    includeNullDisplayInMobile: includeNullDisplayInMobile,
+  )) {
     return null;
   }
   final List<FormMenuNode> nested = <FormMenuNode>[];
   for (final Map<String, dynamic> item in _maps(json['formsSubMenuLevel2'])) {
-    if (!_isListed(item)) {
+    if (!_isListed(
+      item,
+      includeNullDisplayInMobile: includeNullDisplayInMobile,
+    )) {
       continue;
     }
     nested.add(_node(item, const <FormMenuNode>[]));
@@ -75,16 +108,27 @@ FormMenuNode _node(Map<String, dynamic> json, List<FormMenuNode> children) {
   );
 }
 
-bool _isListed(Map<String, dynamic> json) {
+bool _isListed(
+  Map<String, dynamic> json, {
+  required bool includeNullDisplayInMobile,
+}) {
   return _text(json['statusId']).toLowerCase() == 'active' &&
-      _displayYes(json['displayInMobile']);
+      _displayInMobile(
+        json['displayInMobile'],
+        includeNull: includeNullDisplayInMobile,
+      );
 }
 
-bool _displayYes(Object? value) {
+bool _displayInMobile(Object? value, {required bool includeNull}) {
   if (value is bool) {
     return value;
   }
-  return _text(value).toLowerCase() == 'yes';
+  final String text = _text(value);
+  if (text.isEmpty) {
+    // Null / blank / "null" string — unset mobile flag.
+    return includeNull;
+  }
+  return text.toLowerCase() == 'yes';
 }
 
 int _compareNodes(FormMenuNode a, FormMenuNode b) {

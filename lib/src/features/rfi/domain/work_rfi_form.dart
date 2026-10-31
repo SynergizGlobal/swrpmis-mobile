@@ -203,6 +203,7 @@ const List<String> workRfiMeasurementTypes = <String>[
   'Volume',
   'Number',
   'Weight',
+  'Percent',
 ];
 
 const List<WorkRfiOption> workRfiTypeOptions = <WorkRfiOption>[
@@ -415,6 +416,8 @@ WorkRfiMeasureFields workRfiFieldsFor(String type) {
     ),
     'Number' => const WorkRfiMeasureFields(no: true),
     'Weight' => const WorkRfiMeasureFields(weight: true, no: true),
+    // Same shape as Number: value goes in No.; unit is %.
+    'Percent' => const WorkRfiMeasureFields(no: true),
     _ => const WorkRfiMeasureFields(),
   };
 }
@@ -426,6 +429,7 @@ List<String> workRfiUnitsFor(String type) {
     'Volume' => const <String>['cm³', 'm³'],
     'Number' => const <String>['Nos'],
     'Weight' => const <String>['kg', 'MT'],
+    'Percent' => const <String>['%'],
     _ => const <String>[],
   };
 }

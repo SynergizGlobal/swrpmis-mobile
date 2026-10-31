@@ -12,6 +12,7 @@ import 'package:swr_pmis_mobile/src/features/mail/domain/document_repository.dar
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_compose.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_parse.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_attach_repository_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_message_actions.dart';
@@ -37,6 +38,12 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   final TextEditingController _newTag = TextEditingController();
   final TextEditingController _correspondence = TextEditingController();
   final TextEditingController _targetDateDisplay = TextEditingController();
+  final GlobalKey<_RecipientFieldState> _toFieldKey =
+      GlobalKey<_RecipientFieldState>();
+  final GlobalKey<_RecipientFieldState> _ccFieldKey =
+      GlobalKey<_RecipientFieldState>();
+  final GlobalKey<_RecipientFieldState> _bccFieldKey =
+      GlobalKey<_RecipientFieldState>();
 
   final List<String> _to = <String>[];
   final List<String> _cc = <String>[];
@@ -312,6 +319,12 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
     );
   }
 
+  void _commitPendingRecipients() {
+    _toFieldKey.currentState?.commitPending();
+    _ccFieldKey.currentState?.commitPending();
+    _bccFieldKey.currentState?.commitPending();
+  }
+
   String? _validate({required bool forSend}) {
     if (_to.isEmpty) {
       return 'Please add at least one recipient in To.';
@@ -349,6 +362,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   }
 
   Future<void> _saveDraft() async {
+    _commitPendingRecipients();
     final String? error = _validate(forSend: false);
     if (error != null) {
       await AppDialog.show(
@@ -376,6 +390,10 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
         title: 'Save Draft',
         message: message,
       );
+      if (!mounted) {
+        return;
+      }
+      context.go(MailModulePage.folderPath(MailFolder.drafts));
     } catch (error) {
       if (!mounted) {
         return;
@@ -394,6 +412,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   }
 
   Future<void> _send() async {
+    _commitPendingRecipients();
     final String? error = _validate(forSend: true);
     if (error != null) {
       await AppDialog.show(
@@ -424,7 +443,8 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       if (!mounted) {
         return;
       }
-      context.pop();
+      // Replace compose with Sent so the new mail is fetched and visible.
+      context.go(MailModulePage.folderPath(MailFolder.sent));
     } catch (error) {
       if (!mounted) {
         return;
@@ -465,6 +485,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 _RecipientField(
+                  key: _toFieldKey,
                   label: 'To *',
                   hint: 'Search users or type an email...',
                   helper: 'Example: user1@gmail.com, user2@gmail.com',
@@ -478,6 +499,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                 ),
                 const SizedBox(height: 8),
                 _RecipientField(
+                  key: _ccFieldKey,
                   label: 'CC',
                   hint: 'Search users or type an email...',
                   selected: _cc,
@@ -490,6 +512,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                 ),
                 const SizedBox(height: 8),
                 _RecipientField(
+                  key: _bccFieldKey,
                   label: 'BCC',
                   hint: 'Search users or type an email...',
                   selected: _bcc,
@@ -876,6 +899,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
 
 class _RecipientField extends ConsumerStatefulWidget {
   const _RecipientField({
+    super.key,
     required this.label,
     required this.hint,
     required this.selected,
@@ -914,6 +938,8 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
     final String email = value.trim();
     return email.contains('@') && email.contains('.');
   }
+
+  void commitPending() => _commitTyped();
 
   void _commitTyped() {
     final String value = _controller.text.trim();

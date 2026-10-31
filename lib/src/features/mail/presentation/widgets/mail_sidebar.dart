@@ -34,8 +34,11 @@ class MailSidebar extends ConsumerWidget {
         children: <Widget>[
           FilledButton.icon(
             onPressed: () {
+              final GoRouter router = GoRouter.of(context);
               onNavigate?.call();
-              context.push(MailComposePage.routePath);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                router.push(MailComposePage.routePath);
+              });
             },
             style: FilledButton.styleFrom(
               backgroundColor: MailTheme.composePrimaryButton(context),
@@ -137,8 +140,12 @@ class MailSidebar extends ConsumerWidget {
                     label: label.name,
                     selected: active,
                     onTap: () {
+                      final GoRouter router = GoRouter.of(context);
+                      final String path = MailModulePage.labelPath(label.name);
                       onNavigate?.call();
-                      context.go(MailModulePage.labelPath(label.name));
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        router.go(path);
+                      });
                     },
                   );
                 }).toList(growable: false),
@@ -156,8 +163,12 @@ class MailSidebar extends ConsumerWidget {
   }
 
   void _goFolder(BuildContext context, MailFolder folder) {
+    final GoRouter router = GoRouter.of(context);
+    final String path = MailModulePage.folderPath(folder);
     onNavigate?.call();
-    context.go(MailModulePage.folderPath(folder));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      router.go(path);
+    });
   }
 
   Widget _sectionTitle(BuildContext context, String text) {

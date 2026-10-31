@@ -1135,55 +1135,56 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     final bool yes = _rfiRequired == 'Yes';
     final bool no = _rfiRequired == 'No';
     final bool activityChosen = _selectedActivities.isNotEmpty;
-    final String? activityLabel = activityChosen
-        ? _selectedActivities.first.label
-        : null;
     return _section(
       title: 'ACTIVITY & DESCRIPTION',
+      badge: activityChosen ? _countBadge(_selectedActivities.length) : null,
       children: <Widget>[
         _labeled(
           'Activity',
-          child: _selectBox(
+          child: _multiBox(
             key: WorkRfiFormPage.activityFieldKey,
             hint: 'Select...',
-            value: activityLabel,
+            selected: _selectedActivities,
             enabled:
                 (chainage
-                    ? activityChosen
+                    ? activityChosen || _activityOptions.isNotEmpty
                     : _element.isNotEmpty && !_loadingActivities) &&
                 !_submitting,
-            onTap: () => _pickSingle(
-              title: 'Activity',
-              options: _activityOptions,
-              selectedId: activityChosen ? _selectedActivities.first.id : '',
-              emptyMessage: 'No activities',
-              onPicked: _selectCreateActivity,
-            ),
+            onTap: _pickActivities,
+            onRemove: (WorkRfiOption option) {
+              unawaited(
+                _setActivities(
+                  _selectedActivities
+                      .where((WorkRfiOption item) => item.id != option.id)
+                      .toList(growable: false),
+                ),
+              );
+            },
+            onClear: _selectedActivities.isEmpty
+                ? null
+                : () => unawaited(_setActivities(const <WorkRfiOption>[])),
           ),
         ),
         _labeled(
           'RFI Description',
-          child: _selectBox(
+          child: _multiBox(
             key: WorkRfiFormPage.descriptionFieldKey,
             hint: 'Select...',
-            value: _descriptionIds.isEmpty
-                ? null
-                : <String>[
-                    for (final String id in _descriptionIds)
-                      _optionLabel(_descriptionOptions, id) ?? id,
-                  ].join(', '),
+            selected: _optionsFor(_descriptionOptions, _descriptionIds),
             enabled: _descriptionOptions.isNotEmpty && !_submitting,
-            onTap: _descriptionOptions.isEmpty
+            onTap: _descriptionOptions.isEmpty ? null : _pickDescriptions,
+            onRemove: (WorkRfiOption option) {
+              unawaited(
+                _setDescriptions(
+                  _descriptionIds
+                      .where((String id) => id != option.id)
+                      .toList(growable: false),
+                ),
+              );
+            },
+            onClear: _descriptionIds.isEmpty
                 ? null
-                : () => _pickSingle(
-                    title: 'RFI Description',
-                    options: _descriptionOptions,
-                    selectedId: _descriptionIds.isEmpty
-                        ? ''
-                        : _descriptionIds.first,
-                    emptyMessage: 'No RFI descriptions',
-                    onPicked: _selectCreateDescription,
-                  ),
+                : () => unawaited(_setDescriptions(const <String>[])),
           ),
         ),
         _labeled('RFI Required', child: _requiredRadio()),
@@ -1519,10 +1520,20 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       );
       return Container(
         height: 40,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: tone.fill,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: tone.border, width: tone.width),
+        ),
+        child: Text(
+          '—',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: tone.foreground,
+          ),
         ),
       );
     }
@@ -1548,12 +1559,14 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       weight: row.weight.text,
       no: row.no.text,
     );
+    // Computed / read-only — use disabled tone so it doesn't look editable.
     final _FieldTone tone = _fieldTone(
       context,
-      enabled: true,
+      enabled: false,
       focused: false,
       selected: false,
     );
+    final bool hasValue = total != null;
     return Container(
       height: 40,
       alignment: Alignment.centerLeft,
@@ -1564,13 +1577,15 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         border: Border.all(color: tone.border, width: tone.width),
       ),
       child: Text(
-        total == null ? '' : '$total',
+        hasValue ? '$total' : '—',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: _valueColor(context),
+          color: hasValue
+              ? _valueColor(context).withValues(alpha: 0.82)
+              : tone.foreground,
         ),
       ),
     );
@@ -2287,33 +2302,6 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     }
   }
 
-  Future<void> _selectCreateDescription(String id) async {
-    if (_descriptionIds.length == 1 && _descriptionIds.single == id) {
-      return;
-    }
-    setState(() => _descriptionIds = <String>[id]);
-    await _refreshEnclosures();
-  }
-
-  Future<void> _selectCreateActivity(String id) async {
-    WorkRfiOption? match;
-    for (final WorkRfiOption option in _activityOptions) {
-      if (option.id == id) {
-        match = option;
-        break;
-      }
-    }
-    if (match == null) {
-      return;
-    }
-    final WorkRfiOption selected = match;
-    if (_selectedActivities.length == 1 &&
-        _selectedActivities.single.id == selected.id) {
-      return;
-    }
-    await _setActivities(<WorkRfiOption>[selected]);
-  }
-
   void _applyCreateActivity(String structureType) {
     _clearDescriptions();
     if (!workRfiIsEarthworkOrBlanketing(structureType)) {
@@ -2838,112 +2826,111 @@ class _MultiPickerState extends State<_MultiPicker> {
       for (final WorkRfiOption option in widget.options)
         if (query.isEmpty || option.label.toLowerCase().contains(query)) option,
     ];
-    final double maxHeight = MediaQuery.sizeOf(context).height * 0.75;
+    final double maxHeight = MediaQuery.sizeOf(context).height * 0.55;
     return SafeArea(
-      child: SizedBox(
-        height: maxHeight,
-        child: Column(
-          children: <Widget>[
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              widget.title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          if (widget.options.length > 8)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                widget.title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              child: _WorkRfiTextField(
+                controller: _search,
+                hint: 'Search',
+                dense: true,
+                prefixIcon: Icons.search_rounded,
+                onChanged: (_) => setState(() {}),
               ),
             ),
-            if (widget.options.length > 8)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: _WorkRfiTextField(
-                  controller: _search,
-                  hint: 'Search',
-                  dense: true,
-                  prefixIcon: Icons.search_rounded,
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-            Expanded(
-              child: visible.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        widget.options.isEmpty
-                            ? widget.emptyMessage
-                            : 'No matches',
-                      ),
-                    )
-                  : Theme(
-                      data: _menuCheckboxTheme(context),
-                      child: ListView(
-                        children: <Widget>[
-                          for (final WorkRfiOption option in visible)
-                            CheckboxListTile(
-                              value: _selected.contains(option.id),
-                              selected: _selected.contains(option.id),
-                              selectedTileColor: _menuSelectedFill(context),
-                              activeColor: _menuSelectedInk(context),
-                              checkColor:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? const Color(0xFF071422)
-                                  : Colors.white,
-                              title: Text(
-                                option.label,
-                                style: TextStyle(
-                                  fontWeight: _selected.contains(option.id)
-                                      ? FontWeight.w800
-                                      : FontWeight.w500,
-                                  color: _selected.contains(option.id)
-                                      ? _menuSelectedInk(context)
-                                      : _valueColor(context),
-                                ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: visible.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      widget.options.isEmpty
+                          ? widget.emptyMessage
+                          : 'No matches',
+                    ),
+                  )
+                : Theme(
+                    data: _menuCheckboxTheme(context),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: <Widget>[
+                        for (final WorkRfiOption option in visible)
+                          CheckboxListTile(
+                            value: _selected.contains(option.id),
+                            selected: _selected.contains(option.id),
+                            selectedTileColor: _menuSelectedFill(context),
+                            activeColor: _menuSelectedInk(context),
+                            checkColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF071422)
+                                : Colors.white,
+                            title: Text(
+                              option.label,
+                              style: TextStyle(
+                                fontWeight: _selected.contains(option.id)
+                                    ? FontWeight.w800
+                                    : FontWeight.w500,
+                                color: _selected.contains(option.id)
+                                    ? _menuSelectedInk(context)
+                                    : _valueColor(context),
                               ),
-                              controlAffinity: ListTileControlAffinity.leading,
-                              onChanged: (bool? checked) {
-                                setState(() {
-                                  if (checked ?? false) {
-                                    if (!_selected.contains(option.id)) {
-                                      _selected.add(option.id);
-                                    }
-                                  } else {
-                                    _selected.remove(option.id);
-                                  }
-                                });
-                              },
                             ),
-                        ],
-                      ),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            onChanged: (bool? checked) {
+                              setState(() {
+                                if (checked ?? false) {
+                                  if (!_selected.contains(option.id)) {
+                                    _selected.add(option.id);
+                                  }
+                                } else {
+                                  _selected.remove(option.id);
+                                }
+                              });
+                            },
+                          ),
+                      ],
                     ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: <Widget>[
-                  OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(96, 40),
-                    ),
-                    child: const Text('Cancel'),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, _selected),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(96, 40),
-                      backgroundColor: AppTheme.brandPrimary,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Done'),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(96, 40),
                   ),
-                ],
-              ),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, _selected),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(96, 40),
+                    backgroundColor: AppTheme.brandPrimary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Done'),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -2971,19 +2958,27 @@ _FieldTone _fieldTone(
 }) {
   final bool dark = Theme.of(context).brightness == Brightness.dark;
   if (!enabled) {
-    return dark
-        ? const _FieldTone(
-            fill: Color(0xFF102033),
-            border: Color(0xFF3E5878),
-            width: 1,
-            foreground: Color(0xFFB7C7DC),
-          )
-        : const _FieldTone(
-            fill: Color(0xFFE7EDF4),
-            border: Color(0xFFC9D4E3),
-            width: 1,
-            foreground: Color(0xFF475569),
-          );
+    // Dark: elevated muted surface (not near-black) so disabled cells stay
+    // readable against the navy card. Light keeps the existing grey wash.
+    if (dark) {
+      final ColorScheme scheme = Theme.of(context).colorScheme;
+      final Color base = AppPalette.of(context).cardSurface;
+      return _FieldTone(
+        fill: Color.alphaBlend(
+          scheme.onSurface.withValues(alpha: 0.12),
+          base,
+        ),
+        border: scheme.onSurface.withValues(alpha: 0.32),
+        width: 1,
+        foreground: scheme.onSurface.withValues(alpha: 0.68),
+      );
+    }
+    return const _FieldTone(
+      fill: Color(0xFFE7EDF4),
+      border: Color(0xFFC9D4E3),
+      width: 1,
+      foreground: Color(0xFF475569),
+    );
   }
   if (focused) {
     return dark

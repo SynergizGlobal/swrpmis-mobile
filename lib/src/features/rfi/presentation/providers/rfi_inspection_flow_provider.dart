@@ -690,6 +690,7 @@ class RfiInspectionFlowController
       'Volume' => 'cum',
       'Number' => 'nos',
       'Weight' => 'kg',
+      'Percent' => '%',
       _ => 'Select U',
     };
   }
@@ -706,6 +707,7 @@ class RfiInspectionFlowController
       'Volume' => l * b * h * n,
       'Number' => double.tryParse(row.no) ?? 0,
       'Weight' => w * n,
+      'Percent' => double.tryParse(row.no) ?? 0,
       _ => 0,
     };
   }

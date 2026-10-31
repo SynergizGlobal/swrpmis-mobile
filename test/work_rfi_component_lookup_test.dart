@@ -844,6 +844,19 @@ Future<void> _pick(
   final Finder choice = find.text(option).hitTestable();
   await _until(tester, choice);
   await tester.tap(choice.last);
+  await tester.pump();
+  // Multi-select sheets stay open until Done; single-select pops on tap.
+  final Finder done = find.descendant(
+    of: find.byType(BottomSheet),
+    matching: find.widgetWithText(FilledButton, 'Done'),
+  );
+  if (done.evaluate().isNotEmpty) {
+    final FilledButton button = tester.widget<FilledButton>(done.last);
+    // Tall test surfaces can leave the footer outside the hit box; invoke
+    // the confirmed selection the same way a tap would.
+    button.onPressed?.call();
+    await tester.pump();
+  }
   await _untilAbsent(tester, _sheetTitle(sheet));
   await _settle(tester);
 }

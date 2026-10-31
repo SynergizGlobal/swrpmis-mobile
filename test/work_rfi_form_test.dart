@@ -437,6 +437,71 @@ void main() {
       ),
       isNull,
     );
+    expect(
+      workRfiTotalQty(
+        measurementType: 'Percent',
+        length: '',
+        breadth: '',
+        height: '',
+        weight: '',
+        no: '75',
+      ),
+      75,
+    );
+    expect(workRfiFieldsFor('Percent').no, isTrue);
+    expect(workRfiFieldsFor('Percent').length, isFalse);
+    expect(workRfiUnitsFor('Percent'), <String>['%']);
+    expect(workRfiMeasurementTypes, contains('Percent'));
+  });
+
+  test('create payload posts multiple activities and descriptions', () {
+    final Map<String, dynamic> body = buildWorkRfiPayload(
+      const WorkRfiSubmitDraft(
+        project: 'P01',
+        contract: 'P01EN01',
+        structureType: 'Minor Bridge',
+        structure: '113',
+        component: 'Excavation & Levelling',
+        element: 'Excavation',
+        activities: <WorkRfiMeasurementDraft>[
+          WorkRfiMeasurementDraft(
+            activityId: '2174',
+            activityName: 'Excavation',
+            measurementType: 'Number',
+            units: 'Nos',
+            no: '2',
+          ),
+          WorkRfiMeasurementDraft(
+            activityId: '3001',
+            activityName: 'PCC Layer',
+            measurementType: 'Percent',
+            units: '%',
+            no: '40',
+          ),
+        ],
+        descriptionIds: <String>['71', '8'],
+        rfiRequired: 'No',
+        typeOfRfi: '',
+        contractorRepresentative: '',
+        progressDate: '2026-10-13',
+        dateOfSubmission: '',
+        timeOfInspection: '',
+        dateOfInspection: '',
+        enclosureIds: <String>[],
+        description: '',
+      ),
+    );
+
+    expect(body['activity'], '2174');
+    expect(body['selectedActivities'], <String>['2174', '3001']);
+    expect(body['selectedRfiDescriptions'], <String>['71', '8']);
+    expect(body['rfiDescriptions'], <String>['71', '8']);
+    final List<Map<String, dynamic>> activities =
+        (body['activities'] as List<dynamic>).cast<Map<String, dynamic>>();
+    expect(activities, hasLength(2));
+    expect(activities[1]['measurementType'], 'Percent');
+    expect(activities[1]['units'], '%');
+    expect(activities[1]['totalQty'], 40);
   });
 
   test(

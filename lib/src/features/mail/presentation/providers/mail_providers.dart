@@ -93,6 +93,8 @@ Future<void> mailRefreshAll(WidgetRef ref) {
   ref.invalidate(mailStarredProvider);
   ref.invalidate(mailLabelsProvider);
   ref.invalidate(mailBadgeCountsProvider);
+  // Bust family label caches too (autoDispose families keep last args).
+  ref.invalidate(mailLabelMailsProvider);
   return Future<void>.value();
 }
 

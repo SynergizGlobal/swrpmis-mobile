@@ -972,6 +972,7 @@ class _RfiInspectionFlowPageState
               'Volume',
               'Number',
               'Weight',
+              'Percent',
             ]
                 .map(
                   (String value) => DropdownMenuItem<String>(
@@ -1001,6 +1002,7 @@ class _RfiInspectionFlowPageState
               'cum',
               'nos',
               'kg',
+              '%',
             ]
                 .map(
                   (String value) => DropdownMenuItem<String>(

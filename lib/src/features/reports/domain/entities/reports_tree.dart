@@ -44,6 +44,9 @@ class ReportsTree {
     return ReportsTree(
       forms: parseFormMenu(
         items,
+        // Temporary: API often leaves displayInMobile unset for reports
+        // (e.g. 1404/1405). Revert to default false once flags are fixed.
+        includeNullDisplayInMobile: true,
       ).map(ReportFormNode.fromMenu).toList(growable: false),
     );
   }
