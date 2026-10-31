@@ -476,7 +476,11 @@ class _OrgRoot extends StatelessWidget {
 }
 
 bool _isHighlighted(String userId, Set<String> highlightIds) {
-  return highlightIds.isEmpty || highlightIds.contains(userId);
+  // TODO: re-enable role-based home card fade
+  // Org cards currently stay fully visible for every login user.
+  // Restore viewer-scoped fade with the line below (self + direct reports).
+  // return highlightIds.isEmpty || highlightIds.contains(userId);
+  return true;
 }
 
 class _OrgBranch extends StatelessWidget {
