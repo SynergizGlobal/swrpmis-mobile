@@ -34,6 +34,7 @@ class MailCorrespondenceRow {
     required this.person,
     required this.replied,
     required this.replyMailNo,
+    required this.replyDate,
     required this.subject,
     required this.status,
     required this.mailType,
@@ -51,6 +52,7 @@ class MailCorrespondenceRow {
   final String person;
   final String replied;
   final String replyMailNo;
+  final String replyDate;
   final String subject;
   final String status;
   final String mailType;

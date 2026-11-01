@@ -139,8 +139,8 @@ void main() {
     await tester.pump();
 
     // Required response defaults to Yes — switch to No to skip date.
-    await tester.ensureVisible(find.widgetWithText(RadioListTile<bool>, 'No'));
-    await tester.tap(find.widgetWithText(RadioListTile<bool>, 'No'));
+    await tester.ensureVisible(find.text('No'));
+    await tester.tap(find.text('No'));
     await tester.pump();
 
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Send'));

@@ -2,12 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/features/mail/data/datasources/mail_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_compose.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_dashboard.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_compose_page.dart';
-import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
 
 class _FakeMailDs extends MailRemoteDataSource {
   _FakeMailDs() : super(Dio());
@@ -77,20 +77,102 @@ class _FakeMailDs extends MailRemoteDataSource {
   Future<List<MailLabel>> fetchLabels() async => const [];
 }
 
+Widget _composeApp(Widget home) {
+  return ProviderScope(
+    overrides: [
+      mailRemoteDataSourceProvider.overrideWithValue(_FakeMailDs()),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
+      home: home,
+    ),
+  );
+}
+
 void main() {
-  testWidgets('reference reflects after generateReference', (tester) async {
-    final fake = _FakeMailDs();
+  testWidgets('compose body paints fields under AppTheme (no layout crash)', (
+    tester,
+  ) async {
+    final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
+    final void Function(FlutterErrorDetails)? old = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      errors.add(details);
+      old?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = old);
+
+    await tester.binding.setSurfaceSize(const Size(392, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_composeApp(const MailComposePage()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(
+      errors.where(
+        (FlutterErrorDetails e) => e.exceptionAsString().contains(
+              'BoxConstraints forces an infinite width',
+            ),
+      ),
+      isEmpty,
+      reason: 'FilledButton in Row must hug width under AppTheme',
+    );
+    expect(find.text('Compose Mail'), findsOneWidget);
+    expect(find.text('To *'), findsOneWidget);
+    expect(find.text('Subject *'), findsOneWidget);
+    expect(find.text('Attach File'), findsOneWidget);
+    expect(find.text('Add tag'), findsOneWidget);
+    expect(find.text('#Urgent'), findsNothing);
+    expect(find.text('Save Draft'), findsOneWidget);
+    expect(find.text('Send'), findsOneWidget);
+    // Save Draft stays in AppBar only; sticky bar has Send alone.
+    expect(find.widgetWithText(TextButton, 'Save Draft'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Send'), findsOneWidget);
+
+    // Send remains visible without scrolling (sticky bottom bar).
+    final Finder send = find.widgetWithText(FilledButton, 'Send');
+    expect(tester.getRect(send).bottom, lessThanOrEqualTo(800));
+  });
+
+  testWidgets('Add tag sheet toggles selected chip onto form', (tester) async {
     await tester.binding.setSurfaceSize(const Size(400, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [mailRemoteDataSourceProvider.overrideWithValue(fake)],
-        child: const MaterialApp(home: MailComposePage()),
-      ),
+    await tester.pumpWidget(_composeApp(const MailComposePage()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('#Urgent'), findsNothing);
+    await tester.ensureVisible(find.text('Add tag'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add tag'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add tags'), findsOneWidget);
+    expect(find.text('#Urgent'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilterChip, '#Urgent'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.widgetWithText(InputChip, '#Urgent'));
+    expect(find.widgetWithText(InputChip, '#Urgent'), findsOneWidget);
+    final InputChip chip = tester.widget<InputChip>(
+      find.widgetWithText(InputChip, '#Urgent'),
     );
-    await tester.pump(); // post-frame scheduled
-    await tester.pump(const Duration(milliseconds: 50)); // reference future
+    expect(chip.selected, isTrue);
+  });
+
+  testWidgets('reference reflects after generateReference', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_composeApp(const MailComposePage()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('Compose Mail'), findsOneWidget);
     expect(find.text('#MAIL-TEST-1'), findsOneWidget);
@@ -104,26 +186,37 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [mailRemoteDataSourceProvider.overrideWithValue(fake)],
-        child: const MaterialApp(home: MailComposePage()),
+        child: MaterialApp(
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeMode.dark,
+          home: const MailComposePage(),
+        ),
       ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    final toFields = find.byType(TextField);
-    // First TextField inside first recipient (To) - find by hint via ancestor InputDecorator label To *
-    // Enter into the To query field: it's the TextField with hint Search users...
-    await tester.enterText(find.byWidgetPredicate((w) {
-      return w is TextField && (w.decoration?.hintText?.contains('Search users') ?? false);
-    }).first, 'altaf');
+    await tester.enterText(
+      find
+          .byWidgetPredicate((Widget w) {
+            return w is TextField &&
+                (w.decoration?.hintText?.contains('Search users') ?? false);
+          })
+          .first,
+      'altaf',
+    );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400)); // debounce
-    await tester.pump(const Duration(milliseconds: 50)); // search future
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('altaf con'), findsOneWidget);
     await tester.tap(find.text('altaf con'));
     await tester.pump();
 
-    expect(find.widgetWithText(InputChip, 'saltaf.h@synergizglobal.com'), findsOneWidget);
+    expect(
+      find.widgetWithText(InputChip, 'saltaf.h@synergizglobal.com'),
+      findsOneWidget,
+    );
   });
 }

@@ -27,137 +27,147 @@ class MailSidebar extends ConsumerWidget {
     final int unread = badges.valueOrNull?.unreadInbox ?? 0;
     final int drafts = badges.valueOrNull?.drafts ?? 0;
 
+    // Material fills the drawer edge-to-edge; SafeArea insets interactive
+    // content below the status bar / notch (and away from landscape cutouts).
     return Material(
       color: Theme.of(context).colorScheme.surface,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 16, 12, 24),
-        children: <Widget>[
-          FilledButton.icon(
-            onPressed: () {
-              final GoRouter router = GoRouter.of(context);
-              onNavigate?.call();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                router.push(MailComposePage.routePath);
-              });
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: MailTheme.composePrimaryButton(context),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 16, 12, 24),
+          children: <Widget>[
+            FilledButton.icon(
+              onPressed: () {
+                final GoRouter router = GoRouter.of(context);
+                onNavigate?.call();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  router.push(MailComposePage.routePath);
+                });
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: MailTheme.composePrimaryButton(context),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              label: const Text('Compose Mail'),
             ),
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            label: const Text('Compose Mail'),
-          ),
-          const SizedBox(height: 20),
-          _sectionTitle(context, 'MAILBOX'),
-          _NavTile(
-            icon: Icons.dashboard_outlined,
-            label: 'Dashboard',
-            selected: selected == MailFolder.dashboard,
-            onTap: () => _goFolder(context, MailFolder.dashboard),
-          ),
-          _NavTile(
-            icon: Icons.inbox_rounded,
-            label: 'Inbox',
-            badge: unread,
-            selected: selected == MailFolder.inbox,
-            onTap: () => _goFolder(context, MailFolder.inbox),
-          ),
-          _NavTile(
-            icon: Icons.send_rounded,
-            label: 'Sent Mail',
-            selected: selected == MailFolder.sent,
-            onTap: () => _goFolder(context, MailFolder.sent),
-          ),
-          _NavTile(
-            icon: Icons.description_outlined,
-            label: 'Drafts',
-            badge: drafts,
-            selected: selected == MailFolder.drafts,
-            onTap: () => _goFolder(context, MailFolder.drafts),
-          ),
-          _NavTile(
-            icon: Icons.delete_outline_rounded,
-            label: 'Trash',
-            selected: selected == MailFolder.trash,
-            onTap: () => _goFolder(context, MailFolder.trash),
-          ),
-          _NavTile(
-            icon: Icons.star_outline_rounded,
-            label: 'Important',
-            selected: selected == MailFolder.important,
-            onTap: () => _goFolder(context, MailFolder.important),
-          ),
-          const SizedBox(height: 16),
-          _sectionTitle(context, 'STORAGE'),
-          _NavTile(
-            icon: Icons.inventory_2_outlined,
-            label: 'My Repository',
-            selected: selected == MailFolder.repository,
-            onTap: () => _goFolder(context, MailFolder.repository),
-          ),
-          const SizedBox(height: 16),
-          _sectionTitle(context, 'VIEWS'),
-          _NavTile(
-            icon: Icons.flag_outlined,
-            label: 'Flagged',
-            selected: selected == MailFolder.starred,
-            onTap: () => _goFolder(context, MailFolder.starred),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: <Widget>[
-              Expanded(child: _sectionTitle(context, 'LABELS')),
-              IconButton(
-                tooltip: 'Add label',
-                icon: Icon(Icons.add, size: 18, color: MailTheme.linkAccent(context)),
-                onPressed: () => showMailAddLabelDialog(context, ref),
-              ),
-            ],
-          ),
-          labels.when(
-            data: (List<MailLabel> items) {
-              if (items.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'No labels',
-                    style: MailTheme.mutedStyle(context, fontSize: 13),
+            const SizedBox(height: 20),
+            _sectionTitle(context, 'MAILBOX'),
+            _NavTile(
+              icon: Icons.dashboard_outlined,
+              label: 'Dashboard',
+              selected: selected == MailFolder.dashboard,
+              onTap: () => _goFolder(context, MailFolder.dashboard),
+            ),
+            _NavTile(
+              icon: Icons.inbox_rounded,
+              label: 'Inbox',
+              badge: unread,
+              selected: selected == MailFolder.inbox,
+              onTap: () => _goFolder(context, MailFolder.inbox),
+            ),
+            _NavTile(
+              icon: Icons.send_rounded,
+              label: 'Sent Mail',
+              selected: selected == MailFolder.sent,
+              onTap: () => _goFolder(context, MailFolder.sent),
+            ),
+            _NavTile(
+              icon: Icons.description_outlined,
+              label: 'Drafts',
+              badge: drafts,
+              selected: selected == MailFolder.drafts,
+              onTap: () => _goFolder(context, MailFolder.drafts),
+            ),
+            _NavTile(
+              icon: Icons.delete_outline_rounded,
+              label: 'Trash',
+              selected: selected == MailFolder.trash,
+              onTap: () => _goFolder(context, MailFolder.trash),
+            ),
+            _NavTile(
+              icon: Icons.star_outline_rounded,
+              label: 'Important',
+              selected: selected == MailFolder.important,
+              onTap: () => _goFolder(context, MailFolder.important),
+            ),
+            const SizedBox(height: 16),
+            _sectionTitle(context, 'STORAGE'),
+            _NavTile(
+              icon: Icons.inventory_2_outlined,
+              label: 'My Repository',
+              selected: selected == MailFolder.repository,
+              onTap: () => _goFolder(context, MailFolder.repository),
+            ),
+            const SizedBox(height: 16),
+            _sectionTitle(context, 'VIEWS'),
+            _NavTile(
+              icon: Icons.flag_outlined,
+              label: 'Flagged',
+              selected: selected == MailFolder.starred,
+              onTap: () => _goFolder(context, MailFolder.starred),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: <Widget>[
+                Expanded(child: _sectionTitle(context, 'LABELS')),
+                IconButton(
+                  tooltip: 'Add label',
+                  icon: Icon(
+                    Icons.add,
+                    size: 18,
+                    color: MailTheme.linkAccent(context),
                   ),
-                );
-              }
-              return Column(
-                children: items.map((MailLabel label) {
-                  final bool active =
-                      selected == MailFolder.label && labelName == label.name;
-                  return _NavTile(
-                    icon: Icons.circle,
-                    iconColor: parseLabelColor(label.colorHex),
-                    iconSize: 10,
-                    label: label.name,
-                    selected: active,
-                    onTap: () {
-                      final GoRouter router = GoRouter.of(context);
-                      final String path = MailModulePage.labelPath(label.name);
-                      onNavigate?.call();
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        router.go(path);
-                      });
-                    },
-                  );
-                }).toList(growable: false),
-              );
-            },
-            loading: () => const Padding(
-              padding: EdgeInsets.all(8),
-              child: LinearProgressIndicator(minHeight: 2),
+                  onPressed: () => showMailAddLabelDialog(context, ref),
+                ),
+              ],
             ),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
-        ],
+            labels.when(
+              data: (List<MailLabel> items) {
+                if (items.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'No labels',
+                      style: MailTheme.mutedStyle(context, fontSize: 13),
+                    ),
+                  );
+                }
+                return Column(
+                  children: items.map((MailLabel label) {
+                    final bool active =
+                        selected == MailFolder.label &&
+                        labelName == label.name;
+                    return _NavTile(
+                      icon: Icons.circle,
+                      iconColor: parseLabelColor(label.colorHex),
+                      iconSize: 10,
+                      label: label.name,
+                      selected: active,
+                      onTap: () {
+                        final GoRouter router = GoRouter.of(context);
+                        final String path =
+                            MailModulePage.labelPath(label.name);
+                        onNavigate?.call();
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          router.go(path);
+                        });
+                      },
+                    );
+                  }).toList(growable: false),
+                );
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.all(8),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
       ),
     );
   }

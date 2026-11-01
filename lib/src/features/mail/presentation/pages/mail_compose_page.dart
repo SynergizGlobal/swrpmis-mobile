@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/mail/data/datasources/mail_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/document_repository.dart';
@@ -35,7 +36,6 @@ class MailComposePage extends ConsumerStatefulWidget {
 class _MailComposePageState extends ConsumerState<MailComposePage> {
   final TextEditingController _subject = TextEditingController();
   final TextEditingController _message = TextEditingController();
-  final TextEditingController _newTag = TextEditingController();
   final TextEditingController _correspondence = TextEditingController();
   final TextEditingController _targetDateDisplay = TextEditingController();
   final GlobalKey<_RecipientFieldState> _toFieldKey =
@@ -121,7 +121,6 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   void dispose() {
     _subject.dispose();
     _message.dispose();
-    _newTag.dispose();
     _correspondence.dispose();
     _targetDateDisplay.dispose();
     super.dispose();
@@ -479,300 +478,237 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       ),
       body: Stack(
         children: <Widget>[
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                _RecipientField(
-                  key: _toFieldKey,
-                  label: 'To *',
-                  hint: 'Search users or type an email...',
-                  helper: 'Example: user1@gmail.com, user2@gmail.com',
-                  selected: _to,
-                  onChanged: (List<String> value) =>
-                      setState(() {
-                        _to
-                          ..clear()
-                          ..addAll(value);
-                      }),
-                ),
-                const SizedBox(height: 8),
-                _RecipientField(
-                  key: _ccFieldKey,
-                  label: 'CC',
-                  hint: 'Search users or type an email...',
-                  selected: _cc,
-                  onChanged: (List<String> value) =>
-                      setState(() {
-                        _cc
-                          ..clear()
-                          ..addAll(value);
-                      }),
-                ),
-                const SizedBox(height: 8),
-                _RecipientField(
-                  key: _bccFieldKey,
-                  label: 'BCC',
-                  hint: 'Search users or type an email...',
-                  selected: _bcc,
-                  onChanged: (List<String> value) =>
-                      setState(() {
-                        _bcc
-                          ..clear()
-                          ..addAll(value);
-                      }),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _subject,
-                  decoration: const InputDecoration(
-                    labelText: 'Subject *',
-                    hintText: 'Enter subject...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    final bool narrow = constraints.maxWidth < 720;
-                    final Widget reference = Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+          Column(
+            children: <Widget>[
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _RecipientField(
+                        key: _toFieldKey,
+                        label: 'To *',
+                        hint: 'Search users or type an email...',
+                        helper: 'Example: user1@gmail.com, user2@gmail.com',
+                        selected: _to,
+                        onChanged: (List<String> value) =>
+                            setState(() {
+                              _to
+                                ..clear()
+                                ..addAll(value);
+                            }),
                       ),
-                      decoration: BoxDecoration(
-                        color: MailTheme.referencePanelBackground(context),
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(height: 8),
+                      _RecipientField(
+                        key: _ccFieldKey,
+                        label: 'CC',
+                        hint: 'Search users or type an email...',
+                        selected: _cc,
+                        onChanged: (List<String> value) =>
+                            setState(() {
+                              _cc
+                                ..clear()
+                                ..addAll(value);
+                            }),
                       ),
-                      child: Row(
+                      const SizedBox(height: 8),
+                      _RecipientField(
+                        key: _bccFieldKey,
+                        label: 'BCC',
+                        hint: 'Search users or type an email...',
+                        selected: _bcc,
+                        onChanged: (List<String> value) =>
+                            setState(() {
+                              _bcc
+                                ..clear()
+                                ..addAll(value);
+                            }),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _subject,
+                        decoration: _composeDecoration(
+                          label: 'Subject *',
+                          hint: 'Enter subject...',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      LayoutBuilder(
+                        builder:
+                            (BuildContext context, BoxConstraints constraints) {
+                          final bool narrow = constraints.maxWidth < 720;
+                          final Widget reference = _referenceCard();
+                          final Widget correspondence = TextField(
+                            controller: _correspondence,
+                            decoration: _composeDecoration(
+                              label: 'Correspondence Letter No',
+                            ),
+                          );
+                          if (narrow) {
+                            return Column(
+                              children: <Widget>[
+                                reference,
+                                const SizedBox(height: 8),
+                                correspondence,
+                              ],
+                            );
+                          }
+                          return Row(
+                            children: <Widget>[
+                              Expanded(child: reference),
+                              const SizedBox(width: 12),
+                              Expanded(child: correspondence),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      LayoutBuilder(
+                        builder:
+                            (BuildContext context, BoxConstraints constraints) {
+                          final bool narrow = constraints.maxWidth < 720;
+                          if (narrow) {
+                            return Column(
+                              children: <Widget>[
+                                _categoryBlock(),
+                                const SizedBox(height: 8),
+                                _requiredBlock(),
+                                const SizedBox(height: 8),
+                                _dateBlock(),
+                                const SizedBox(height: 8),
+                                _priorityBlock(),
+                              ],
+                            );
+                          }
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Expanded(child: _categoryBlock()),
+                              const SizedBox(width: 12),
+                              Expanded(child: _requiredBlock()),
+                              const SizedBox(width: 12),
+                              Expanded(child: _dateBlock()),
+                              const SizedBox(width: 12),
+                              Expanded(child: _priorityBlock()),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: <Widget>[
-                          const Expanded(
-                            child: Text('Reference / Mail ID (Auto)'),
+                          FilledButton.icon(
+                            onPressed: _busy ? null : _attachFile,
+                            icon: const Icon(Icons.attach_file),
+                            label: const Text('Attach File'),
                           ),
-                          Text(
-                            _referenceId.isEmpty ? '—' : _referenceId,
-                            style: TextStyle(
-                              color: MailTheme.pillForeground(context),
-                              fontWeight: FontWeight.w700,
+                          OutlinedButton.icon(
+                            onPressed: _busy ? null : _attachFromRepository,
+                            icon: const Icon(Icons.folder_open_outlined),
+                            label: const Text('From Repository'),
+                          ),
+                        ],
+                      ),
+                      for (final MailComposeAttachment file
+                          in _localAttachments)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading:
+                              const Icon(Icons.insert_drive_file_outlined),
+                          title: Text(file.name),
+                          subtitle: const Text('Local file'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => setState(
+                              () => _localAttachments.remove(file),
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                    final Widget correspondence = TextField(
-                      controller: _correspondence,
-                      decoration: const InputDecoration(
-                        labelText: 'Correspondence Letter No',
-                        border: OutlineInputBorder(),
-                      ),
-                    );
-                    if (narrow) {
-                      return Column(
-                        children: <Widget>[
-                          reference,
-                          const SizedBox(height: 8),
-                          correspondence,
-                        ],
-                      );
-                    }
-                    return Row(
-                      children: <Widget>[
-                        Expanded(child: reference),
-                        const SizedBox(width: 12),
-                        Expanded(child: correspondence),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    final bool narrow = constraints.maxWidth < 720;
-                    if (narrow) {
-                      return Column(
-                        children: <Widget>[
-                          _categoryBlock(),
-                          const SizedBox(height: 8),
-                          _requiredBlock(),
-                          const SizedBox(height: 8),
-                          _dateBlock(),
-                          const SizedBox(height: 8),
-                          _priorityBlock(),
-                        ],
-                      );
-                    }
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(child: _categoryBlock()),
-                        const SizedBox(width: 12),
-                        Expanded(child: _requiredBlock()),
-                        const SizedBox(width: 12),
-                        Expanded(child: _dateBlock()),
-                        const SizedBox(width: 12),
-                        Expanded(child: _priorityBlock()),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: <Widget>[
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _attachFile,
-                      icon: const Icon(Icons.attach_file),
-                      label: const Text('Attach File'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _busy ? null : _attachFromRepository,
-                      icon: const Icon(Icons.folder_open_outlined),
-                      label: const Text('From Repository'),
-                    ),
-                  ],
-                ),
-                for (final MailComposeAttachment file in _localAttachments)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.insert_drive_file_outlined),
-                    title: Text(file.name),
-                    subtitle: const Text('Local file'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => setState(
-                        () => _localAttachments.remove(file),
-                      ),
-                    ),
-                  ),
-                for (final RepositoryItem item in _repoAttachments)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.folder_outlined),
-                    title: Text(item.displayName),
-                    subtitle: const Text('From repository'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => setState(
-                        () => _repoAttachments.remove(item),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _message,
-                  minLines: 8,
-                  maxLines: 16,
-                  decoration: const InputDecoration(
-                    labelText: 'Message *',
-                    hintText: 'Type your message here...',
-                    alignLabelWithHint: true,
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Tags / Labels',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: _suggestedTags.map((String tag) {
-                    final bool selected = _tags.contains(tag);
-                    return FilterChip(
-                      label: Text(tag),
-                      selected: selected,
-                      onSelected: (bool value) {
-                        setState(() {
-                          if (value) {
-                            _tags.add(tag);
-                          } else {
-                            _tags.remove(tag);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(growable: false),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TextField(
-                        controller: _newTag,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter new tag...',
-                          border: OutlineInputBorder(),
-                          isDense: true,
                         ),
-                        onSubmitted: (_) => _addCustomTag(),
+                      for (final RepositoryItem item in _repoAttachments)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.folder_outlined),
+                          title: Text(item.displayName),
+                          subtitle: const Text('From repository'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => setState(
+                              () => _repoAttachments.remove(item),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 220),
+                        child: TextField(
+                          controller: _message,
+                          minLines: 4,
+                          maxLines: null,
+                          keyboardType: TextInputType.multiline,
+                          textAlignVertical: TextAlignVertical.top,
+                          decoration: _composeDecoration(
+                            label: 'Message *',
+                            hint: 'Type your message here...',
+                            alignLabelWithHint: true,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: _addCustomTag,
-                      child: const Text('+ Add Tag'),
-                    ),
-                  ],
-                ),
-                if (_tags.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'No tags added',
-                      style: MailTheme.mutedStyle(context),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _tags
-                          .where((String t) => !_suggestedTags.contains(t))
-                          .map(
-                            (String tag) => InputChip(
-                              label: Text(tag),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Tags / Labels',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: MailTheme.heading(context),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: <Widget>[
+                          for (final String tag in _tags)
+                            _composeTagChip(
+                              context: context,
+                              label: tag,
+                              selected: true,
                               onDeleted: () =>
                                   setState(() => _tags.remove(tag)),
                             ),
-                          )
-                          .toList(growable: false),
-                    ),
+                          ActionChip(
+                            avatar: Icon(
+                              Icons.add_rounded,
+                              size: 18,
+                              color: MailTheme.pillForeground(context),
+                            ),
+                            label: Text(
+                              'Add tag',
+                              style: TextStyle(
+                                color: MailTheme.pillForeground(context),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            backgroundColor:
+                                MailTheme.tagUnselectedBackground(context),
+                            side: BorderSide(
+                              color: MailTheme.pillForeground(context)
+                                  .withValues(alpha: 0.55),
+                            ),
+                            onPressed: _busy ? null : _openAddTagSheet,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: <Widget>[
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor:
-                            MailTheme.composeSecondaryButton(context),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _busy ? null : _saveDraft,
-                      icon: const Icon(Icons.save),
-                      label: const Text('Save Draft'),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor:
-                            MailTheme.composePrimaryButton(context),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _busy ? null : _send,
-                      icon: const Icon(Icons.send_rounded),
-                      label: const Text('Send'),
-                    ),
-                  ],
                 ),
-              ],
-            ),
+              ),
+              _composeSendBar(
+                busy: _busy,
+                onSend: _send,
+              ),
+            ],
           ),
           if (_busy)
             const ColoredBox(
@@ -784,89 +720,293 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
     );
   }
 
-  void _addCustomTag() {
-    final String tag = _normalizeTag(_newTag.text);
-    if (tag.isEmpty || tag == '#') {
-      return;
-    }
-    setState(() {
-      if (!_tags.contains(tag)) {
-        _tags.add(tag);
-      }
-      _newTag.clear();
-    });
-  }
-
-  Widget _categoryBlock() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        DropdownButtonFormField<String>(
-          value: _categories.contains(_category) ? _category : _categories.first,
-          decoration: const InputDecoration(
-            labelText: 'Category *',
-            border: OutlineInputBorder(),
-          ),
-          items: _categories
-              .map(
-                (String c) =>
-                    DropdownMenuItem<String>(value: c, child: Text(c)),
-              )
-              .toList(growable: false),
-          onChanged: (String? value) {
-            if (value != null) {
-              setState(() => _category = value);
-            }
-          },
+  Widget _composeSendBar({
+    required bool busy,
+    required VoidCallback onSend,
+  }) {
+    final AppPalette palette = AppPalette.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          top: BorderSide(color: palette.borderSubtle),
         ),
-      ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: MailTheme.composePrimaryButton(context),
+                foregroundColor: Colors.white,
+                // Hug width: theme Size.fromHeight is infinite min width.
+                minimumSize: const Size(0, AppTheme.fieldHeight),
+              ),
+              onPressed: busy ? null : onSend,
+              icon: const Icon(Icons.send_rounded),
+              label: const Text('Send'),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _requiredBlock() {
-    return InputDecorator(
-      decoration: const InputDecoration(
-        labelText: 'Required Response *',
-        border: OutlineInputBorder(),
-      ),
-      child: Column(
-        children: <Widget>[
-          RadioListTile<bool>(
-            dense: true,
-            title: const Text('No'),
-            value: false,
-            groupValue: _requiredResponse,
-            onChanged: (bool? value) =>
-                setState(() => _requiredResponse = value ?? false),
+  Future<void> _openAddTagSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (BuildContext sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
           ),
-          RadioListTile<bool>(
-            dense: true,
-            title: const Text('Yes'),
-            value: true,
-            groupValue: _requiredResponse,
-            onChanged: (bool? value) =>
-                setState(() => _requiredResponse = value ?? true),
+          child: _ComposeAddTagSheet(
+            suggestedTags: _suggestedTags,
+            selectedTags: _tags,
+            normalizeTag: _normalizeTag,
+            onSelectionChanged: () {
+              if (mounted) {
+                setState(() {});
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  InputDecoration _composeDecoration({
+    String? label,
+    String? hint,
+    Widget? suffixIcon,
+    bool alignLabelWithHint = false,
+    bool isDense = false,
+  }) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final AppPalette palette = AppPalette.of(context);
+    final BorderRadius radius = BorderRadius.circular(12);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      alignLabelWithHint: alignLabelWithHint,
+      isDense: isDense,
+      filled: true,
+      fillColor: palette.fieldFill,
+      suffixIcon: suffixIcon,
+      floatingLabelBehavior:
+          label == null ? FloatingLabelBehavior.never : FloatingLabelBehavior.auto,
+      border: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.outlineVariant),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
+      ),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: isDense ? 12 : 14,
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: MailTheme.muted(context),
+          letterSpacing: 0.1,
+        ),
+      ),
+    );
+  }
+
+  Widget _referenceCard() {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: MailTheme.referencePanelBackground(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.tag_rounded, size: 18, color: MailTheme.muted(context)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Reference / Mail ID (Auto)',
+              style: TextStyle(
+                color: MailTheme.muted(context),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Text(
+            _referenceId.isEmpty ? '—' : _referenceId,
+            style: TextStyle(
+              color: MailTheme.pillForeground(context),
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _pickCategory() async {
+    final String? picked = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Text(
+                  'Select category',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              for (final String category in _categories)
+                ListTile(
+                  title: Text(category),
+                  trailing: category == _category
+                      ? Icon(
+                          Icons.check_circle_rounded,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : null,
+                  onTap: () => Navigator.of(context).pop(category),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _category = picked);
+    }
+  }
+
+  Widget _categoryBlock() {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final AppPalette palette = AppPalette.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _fieldLabel('Category *'),
+        Material(
+          color: palette.fieldFill,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: _pickCategory,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.75),
+                ),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      _categories.contains(_category)
+                          ? _category
+                          : _categories.first,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: MailTheme.muted(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _requiredBlock() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _fieldLabel('Required Response *'),
+        SegmentedButton<bool>(
+          segments: const <ButtonSegment<bool>>[
+            ButtonSegment<bool>(
+              value: false,
+              label: Text('No'),
+              icon: Icon(Icons.close_rounded, size: 16),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              label: Text('Yes'),
+              icon: Icon(Icons.check_rounded, size: 16),
+            ),
+          ],
+          selected: <bool>{_requiredResponse},
+          onSelectionChanged: (Set<bool> next) {
+            setState(() => _requiredResponse = next.first);
+          },
+          style: ButtonStyle(
+            visualDensity: VisualDensity.comfortable,
+            shape: WidgetStatePropertyAll<OutlinedBorder>(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _dateBlock() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        _fieldLabel('Target Response Date *'),
         TextFormField(
           readOnly: true,
+          enabled: _requiredResponse,
           controller: _targetDateDisplay,
-          decoration: const InputDecoration(
-            labelText: 'Target Response Date *',
-            border: OutlineInputBorder(),
-            suffixIcon: Icon(Icons.calendar_today_outlined),
-            hintText: 'dd/mm/yyyy',
+          decoration: _composeDecoration(
+            hint: 'dd/mm/yyyy',
+            suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
           ),
           onTap: _requiredResponse ? _pickDate : null,
         ),
+        const SizedBox(height: 6),
         Text(
           'You will be reminded before due date.',
           style: MailTheme.mutedStyle(context, fontSize: 11),
@@ -876,23 +1016,45 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   }
 
   Widget _priorityBlock() {
-    return InputDecorator(
-      decoration: const InputDecoration(
-        labelText: 'Priority',
-        border: OutlineInputBorder(),
-      ),
-      child: Column(
-        children: <String>['LOW', 'NORMAL', 'HIGH', 'URGENT'].map((String p) {
-          return RadioListTile<String>(
-            dense: true,
-            title: Text(p),
-            value: p,
-            groupValue: _priority,
-            onChanged: (String? value) =>
-                setState(() => _priority = value ?? 'NORMAL'),
-          );
-        }).toList(growable: false),
-      ),
+    const List<String> priorities = <String>['LOW', 'NORMAL', 'HIGH', 'URGENT'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _fieldLabel('Priority'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: priorities.map((String priority) {
+            final bool selected = _priority == priority;
+            return ChoiceChip(
+              label: Text(priority),
+              selected: selected,
+              showCheckmark: false,
+              onSelected: (_) => setState(() => _priority = priority),
+              labelStyle: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: selected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : MailTheme.heading(context),
+              ),
+              selectedColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: AppPalette.of(context).fieldFill,
+              side: BorderSide(
+                color: selected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context)
+                        .colorScheme
+                        .outlineVariant
+                        .withValues(alpha: 0.75),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            );
+          }).toList(growable: false),
+        ),
+      ],
     );
   }
 }
@@ -925,6 +1087,16 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
   bool _searching = false;
   bool _showResults = false;
   String? _emptyMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -1022,21 +1194,46 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final AppPalette palette = AppPalette.of(context);
+    final bool focused = _focus.hasFocus;
+    final BorderRadius radius = BorderRadius.circular(12);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        InputDecorator(
-          decoration: InputDecoration(
-            labelText: widget.label,
-            border: const OutlineInputBorder(),
-            helperText: widget.helper,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: MailTheme.muted(context),
+              letterSpacing: 0.1,
+            ),
+          ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+          decoration: BoxDecoration(
+            color: palette.fieldFill,
+            borderRadius: radius,
+            border: Border.all(
+              color: focused
+                  ? scheme.primary
+                  : scheme.outlineVariant.withValues(alpha: 0.75),
+              width: focused ? 1.5 : 1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               if (widget.selected.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.only(bottom: 6, left: 2, right: 2),
                   child: Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -1044,6 +1241,9 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
                         .map(
                           (String email) => InputChip(
                             label: Text(email),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                             onDeleted: () => _removeEmail(email),
                           ),
                         )
@@ -1056,14 +1256,28 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
                 decoration: InputDecoration(
                   hintText: widget.hint,
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
                   isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 8,
+                  ),
                   suffixIcon: _looksLikeEmail(_controller.text)
                       ? IconButton(
                           tooltip: 'Add email',
-                          icon: const Icon(Icons.add_circle_outline),
+                          icon: Icon(
+                            Icons.add_circle_rounded,
+                            color: scheme.primary,
+                          ),
                           onPressed: _commitTyped,
                         )
-                      : null,
+                      : Icon(
+                          Icons.person_search_rounded,
+                          size: 20,
+                          color: MailTheme.muted(context),
+                        ),
                 ),
                 onChanged: (String value) {
                   setState(() {});
@@ -1078,10 +1292,21 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
             ],
           ),
         ),
-        if (_showResults)
+        if (widget.helper != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 2),
+            child: Text(
+              widget.helper!,
+              style: MailTheme.mutedStyle(context, fontSize: 11),
+            ),
+          ),
+        if (_showResults) ...<Widget>[
+          const SizedBox(height: 6),
           Material(
-            elevation: 3,
-            borderRadius: BorderRadius.circular(8),
+            elevation: 4,
+            color: palette.cardSurface,
+            shadowColor: Colors.black.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(12),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220),
               child: _searching
@@ -1107,13 +1332,22 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
                           shrinkWrap: true,
                           itemCount: _results.length,
                           separatorBuilder: (BuildContext context, int index) =>
-                              const Divider(height: 1),
+                              Divider(
+                            height: 1,
+                            color: scheme.outlineVariant.withValues(alpha: 0.5),
+                          ),
                           itemBuilder: (BuildContext context, int index) {
                             final MailRecipient recipient = _results[index];
                             return ListTile(
                               dense: true,
                               leading: CircleAvatar(
                                 radius: 16,
+                                backgroundColor: MailTheme.pillBackground(
+                                  context,
+                                ),
+                                foregroundColor: MailTheme.pillForeground(
+                                  context,
+                                ),
                                 child: Text(recipient.initial),
                               ),
                               title: Text(
@@ -1138,7 +1372,225 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
                         ),
             ),
           ),
+        ],
       ],
+    );
+  }
+}
+
+Widget _composeTagChip({
+  required BuildContext context,
+  required String label,
+  required bool selected,
+  ValueChanged<bool>? onSelected,
+  VoidCallback? onDeleted,
+}) {
+  final Color selectedBg = MailTheme.tagSelectedBackground(context);
+  final Color selectedFg = MailTheme.tagSelectedForeground(context);
+  final Color unselectedBg = MailTheme.tagUnselectedBackground(context);
+  final Color unselectedFg = MailTheme.tagUnselectedForeground(context);
+  final Color selectedBorder = MailTheme.tagSelectedBorder(context);
+  final Color unselectedBorder = MailTheme.tagUnselectedBorder(context);
+
+  final WidgetStateProperty<Color?> color =
+      WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+    if (states.contains(WidgetState.selected)) {
+      return selectedBg;
+    }
+    return unselectedBg;
+  });
+  final WidgetStateProperty<BorderSide?> side =
+      WidgetStateProperty.resolveWith<BorderSide?>((Set<WidgetState> states) {
+    if (states.contains(WidgetState.selected)) {
+      return BorderSide(color: selectedBorder, width: 1.5);
+    }
+    return BorderSide(color: unselectedBorder);
+  });
+
+  if (onDeleted != null) {
+    return InputChip(
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      color: color,
+      labelStyle: TextStyle(
+        color: selected ? selectedFg : unselectedFg,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      ),
+      side: selected
+          ? BorderSide(color: selectedBorder, width: 1.5)
+          : BorderSide(color: unselectedBorder),
+      deleteIconColor: selected ? selectedFg : unselectedFg,
+      onDeleted: onDeleted,
+    );
+  }
+
+  return FilterChip(
+    label: Text(label),
+    selected: selected,
+    showCheckmark: true,
+    checkmarkColor: selectedFg,
+    color: color,
+    labelStyle: TextStyle(
+      color: selected ? selectedFg : unselectedFg,
+      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    ),
+    side: side.resolve(selected ? <WidgetState>{WidgetState.selected} : const <WidgetState>{}),
+    onSelected: onSelected,
+  );
+}
+
+class _ComposeAddTagSheet extends StatefulWidget {
+  const _ComposeAddTagSheet({
+    required this.suggestedTags,
+    required this.selectedTags,
+    required this.normalizeTag,
+    required this.onSelectionChanged,
+  });
+
+  final List<String> suggestedTags;
+  final List<String> selectedTags;
+  final String Function(String raw) normalizeTag;
+  final VoidCallback onSelectionChanged;
+
+  @override
+  State<_ComposeAddTagSheet> createState() => _ComposeAddTagSheetState();
+}
+
+class _ComposeAddTagSheetState extends State<_ComposeAddTagSheet> {
+  final TextEditingController _search = TextEditingController();
+  final TextEditingController _custom = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    _custom.dispose();
+    super.dispose();
+  }
+
+  void _toggle(String tag, bool selected) {
+    setState(() {
+      if (selected) {
+        if (!widget.selectedTags.contains(tag)) {
+          widget.selectedTags.add(tag);
+        }
+      } else {
+        widget.selectedTags.remove(tag);
+      }
+    });
+    widget.onSelectionChanged();
+  }
+
+  void _addCustom() {
+    final String tag = widget.normalizeTag(_custom.text);
+    if (tag.isEmpty || tag == '#') {
+      return;
+    }
+    setState(() {
+      if (!widget.selectedTags.contains(tag)) {
+        widget.selectedTags.add(tag);
+      }
+      _custom.clear();
+    });
+    widget.onSelectionChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String query = _search.text.trim().toLowerCase();
+    final List<String> filtered = widget.suggestedTags
+        .where(
+          (String tag) =>
+              query.isEmpty || tag.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+    final List<String> customSelected = widget.selectedTags
+        .where((String tag) => !widget.suggestedTags.contains(tag))
+        .toList(growable: false);
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              'Add tags',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _search,
+              decoration: const InputDecoration(
+                hintText: 'Search tags...',
+                prefixIcon: Icon(Icons.search_rounded),
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: <Widget>[
+                    for (final String tag in filtered)
+                      _composeTagChip(
+                        context: context,
+                        label: tag,
+                        selected: widget.selectedTags.contains(tag),
+                        onSelected: (bool value) => _toggle(tag, value),
+                      ),
+                    for (final String tag in customSelected)
+                      _composeTagChip(
+                        context: context,
+                        label: tag,
+                        selected: true,
+                        onDeleted: () => _toggle(tag, false),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _custom,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter new tag...',
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _addCustom(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, AppTheme.fieldHeight),
+                  ),
+                  onPressed: _addCustom,
+                  child: const Text('Add'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Done'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

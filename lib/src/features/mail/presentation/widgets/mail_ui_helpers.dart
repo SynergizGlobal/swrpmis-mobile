@@ -99,6 +99,37 @@ class MailTheme {
     final ColorScheme scheme = _scheme(context);
     return _isDark(context) ? scheme.tertiary : MailColors.composeRed;
   }
+
+  /// Solid fill for selected compose tags (strong light/dark contrast).
+  static Color tagSelectedBackground(BuildContext context) {
+    final ColorScheme scheme = _scheme(context);
+    return _isDark(context) ? scheme.primary : MailColors.navy;
+  }
+
+  static Color tagSelectedForeground(BuildContext context) {
+    final ColorScheme scheme = _scheme(context);
+    return _isDark(context) ? scheme.onPrimary : Colors.white;
+  }
+
+  static Color tagSelectedBorder(BuildContext context) =>
+      tagSelectedBackground(context);
+
+  /// Outline-only unselected tags — muted, lower emphasis.
+  static Color tagUnselectedBackground(BuildContext context) {
+    final ColorScheme scheme = _scheme(context);
+    return _isDark(context)
+        ? scheme.surfaceContainerHighest.withValues(alpha: 0.25)
+        : Colors.transparent;
+  }
+
+  static Color tagUnselectedForeground(BuildContext context) => muted(context);
+
+  static Color tagUnselectedBorder(BuildContext context) {
+    final ColorScheme scheme = _scheme(context);
+    return _isDark(context)
+        ? scheme.outline.withValues(alpha: 0.75)
+        : scheme.outlineVariant;
+  }
 }
 
 Widget mailMetaPill(BuildContext context, String label) {

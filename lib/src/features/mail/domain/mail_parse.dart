@@ -472,6 +472,7 @@ MailDashboardData parseMailDashboard(dynamic data) {
         person: _display(json['person']),
         replied: _dash(_display(json['replied'])),
         replyMailNo: _dash(_display(json['replyMailNo'])),
+        replyDate: _dash(_display(json['replyDate'])),
         subject: _display(json['subject']),
         status: _display(json['status']),
         mailType: _display(json['mailType']),
