@@ -26,7 +26,6 @@ class FcmMessagingService {
     if (kIsWeb || !DefaultFirebaseOptions.isConfigured || _initialized) {
       return;
     }
-    _initialized = true;
 
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: true,
@@ -36,11 +35,8 @@ class FcmMessagingService {
 
     await _requestPermission();
 
-    final String? token = await _messaging.getToken();
-    if (token != null && token.isNotEmpty) {
-      await _cacheToken(token);
-    }
-
+    // Subscribe before getToken. On iOS getToken throws until APNs is ready;
+    // marking initialized first used to drop that token forever.
     await _tokenRefreshSub?.cancel();
     _tokenRefreshSub = _messaging.onTokenRefresh.listen((String token) async {
       await _cacheToken(token);
@@ -54,6 +50,18 @@ class FcmMessagingService {
         onTokenRefresh(payload);
       }
     });
+    _initialized = true;
+
+    try {
+      final String? token = await _messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        await _cacheToken(token);
+      }
+    } catch (error, stack) {
+      if (kDebugMode) {
+        debugPrint('FCM getToken failed: $error\n$stack');
+      }
+    }
   }
 
   Future<void> _requestPermission() async {
@@ -63,8 +71,15 @@ class FcmMessagingService {
       sound: true,
       provisional: false,
     );
-    if (!kIsWeb && Platform.isIOS) {
-      await _messaging.getAPNSToken();
+    if (kIsWeb || !Platform.isIOS) {
+      return;
+    }
+    for (var attempt = 0; attempt < 5; attempt++) {
+      final String? apns = await _messaging.getAPNSToken();
+      if (apns != null && apns.isNotEmpty) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
   }
 
