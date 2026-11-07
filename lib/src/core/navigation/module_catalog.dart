@@ -86,13 +86,14 @@ class ModuleCatalog {
     ),
     AppModule(
       id: 'p6',
-      title: 'Execution & Monitoring',
-      subtitle: 'Activities, actuals and progress updates',
+      title: 'Structure P6 Updates',
+      subtitle: 'P6 new data upload and history',
       icon: Icons.stairs_rounded,
       routeName: 'forms-p6',
       routePath: '/module/p6',
       group: ModuleGroup.updateForms,
     ),
+
     AppModule(
       id: 'design',
       title: 'Design & Drawing',

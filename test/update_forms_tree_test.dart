@@ -91,7 +91,16 @@ void main() {
     expect(updateFormRouteName(works.children.last), 'forms-structure-form');
     expect(updateFormRouteName(design), 'forms-design');
     expect(updateFormRouteName(land), 'forms-land');
+
+    final FormMenuNode execution = tree.forms.firstWhere(
+      (FormMenuNode node) => node.formName == 'Execution & Monitoring',
+    );
+    final FormMenuNode p6 = execution.children.firstWhere(
+      (FormMenuNode node) => node.formName == 'Structure P6 Updates',
+    );
+    expect(updateFormRouteName(p6), 'forms-p6');
   });
+
 
   test('Add Project and Add Structure route via webFormUrl aliases', () {
     const FormMenuNode addProject = FormMenuNode(

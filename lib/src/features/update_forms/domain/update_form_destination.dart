@@ -26,6 +26,12 @@ const Map<String, String> _updateFormAliases = <String, String>{
   'contractor': 'forms-contractors',
   'contractors': 'forms-contractors',
   'addcontractor': 'forms-contractors',
+  // Structure P6 Updates (webFormUrl: structure-p6-updates / p6-new-data).
+  'structurep6updates': 'forms-p6',
+  'structure-p6-updates': 'forms-p6',
+  'p6newdata': 'forms-p6',
+  'p6-new-data': 'forms-p6',
+  'p6': 'forms-p6',
 };
 
 String? updateFormRouteName(FormMenuNode node) {

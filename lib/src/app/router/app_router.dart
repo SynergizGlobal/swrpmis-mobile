@@ -15,6 +15,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/add_design_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_drawing_page.dart';
+import 'package:swr_pmis_mobile/src/features/p6_updates/presentation/pages/p6_updates_page.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/add_utility_shifting_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/utility_shifting/presentation/pages/utility_shifting_page.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/pages/add_issue_form_page.dart';
@@ -603,6 +604,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const DesignDrawingPage()
                 : module.routeName == UtilityShiftingPage.routeName
                 ? const UtilityShiftingPage()
+                : module.routeName == P6UpdatesPage.routeName
+                ? const P6UpdatesPage()
                 : module.routeName == ProjectsPage.routeName
                 ? const ProjectsPage()
                 : module.routeName == StructuresPage.routeName

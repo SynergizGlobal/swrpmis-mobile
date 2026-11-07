@@ -201,6 +201,22 @@ class ApiConstants {
   static const String qualityRfiListPath = '/rfi/api/qualityRfi/list';
   static const String newActivitiesUpdatePath = '/newActivitiesUpdate';
   static const String contractListForProjectPath = '/getContractListForProject';
+
+  /// Update Forms → Structure P6 Updates.
+  static const String p6NewDataMasterPath = '/p6-new-data-new';
+  static const String p6HistoryListPath = '/ajax/getP6NewActivityData';
+  static const String p6HistoryContractsFilterPath =
+      '/ajax/getContractsListFilterInP6New';
+  static const String p6HistoryUploadTypesFilterPath =
+      '/ajax/getUploadTypesFilterInP6New';
+  static const String p6HistoryStatusFilterPath =
+      '/ajax/getStatusListFilterInP6New';
+  static const String p6ContractsForProjectPath =
+      '/ajax/getContractListInP6New';
+  /// Multipart upload used by Baseline (and reused for Revised Baseline / Update
+  /// until distinct endpoints are confirmed).
+  static const String p6UploadNewDataPath = '/upload-p6-new-data';
+
   static const String structureTypesInActivitiesPath =
       '/ajax/getStructureTypesInActivitiesUpdate';
   static const String activitiesUpdateStructuresPath =
