@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/mail/data/datasources/mail_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/document_repository.dart';
@@ -61,6 +63,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   bool _draftApplied = false;
   bool _referenceLoaded = false;
   bool _busy = false;
+  bool _sendSuccess = false;
   int? _threadId;
 
   static const List<String> _categories = <String>[
@@ -422,7 +425,10 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       );
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _sendSuccess = false;
+    });
     try {
       final List<MailComposeAttachment> files = await _resolvedLocalFiles();
       final String message = await mailSend(
@@ -430,6 +436,14 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
         payload: _buildPayload(),
         files: files,
       );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busy = false;
+        _sendSuccess = true;
+      });
+      await Future<void>.delayed(AppButtonLottie.successHold);
       if (!mounted) {
         return;
       }
@@ -456,7 +470,10 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       );
     } finally {
       if (mounted) {
-        setState(() => _busy = false);
+        setState(() {
+          _busy = false;
+          _sendSuccess = false;
+        });
       }
     }
   }
@@ -706,14 +723,14 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
               ),
               _composeSendBar(
                 busy: _busy,
+                success: _sendSuccess,
                 onSend: _send,
               ),
             ],
           ),
           if (_busy)
-            const ColoredBox(
-              color: Color(0x33000000),
-              child: Center(child: CircularProgressIndicator()),
+            const AppFullscreenLoader.blocking(
+              scrimColor: Color(0x33000000),
             ),
         ],
       ),
@@ -722,9 +739,15 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
 
   Widget _composeSendBar({
     required bool busy,
+    required bool success,
     required VoidCallback onSend,
   }) {
     final AppPalette palette = AppPalette.of(context);
+    final AppButtonPhase phase = success
+        ? AppButtonPhase.success
+        : busy
+        ? AppButtonPhase.loading
+        : AppButtonPhase.idle;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -738,16 +761,27 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Align(
             alignment: Alignment.centerRight,
-            child: FilledButton.icon(
+            child: FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: MailTheme.composePrimaryButton(context),
                 foregroundColor: Colors.white,
                 // Hug width: theme Size.fromHeight is infinite min width.
                 minimumSize: const Size(0, AppTheme.fieldHeight),
               ),
-              onPressed: busy ? null : onSend,
-              icon: const Icon(Icons.send_rounded),
-              label: const Text('Send'),
+              onPressed: busy || success ? null : onSend,
+              child: AppAsyncButtonChild(
+                phase: phase,
+                tone: AppButtonLottieTone.white,
+                height: 20,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(Icons.send_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text('Send'),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

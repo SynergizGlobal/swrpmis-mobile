@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/router/app_page.dart';
 import 'package:swr_pmis_mobile/src/app/router/go_router_refresh.dart';
 import 'package:swr_pmis_mobile/src/core/app_update/app_update_host.dart';
+import 'package:swr_pmis_mobile/src/core/navigation/app_system_back.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/notification_route_resolver.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/pending_notification_location.dart';
@@ -13,6 +14,7 @@ import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
+import 'package:swr_pmis_mobile/src/features/splash/presentation/pages/splash_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/add_design_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/design/presentation/pages/design_drawing_page.dart';
 import 'package:swr_pmis_mobile/src/features/p6_updates/presentation/pages/p6_updates_page.dart';
@@ -77,17 +79,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final GoRouterRefresh refresh = ref.watch(goRouterRefreshProvider);
   return GoRouter(
     navigatorKey: AppDialog.navigatorKey,
-    initialLocation: LoginPage.routePath,
+    initialLocation: SplashPage.routePath,
     refreshListenable: refresh,
     redirect: (BuildContext context, GoRouterState state) {
       final ProviderContainer container = ProviderScope.containerOf(context);
       final bool loggedIn =
           container.read(authControllerProvider).valueOrNull != null;
       final String loc = state.matchedLocation;
+      final bool onSplash = loc == SplashPage.routePath;
       final bool isPublic =
-          loc == LoginPage.routePath || loc == ForgotPasswordPage.routePath;
+          onSplash ||
+          loc == LoginPage.routePath ||
+          loc == ForgotPasswordPage.routePath;
       if (!loggedIn && !isPublic) {
         return LoginPage.routePath;
+      }
+      // Splash owns its own exit navigation so the Lottie can finish.
+      if (onSplash) {
+        return null;
       }
       if (loggedIn) {
         final PendingNotificationNav? pending = container.read(
@@ -118,6 +127,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: <RouteBase>[
+      GoRoute(
+        path: SplashPage.routePath,
+        name: SplashPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          // No fade-in: native launch screen hands off to the same brand color.
+          return NoTransitionPage<void>(
+            key: state.pageKey,
+            child: const AppSystemBackScope(child: SplashPage()),
+          );
+        },
+      ),
       GoRoute(
         path: LoginPage.routePath,
         name: LoginPage.routeName,

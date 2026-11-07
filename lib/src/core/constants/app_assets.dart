@@ -12,6 +12,29 @@ class AppAssets {
 
   static const String map = 'assets/brand/swr_map.jpg';
 
+  /// Splash Lottie (train + check logo).
+  static const String splashLottie = 'assets/animations/train-check-logo.json';
+
+  /// Fullscreen / blocking loader Lottie.
+  static const String loaderFullscreenLottie =
+      'assets/animations/loader-fullscreen.json';
+
+  /// Compact button loader — navy strokes (outlined / light buttons).
+  static const String loaderButtonNavyLottie =
+      'assets/animations/loader-button-navy.json';
+
+  /// Compact button loader — white strokes (filled / primary buttons).
+  static const String loaderButtonWhiteLottie =
+      'assets/animations/loader-button-white.json';
+
+  /// Compact button success — navy strokes (outlined / light buttons).
+  static const String loaderSuccessNavyLottie =
+      'assets/animations/loader-success-navy.json';
+
+  /// Compact button success — white strokes (filled / primary buttons).
+  static const String loaderSuccessWhiteLottie =
+      'assets/animations/loader-success-white.json';
+
   static const List<String> loginSlides = <String>[
     'assets/login_slides/train1.jpg',
     'assets/login_slides/train2.jpg',

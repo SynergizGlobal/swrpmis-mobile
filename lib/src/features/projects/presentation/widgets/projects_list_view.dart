@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
@@ -542,10 +543,11 @@ class _ToolbarButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color accent = Theme.of(context).colorScheme.primary;
     final Widget iconWidget = busy
-        ? SizedBox(
-            width: 16,
+        ? AppButtonLoader(
+            tone: filled
+                ? AppButtonLottieTone.white
+                : AppButtonLottieTone.navy,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: accent),
           )
         : Icon(icon, size: 18);
     if (filled) {

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
@@ -40,7 +41,7 @@ class ExecutionProgressPage extends ConsumerWidget {
         title: const Text('Execution progress'),
       ),
       body: progress.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppFullscreenLoader(),
         error: (Object error, StackTrace stackTrace) {
           final String message = error is DioException
               ? userFriendlyErrorMessage(error)

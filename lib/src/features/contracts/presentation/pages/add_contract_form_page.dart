@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/contracts/data/datasources/contract_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/contracts/domain/contract_form.dart';
@@ -470,7 +472,7 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
         body: loadError != null
             ? _ErrorBody(onRetry: _retry)
             : !ready || !_seeded
-            ? const Center(child: CircularProgressIndicator())
+            ? const AppFullscreenLoader()
             : _body(),
       ),
     );
@@ -504,11 +506,7 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
                   child: FilledButton(
                     onPressed: _saving ? null : _goNext,
                     child: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const AppButtonLoader.white(height: 18)
                         : Text(_isLastStep ? 'Submit' : 'Next'),
                   ),
                 ),

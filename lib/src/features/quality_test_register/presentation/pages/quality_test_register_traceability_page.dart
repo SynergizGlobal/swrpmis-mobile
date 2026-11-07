@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
@@ -105,7 +106,7 @@ class _QualityTestRegisterTraceabilityPageState
       );
     }
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppFullscreenLoader();
     }
     if (_data.isEmpty) {
       return const Center(child: Text('No traceability data.'));

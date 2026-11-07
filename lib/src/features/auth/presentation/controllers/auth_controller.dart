@@ -47,6 +47,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {
   final DeviceTokenSync _deviceTokenSync;
   bool _autoLoginAttempted = false;
 
+  /// True after [tryAutoLoginIfRemembered] has run once this session.
+  bool get hasAttemptedAutoLogin => _autoLoginAttempted;
+
   void _syncAuthToken(AuthSession? session) {
     final String token = session?.token.trim() ?? '';
     _ref.read(authTokenProvider.notifier).state = token.isEmpty ? null : token;

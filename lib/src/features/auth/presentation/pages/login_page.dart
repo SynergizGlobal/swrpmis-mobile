@@ -8,6 +8,7 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_assets.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_constants.dart';
 import 'package:swr_pmis_mobile/src/core/result/failure.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/swr_logo.dart';
 import 'package:swr_pmis_mobile/src/features/auth/data/datasources/auth_local_data_source.dart';
@@ -31,7 +32,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _obscure = true;
   bool _rememberMe = true;
-  bool _submitting = false;
+  AppButtonPhase _submitPhase = AppButtonPhase.idle;
   bool _autoLoggingIn = false;
 
   @override
@@ -60,6 +61,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
+    // Splash already owns the first remember-me attempt.
+    if (ref.read(authControllerProvider.notifier).hasAttemptedAutoLogin) {
+      if (ref.read(authControllerProvider).valueOrNull != null) {
+        context.goNamed(HomePage.routeName);
+      }
+      return;
+    }
+
     setState(() => _autoLoggingIn = true);
     final Failure? failure = await ref
         .read(authControllerProvider.notifier)
@@ -79,7 +88,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    setState(() => _submitting = true);
+    setState(() => _submitPhase = AppButtonPhase.loading);
     final Failure? failure = await ref
         .read(authControllerProvider.notifier)
         .login(
@@ -90,14 +99,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!mounted) {
       return;
     }
-    setState(() => _submitting = false);
     if (failure != null) {
+      setState(() => _submitPhase = AppButtonPhase.idle);
       await AppDialog.show(
         context,
         variant: AppDialogVariant.error,
         title: 'Login Failed',
         message: failure.message,
       );
+      return;
+    }
+    setState(() => _submitPhase = AppButtonPhase.success);
+    await Future<void>.delayed(AppButtonLottie.successHold);
+    if (!mounted) {
       return;
     }
     context.goNamed(HomePage.routeName);
@@ -114,7 +128,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final AppPalette palette = AppPalette.of(context);
     final double topInset = MediaQuery.paddingOf(context).top;
-    final bool busy = _submitting || _autoLoggingIn;
+    final bool busy =
+        _autoLoggingIn || _submitPhase != AppButtonPhase.idle;
+    final AppButtonPhase buttonPhase = _autoLoggingIn
+        ? AppButtonPhase.loading
+        : _submitPhase;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -191,6 +209,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     obscure: _obscure,
                                     rememberMe: _rememberMe,
                                     busy: busy,
+                                    buttonPhase: buttonPhase,
                                     onToggleObscure: () =>
                                         setState(() => _obscure = !_obscure),
                                     onRememberChanged: (bool? value) {
@@ -369,6 +388,7 @@ class _LoginCard extends StatelessWidget {
     required this.obscure,
     required this.rememberMe,
     required this.busy,
+    required this.buttonPhase,
     required this.onToggleObscure,
     required this.onRememberChanged,
     required this.onSubmit,
@@ -381,6 +401,7 @@ class _LoginCard extends StatelessWidget {
   final bool obscure;
   final bool rememberMe;
   final bool busy;
+  final AppButtonPhase buttonPhase;
   final VoidCallback onToggleObscure;
   final ValueChanged<bool?> onRememberChanged;
   final VoidCallback? onSubmit;
@@ -611,16 +632,11 @@ class _LoginCard extends StatelessWidget {
                       alpha: 0.5,
                     ),
                   ),
-                  child: busy
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('LOGIN'),
+                  child: AppAsyncButtonChild(
+                    phase: buttonPhase,
+                    tone: AppButtonLottieTone.white,
+                    child: const Text('LOGIN'),
+                  ),
                 ),
                 TextButton(
                   onPressed: onForgot,

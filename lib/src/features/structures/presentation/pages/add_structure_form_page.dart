@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/structures/data/datasources/structure_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/structures/domain/structure_form.dart';
@@ -148,7 +150,7 @@ class _AddStructureFormPageState extends ConsumerState<AddStructureFormPage> {
         title: Text(_editing ? 'Update Structure' : 'Add Structure'),
       ),
       body: loadingMaster || loadingDetail
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppFullscreenLoader()
           : loadFailed
           ? _ErrorBody(
               onRetry: () {
@@ -305,11 +307,7 @@ class _AddStructureFormPageState extends ConsumerState<AddStructureFormPage> {
               child: FilledButton(
                 onPressed: busy ? null : _submit,
                 child: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const AppButtonLoader.white(height: 18)
                     : Text(_editing ? 'UPDATE' : 'ADD'),
               ),
             ),

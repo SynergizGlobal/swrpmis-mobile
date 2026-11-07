@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/design/domain/design_form.dart';
 import 'package:swr_pmis_mobile/src/features/design/domain/design_list.dart';
@@ -335,7 +336,7 @@ class _AddDesignFormPageState extends ConsumerState<AddDesignFormPage> {
       body: loadError != null
           ? _ErrorBody(onRetry: _retry)
           : !ready || !_seeded
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppFullscreenLoader()
           : _form(),
     );
   }

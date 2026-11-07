@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_details.dart';
@@ -216,7 +217,7 @@ class _RfiInspectionFlowPageState
         body: Stack(
           children: <Widget>[
             if (state.loading)
-              const Center(child: CircularProgressIndicator())
+              const AppFullscreenLoader()
             else if (state.details == null)
               Center(
                 child: Padding(
@@ -253,10 +254,7 @@ class _RfiInspectionFlowPageState
                 ],
               ),
             if (state.busy)
-              const ColoredBox(
-                color: Color(0x66000000),
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              const AppFullscreenLoader.blocking(),
           ],
         ),
       ),

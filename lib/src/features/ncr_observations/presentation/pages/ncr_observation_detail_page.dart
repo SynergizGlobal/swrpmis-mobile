@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:swr_pmis_mobile/src/app/config/app_config_controller.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/ncr_observations/data/datasources/ncr_observation_remote_data_source.dart';
@@ -248,7 +249,7 @@ class _NcrObservationDetailPageState
     }
     final NcrObservationDetail? detail = _detail;
     if (detail == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppFullscreenLoader();
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),

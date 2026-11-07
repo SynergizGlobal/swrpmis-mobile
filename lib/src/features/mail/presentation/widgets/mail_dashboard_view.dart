@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/mail/data/mail_dashboard_export_file.dart';
@@ -88,7 +90,7 @@ class _MailDashboardViewState extends ConsumerState<MailDashboardView> {
   Widget build(BuildContext context) {
     final AsyncValue<MailDashboardData> async = ref.watch(mailDashboardProvider);
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const AppFullscreenLoader(),
       error: (Object error, StackTrace _) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -250,13 +252,7 @@ class _MailDashboardViewState extends ConsumerState<MailDashboardView> {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
                           icon: _exporting
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
+                              ? const AppButtonLoader.navy(height: 16)
                               : const Icon(Icons.table_view_rounded, size: 18),
                           label: const Text('Export Excel'),
                         ),

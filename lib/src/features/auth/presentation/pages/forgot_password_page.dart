@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/result/failure.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/forgot_password_controller.dart';
@@ -27,6 +28,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   bool _seeded = false;
+  bool _showSuccess = false;
 
   @override
   void initState() {
@@ -106,6 +108,11 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     }
     if (failure != null) {
       await _showError(failure);
+      return;
+    }
+    setState(() => _showSuccess = true);
+    await Future<void>.delayed(AppButtonLottie.successHold);
+    if (!mounted) {
       return;
     }
     await AppDialog.show(
@@ -232,24 +239,26 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             ],
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: state.isLoading
+              onPressed: state.isLoading || _showSuccess
                   ? null
                   : switch (state.step) {
                       ForgotPasswordStep.email => _sendOtp,
                       ForgotPasswordStep.otp => _verifyOtp,
                       ForgotPasswordStep.reset => _reset,
                     },
-              child: state.isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.4),
-                    )
-                  : Text(switch (state.step) {
-                      ForgotPasswordStep.email => 'Send OTP',
-                      ForgotPasswordStep.otp => 'Verify',
-                      ForgotPasswordStep.reset => 'Update password',
-                    }),
+              child: AppAsyncButtonChild(
+                phase: _showSuccess
+                    ? AppButtonPhase.success
+                    : state.isLoading
+                    ? AppButtonPhase.loading
+                    : AppButtonPhase.idle,
+                tone: AppButtonLottieTone.white,
+                child: Text(switch (state.step) {
+                  ForgotPasswordStep.email => 'Send OTP',
+                  ForgotPasswordStep.otp => 'Verify',
+                  ForgotPasswordStep.reset => 'Update password',
+                }),
+              ),
             ),
           ],
         ),

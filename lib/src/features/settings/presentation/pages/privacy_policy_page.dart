@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/config/environment.dart';
 import 'package:swr_pmis_mobile/src/core/constants/legal_assets.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -94,8 +95,7 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
       body: Stack(
         children: <Widget>[
           WebViewWidget(controller: _controller),
-          if (_loading)
-            const Center(child: CircularProgressIndicator()),
+          if (_loading) const AppFullscreenLoader(),
         ],
       ),
     );

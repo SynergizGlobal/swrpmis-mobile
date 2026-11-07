@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_parse.dart';
@@ -45,7 +46,7 @@ class _MailInboxListViewState extends ConsumerState<MailInboxListView> {
   Widget build(BuildContext context) {
     final AsyncValue<List<MailMessage>> inbox = ref.watch(mailInboxProvider);
     return inbox.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const AppFullscreenLoader(),
       error: (Object error, StackTrace _) => _ErrorRetry(
         message: error is DioException
             ? userFriendlyErrorMessage(error)
@@ -239,7 +240,7 @@ class _MailDraftsListViewState extends ConsumerState<MailDraftsListView> {
   Widget build(BuildContext context) {
     final AsyncValue<List<MailMessage>> drafts = ref.watch(mailDraftsProvider);
     return drafts.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const AppFullscreenLoader(),
       error: (Object error, StackTrace _) => _ErrorRetry(
         message: error is DioException
             ? userFriendlyErrorMessage(error)
@@ -429,7 +430,7 @@ class _MailSentListViewState extends ConsumerState<MailSentListView> {
   Widget build(BuildContext context) {
     final AsyncValue<List<MailMessage>> sent = ref.watch(mailSentProvider);
     return sent.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const AppFullscreenLoader(),
       error: (Object error, StackTrace _) => _ErrorRetry(
         message: error is DioException
             ? userFriendlyErrorMessage(error)
@@ -595,7 +596,7 @@ class _MailStarredListViewState extends ConsumerState<MailStarredListView> {
   Widget build(BuildContext context) {
     final AsyncValue<List<MailMessage>> starred = ref.watch(mailStarredProvider);
     return starred.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const AppFullscreenLoader(),
       error: (Object error, StackTrace _) => _ErrorRetry(
         message: error is DioException
             ? userFriendlyErrorMessage(error)
@@ -699,7 +700,7 @@ class _MailTrashListViewState extends ConsumerState<MailTrashListView> {
   Widget build(BuildContext context) {
     final AsyncValue<List<MailMessage>> trash = ref.watch(mailTrashProvider);
     return trash.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const AppFullscreenLoader(),
       error: (Object error, StackTrace _) => _ErrorRetry(
         message: error is DioException
             ? userFriendlyErrorMessage(error)
@@ -916,7 +917,7 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
       mailLabelMailsProvider(widget.labelName),
     );
     return mails.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const AppFullscreenLoader(),
       error: (Object error, StackTrace _) => _ErrorRetry(
         message: error is DioException
             ? userFriendlyErrorMessage(error)

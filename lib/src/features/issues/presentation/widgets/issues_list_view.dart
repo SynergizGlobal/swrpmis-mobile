@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
@@ -495,11 +496,7 @@ class _ExportButton extends StatelessWidget {
       ),
       onPressed: busy || onPressed == null ? null : () => onPressed!(context),
       icon: busy
-          ? SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: accent),
-            )
+          ? const AppButtonLoader.navy(height: 16)
           : const Icon(Icons.download_rounded, size: 18),
       label: const Text('Export'),
     );

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
@@ -189,13 +191,7 @@ class _ContractorsListViewState extends ConsumerState<ContractorsListView> {
                             ? null
                             : () => _onExport(context),
                         icon: _exporting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
+                            ? const AppButtonLoader.navy(height: 16)
                             : const Icon(Icons.download_rounded, size: 18),
                         label: const Text('Export'),
                       ),
@@ -242,12 +238,7 @@ class _ContractorsListViewState extends ConsumerState<ContractorsListView> {
               onRetry: _retry,
             )
           : state.loading
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              ),
-            )
+          ? const AppFullscreenLoader()
           : visible.isEmpty
           ? _message(
               message: state.query.search.trim().isEmpty

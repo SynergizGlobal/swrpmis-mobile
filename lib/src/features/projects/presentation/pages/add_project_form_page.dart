@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/projects/data/datasources/project_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/projects/domain/project_form.dart';
@@ -630,7 +632,7 @@ class _AddProjectFormPageState extends ConsumerState<AddProjectFormPage> {
       body: loadError != null
           ? _ErrorBody(onRetry: _retry)
           : !ready || !_seeded
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppFullscreenLoader()
           : _form(),
     );
   }
@@ -814,11 +816,7 @@ class _AddProjectFormPageState extends ConsumerState<AddProjectFormPage> {
                   FilledButton(
                     onPressed: busy ? null : _uploadKmz,
                     child: _uploadingKmz
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const AppButtonLoader.white(height: 18)
                         : const Text('Upload'),
                   ),
                 ],
@@ -830,11 +828,7 @@ class _AddProjectFormPageState extends ConsumerState<AddProjectFormPage> {
                     child: FilledButton(
                       onPressed: busy ? null : _submit,
                       child: _saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
+                          ? const AppButtonLoader.white(height: 18)
                           : Text(_editing ? 'Update' : 'Save'),
                     ),
                   ),

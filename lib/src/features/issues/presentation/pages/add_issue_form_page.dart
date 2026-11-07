@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/issues/domain/issue_form.dart';
 import 'package:swr_pmis_mobile/src/features/issues/presentation/providers/issue_form_provider.dart';
@@ -522,7 +523,7 @@ class _AddIssueFormPageState extends ConsumerState<AddIssueFormPage> {
       body: loadError != null
           ? _ErrorBody(onRetry: _retry)
           : !ready || !_seeded
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppFullscreenLoader()
           : _form(),
     );
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/pages/login_page.dart';
 import 'package:swr_pmis_mobile/src/features/dashboard/presentation/home/home_page.dart';
+import 'package:swr_pmis_mobile/src/features/splash/presentation/pages/splash_page.dart';
 
 /// System back / swipe-back policy: pop the route stack when possible; otherwise
 /// return to [HomePage.routePath]; exit only from home (or public auth screens).
@@ -14,6 +15,7 @@ abstract final class AppSystemBack {
       matchedLocation == HomePage.routePath;
 
   static bool isPublicAuthLocation(String matchedLocation) =>
+      matchedLocation == SplashPage.routePath ||
       matchedLocation == LoginPage.routePath ||
       matchedLocation == ForgotPasswordPage.routePath;
 

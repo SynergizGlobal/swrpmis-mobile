@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
@@ -46,12 +47,7 @@ class HomePage extends ConsumerWidget {
                 minHeight: minHeight,
               ),
               child: dashboard.when(
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(48),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
+                loading: () => const AppFullscreenLoader(),
                 error: (Object error, StackTrace stackTrace) {
                   final String message = error is DioException
                       ? userFriendlyErrorMessage(error)

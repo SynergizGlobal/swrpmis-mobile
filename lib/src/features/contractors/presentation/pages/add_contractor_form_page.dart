@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/contractors/data/datasources/contractor_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/contractors/domain/contractor_form.dart';
@@ -282,7 +284,7 @@ class _AddContractorFormPageState extends ConsumerState<AddContractorFormPage> {
         title: Text(_editing ? 'Update Contractor' : 'Add Contractor'),
       ),
       body: !_seeded
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppFullscreenLoader()
           : Column(
               children: <Widget>[
                 _StepHeader(titles: _stepTitles, current: _step),
@@ -500,11 +502,7 @@ class _AddContractorFormPageState extends ConsumerState<AddContractorFormPage> {
                     ? _submit
                     : _goNext,
                 child: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const AppButtonLoader.white(height: 18)
                     : Text(
                         last
                             ? (_editing ? 'Update' : 'ADD')

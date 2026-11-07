@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
@@ -224,7 +225,7 @@ class _NcrObservationListViewState
               onRetry: _retry,
             )
           : state.loading && rows.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppFullscreenLoader()
           : rows.isEmpty
           ? _message(
               message: 'No NCR / observations found.',

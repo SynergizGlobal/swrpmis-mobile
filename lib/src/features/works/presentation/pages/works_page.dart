@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
@@ -39,7 +40,7 @@ class _WorksPageState extends ConsumerState<WorksPage> {
           child: tree.when(
             loading: () => const _FillScroll(
               minHeight: 240,
-              child: Center(child: CircularProgressIndicator()),
+              child: AppFullscreenLoader(),
             ),
             error: (Object error, StackTrace stackTrace) {
               return _FillScroll(
