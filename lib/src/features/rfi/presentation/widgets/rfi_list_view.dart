@@ -11,12 +11,15 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/work_rfi_export_file.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_category_access.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_permissions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_providers.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_delete_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/work_rfi_form_page.dart';
 
@@ -51,13 +54,44 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
   }
 
   Future<void> _onAdd() async {
-    final bool canCreate = RfiPermissions.fromSession(
-      ref.read(authControllerProvider).valueOrNull,
-    ).canCreate;
-    if (!canCreate || widget.kind != RfiListKind.work) {
+    if (!_canAdd(ref.read(rfiCategoryAccessProvider(widget.kind))) ||
+        widget.kind != RfiListKind.work) {
       return;
     }
     await _openWorkForm(null);
+  }
+
+  /// Add follows the server's `can-create` / `category-view-only` answers,
+  /// like the web list. If those checks fail, it falls back to the role rule.
+  bool _canAdd(AsyncValue<RfiCategoryAccess?> access) {
+    final bool roleAllows = RfiPermissions.fromSession(
+      ref.read(authControllerProvider).valueOrNull,
+    ).canCreate;
+    if (access.hasError) {
+      return roleAllows;
+    }
+    if (!access.hasValue) {
+      return false;
+    }
+    final RfiCategoryAccess? value = access.requireValue;
+    return value == null ? roleAllows : value.canAdd;
+  }
+
+  /// Edit/Delete are hidden while the access check loads and when the server
+  /// says the category is view-only. A failed check keeps the old behaviour.
+  bool _canModify(AsyncValue<RfiCategoryAccess?> access) {
+    if (access.hasError) {
+      return true;
+    }
+    if (!access.hasValue) {
+      return false;
+    }
+    return access.requireValue?.canModify ?? true;
+  }
+
+  void _reload() {
+    ref.invalidate(rfiListProvider(widget.kind));
+    ref.invalidate(rfiCategoryAccessProvider(widget.kind));
   }
 
   Future<void> _onEdit(RfiListItem item) async {
@@ -71,14 +105,34 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
       );
       return;
     }
-    await _openWorkForm(id);
+    await _openWorkForm(id, rfiCode: item.rfiId);
   }
 
-  Future<void> _openWorkForm(int? id) async {
+  Future<void> _onView(RfiListItem item) async {
+    final int? id = item.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'View',
+        message: 'This RFI cannot be opened.',
+      );
+      return;
+    }
+    await Navigator.of(context, rootNavigator: true).push<void>(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) =>
+            WorkRfiFormPage(rfiId: id, rfiCode: item.rfiId, readOnly: true),
+      ),
+    );
+  }
+
+  Future<void> _openWorkForm(int? id, {String rfiCode = ''}) async {
     final bool? saved = await Navigator.of(context, rootNavigator: true)
         .push<bool>(
           MaterialPageRoute<bool>(
-            builder: (BuildContext context) => WorkRfiFormPage(rfiId: id),
+            builder: (BuildContext context) =>
+                WorkRfiFormPage(rfiId: id, rfiCode: rfiCode),
           ),
         );
     if (saved != true || !mounted) {
@@ -144,16 +198,32 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
   }
 
   Future<void> _onDelete(RfiListItem item) async {
-    final bool confirmed = await AppDialog.confirm(
-      context,
-      title: 'Delete RFI',
-      message: 'Delete ${item.rfiId.isEmpty ? 'this RFI' : item.rfiId}?',
-      primaryLabel: 'Delete',
-      destructive: true,
-    );
-    if (!confirmed || !mounted) {
+    final int? id = item.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Delete RFI',
+        message: 'This RFI cannot be deleted.',
+      );
       return;
     }
+    final RfiRemoteDataSource source = ref.read(rfiRemoteDataSourceProvider);
+    final String? message = await showRfiDeleteDialog(
+      context,
+      rfiCode: item.rfiId,
+      onDelete: (String reason) => source.deleteRfi(id: id, reason: reason),
+    );
+    if (message == null || !mounted) {
+      return;
+    }
+    ref.invalidate(rfiListProvider(widget.kind));
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.success,
+      title: 'Deleted',
+      message: message,
+    );
   }
 
   @override
@@ -161,9 +231,12 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     final AsyncValue<List<RfiListItem>> asyncList = ref.watch(
       rfiListProvider(widget.kind),
     );
-    final bool canCreate = RfiPermissions.fromSession(
-      ref.watch(authControllerProvider).valueOrNull,
-    ).canCreate;
+    ref.watch(authControllerProvider);
+    final AsyncValue<RfiCategoryAccess?> access = ref.watch(
+      rfiCategoryAccessProvider(widget.kind),
+    );
+    final bool canCreate = _canAdd(access);
+    final bool canModify = _canModify(access);
     final List<RfiListItem>? loaded = asyncList.hasValue && !asyncList.hasError
         ? asyncList.requireValue
         : null;
@@ -261,7 +334,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
                   message: error is DioException
                       ? userFriendlyErrorMessage(error)
                       : error.toString(),
-                  onRetry: () => ref.invalidate(rfiListProvider(widget.kind)),
+                  onRetry: _reload,
                 ),
               );
             },
@@ -280,9 +353,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
                     message: items.isEmpty
                         ? widget.kind.emptyMessage
                         : 'No matching RFIs.',
-                    onRetry: items.isEmpty
-                        ? () => ref.invalidate(rfiListProvider(widget.kind))
-                        : null,
+                    onRetry: items.isEmpty ? _reload : null,
                   ),
                 );
               },
@@ -292,7 +363,9 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
             columns: rfiTableColumns(
               widget.kind,
               onEdit: widget.kind == RfiListKind.work ? _onEdit : null,
+              onView: widget.kind == RfiListKind.work ? _onView : null,
               onDelete: widget.kind == RfiListKind.work ? _onDelete : null,
+              showActions: canModify,
             ),
             items: tablePage.items,
           );

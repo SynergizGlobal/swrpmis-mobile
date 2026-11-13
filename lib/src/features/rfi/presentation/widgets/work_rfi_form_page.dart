@@ -12,9 +12,21 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/work_rfi_form.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 
 class WorkRfiFormPage extends ConsumerStatefulWidget {
-  const WorkRfiFormPage({super.key, this.rfiId});
+  const WorkRfiFormPage({
+    super.key,
+    this.rfiId,
+    this.rfiCode = '',
+    this.readOnly = false,
+  });
 
   final int? rfiId;
+
+  /// The RFI number shown in the title, e.g. RFI_W_EW_S1_EFIL_SS1_0001.
+  final String rfiCode;
+
+  /// Opens a saved RFI for viewing only: every input is disabled and there is
+  /// no Create/Update button. Used by the list's View action.
+  final bool readOnly;
 
   /// Test / semantics keys for labeled select fields (empty hint is generic).
   static const Key structureFieldKey = ValueKey<String>('work_rfi_structure');
@@ -66,6 +78,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   String _originalTypeOfRfi = '';
   String _originalDateOfInspection = '';
   String _representativeId = '';
+  String _action = workRfiDefaultEditAction;
+  WorkRfiDetail? _savedDetail;
   String _representativeName = '';
   DateTime? _submissionDate;
   TimeOfDay? _inspectionTime;
@@ -88,6 +102,26 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   int _enclosureTicket = 0;
 
   bool get _editing => widget.rfiId != null;
+
+  bool get _locked => _submitting || widget.readOnly;
+
+  /// Fields the web edit form greys out: the location head (project to
+  /// structure), RFI Required, Type of RFI, the representative and the
+  /// inspection date/time. They stay fixed once the RFI is raised.
+  bool get _fixedOnEdit => _locked || _editing;
+
+  /// Representative is fixed on edit unless the Action is Reassign.
+  bool get _representativeLocked =>
+      _locked || (_editing && !workRfiActionUnlocksRepresentative(_action));
+
+  /// Inspection date/time are fixed on edit unless the Action is Rescheduled.
+  bool get _scheduleLocked =>
+      _locked || (_editing && !workRfiActionUnlocksSchedule(_action));
+
+  String _titleWithCode(String title) {
+    final String code = widget.rfiCode.trim();
+    return code.isEmpty ? title : '$title ($code)';
+  }
 
   bool get _keepsLocalActivity =>
       !_editing && workRfiIsEarthworkOrBlanketing(_structureType);
@@ -150,10 +184,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         setState(() => _ready = true);
         await _showError('Projects unavailable', error);
       }
-      unawaited(_loadRepresentatives());
       return;
     }
-    unawaited(_loadRepresentatives());
     final WorkRfiDetail? detail = await _guard(
       _source.fetchDetail(widget.rfiId!),
       'Work RFI unavailable',
@@ -182,6 +214,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     );
     _applyDetail(detail);
     _representatives = _withRepresentative(_representatives);
+    unawaited(_loadRepresentatives());
     await _restore(detail);
     if (!mounted) {
       return;
@@ -189,20 +222,39 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     setState(() => _ready = true);
   }
 
+  /// A new project or contract has its own representatives, so the old
+  /// choice and list are dropped.
+  void _clearRepresentative() {
+    _representativeId = '';
+    _representativeName = '';
+    _representatives = const <WorkRfiOption>[];
+  }
+
+  /// Representatives belong to a contract, so the list is fetched for the
+  /// selected contract and refetched whenever the contract changes.
   Future<void> _loadRepresentatives() async {
+    final String contractId = _contractId.trim();
+    if (contractId.isEmpty) {
+      setState(
+        () => _representatives = _withRepresentative(const <WorkRfiOption>[]),
+      );
+      return;
+    }
     List<WorkRfiOption> options = const <WorkRfiOption>[];
     try {
-      options = await _source.fetchRepresentatives();
+      options = await _source.fetchRepresentatives(contractId);
     } on Object {
       options = const <WorkRfiOption>[];
     }
-    if (!mounted) {
+    if (!mounted || contractId != _contractId.trim()) {
       return;
     }
     setState(() => _representatives = _withRepresentative(options));
   }
 
   void _applyDetail(WorkRfiDetail detail) {
+    _savedDetail = detail;
+    _action = workRfiDefaultEditAction;
     _projectId = detail.project;
     _contractId = detail.contract;
     _structureType = detail.structureType;
@@ -365,6 +417,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       _projectId = id;
       _clearContracts();
       _loadingContracts = true;
+      _clearRepresentative();
     });
     final List<WorkRfiContractOption>? contracts = await _guard(
       _editing ? _contractsFor(id) : _source.fetchContractNames(id),
@@ -390,7 +443,9 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       _contractId = id;
       _clearStructureTypes();
       _loadingStructureTypes = true;
+      _clearRepresentative();
     });
+    unawaited(_loadRepresentatives());
     final List<WorkRfiOption>? options = await _guard(
       _source.fetchStructureTypes(id),
       'Structure types unavailable',
@@ -736,6 +791,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       originalTypeOfRfi: _originalTypeOfRfi,
       originalDateOfInspection: _originalDateOfInspection,
       editing: _editing,
+      action: _editing ? _action : workRfiFixedAction,
     );
   }
 
@@ -745,7 +801,13 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       canPop: !_submitting,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_editing ? 'Edit Works RFI' : 'Create Works RFI'),
+          title: Text(
+            widget.readOnly
+                ? _titleWithCode('View Works RFI')
+                : _editing
+                ? _titleWithCode('Edit Works RFI')
+                : 'Create Works RFI',
+          ),
         ),
         body: Column(
           children: <Widget>[
@@ -762,7 +824,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                     )
                   : const SizedBox.shrink(),
             ),
-            if (_ready) _actions(),
+            if (_ready && !widget.readOnly) _actions(),
           ],
         ),
       ),
@@ -779,7 +841,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           child: _selectBox(
             hint: 'Select...',
             value: _optionLabel(_projects, _projectId),
-            enabled: !_submitting,
+            enabled: !_fixedOnEdit,
             onTap: () => _pickSingle(
               title: 'Project',
               options: _projects,
@@ -794,7 +856,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           child: _selectBox(
             hint: 'Select...',
             value: _contractLabel(_contractId),
-            enabled: _projectId.isNotEmpty && !_submitting,
+            enabled: _projectId.isNotEmpty && !_fixedOnEdit,
             onTap: () => _pickSingle(
               title: 'Contract',
               options: <WorkRfiOption>[
@@ -812,7 +874,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           child: _selectBox(
             hint: 'Select...',
             value: _optionLabel(_structureTypes, _structureType),
-            enabled: _contractId.isNotEmpty && !_submitting,
+            enabled: _contractId.isNotEmpty && !_fixedOnEdit,
             onTap: () => _pickSingle(
               title: 'Structure Type',
               options: _structureTypes,
@@ -828,7 +890,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             key: WorkRfiFormPage.structureFieldKey,
             hint: 'Select...',
             value: _optionLabel(_structures, _structureId),
-            enabled: _structureType.isNotEmpty && !_submitting,
+            enabled: _structureType.isNotEmpty && !_fixedOnEdit,
             onTap: () => _pickSingle(
               title: 'Structure',
               options: _structures,
@@ -844,7 +906,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             key: WorkRfiFormPage.componentFieldKey,
             hint: 'Select...',
             value: _optionLabel(_components, _component),
-            enabled: _structureId.isNotEmpty && !_submitting,
+            enabled: _structureId.isNotEmpty && !_locked,
             onTap: () => _pickSingle(
               title: 'Component',
               options: _components,
@@ -860,7 +922,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             key: WorkRfiFormPage.elementFieldKey,
             hint: 'Select...',
             value: _optionLabel(_elements, _element),
-            enabled: _component.isNotEmpty && !_submitting,
+            enabled: _component.isNotEmpty && !_locked,
             onTap: () => _pickSingle(
               title: 'Element',
               options: _elements,
@@ -895,7 +957,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                 child: _WorkRfiTextField(
                   controller: _chainageFrom,
                   hint: 'e.g. 12+500',
-                  enabled: !_submitting,
+                  enabled: !_locked,
                   keyboardType: TextInputType.text,
                   inputFormatters: <TextInputFormatter>[
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9+.]')),
@@ -911,7 +973,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                 child: _WorkRfiTextField(
                   controller: _chainageTo,
                   hint: 'e.g. 13+000',
-                  enabled: !_submitting,
+                  enabled: !_locked,
                   keyboardType: TextInputType.text,
                   inputFormatters: <TextInputFormatter>[
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9+.]')),
@@ -927,7 +989,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   key: WorkRfiFormPage.layerFieldKey,
                   hint: 'Select...',
                   value: _optionLabel(_layers, _layerId),
-                  enabled: _layers.isNotEmpty && !_submitting,
+                  enabled: _layers.isNotEmpty && !_locked,
                   onTap: () => _pickSingle(
                     title: 'Layer',
                     options: _layers,
@@ -973,7 +1035,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             key: WorkRfiFormPage.activityFieldKey,
             hint: 'Select...',
             selected: _selectedActivities,
-            enabled: _element.isNotEmpty && !_submitting,
+            enabled: _element.isNotEmpty && !_locked,
             onTap: _pickActivities,
             onRemove: (WorkRfiOption option) {
               unawaited(
@@ -995,7 +1057,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             key: WorkRfiFormPage.descriptionFieldKey,
             hint: 'Select...',
             selected: _optionsFor(_descriptionOptions, _descriptionIds),
-            enabled: _selectedActivities.isNotEmpty && !_submitting,
+            enabled: _selectedActivities.isNotEmpty && !_locked,
             onTap: _pickDescriptions,
             onRemove: (WorkRfiOption option) {
               unawaited(
@@ -1016,10 +1078,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           _labeled(
             'Action',
             child: _selectBox(
-              hint: workRfiFixedAction,
-              value: workRfiFixedAction,
-              enabled: false,
-              onTap: null,
+              hint: workRfiDefaultEditAction,
+              value: _optionLabel(workRfiEditActions, _action) ?? _action,
+              enabled: !_locked,
+              onTap: _pickAction,
             ),
           ),
           _labeled(
@@ -1027,7 +1089,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             child: _selectBox(
               hint: 'Select...',
               value: _typeOfRfi.isEmpty ? null : _typeOfRfi,
-              enabled: !_submitting,
+              enabled: !_fixedOnEdit,
               onTap: _pickTypeOfRfi,
             ),
           ),
@@ -1036,7 +1098,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             child: _selectBox(
               hint: 'Select...',
               value: _optionLabel(_representatives, _representativeId),
-              enabled: !_submitting,
+              enabled: !_representativeLocked,
               onTap: _pickRepresentative,
             ),
           ),
@@ -1060,7 +1122,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   : workRfiDisplayTime(_apiTime(_inspectionTime!)),
               hint: '--:-- --',
               icon: Icons.schedule_rounded,
-              enabled: !_submitting,
+              enabled: !_scheduleLocked,
               onTap: _pickTime,
             ),
           ),
@@ -1072,7 +1134,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   : workRfiFormatDisplayDate(_inspectionDate!),
               hint: 'dd/mm/yyyy',
               icon: Icons.calendar_today_outlined,
-              enabled: !_submitting,
+              enabled: !_scheduleLocked,
               onTap: _pickInspectionDate,
             ),
           ),
@@ -1081,7 +1143,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             child: _multiBox(
               hint: 'Select...',
               selected: _optionsFor(_enclosureOptions, _enclosureIds),
-              enabled: _descriptionIds.isNotEmpty && !_submitting,
+              enabled: _descriptionIds.isNotEmpty && !_locked,
               onTap: _pickEnclosures,
               onRemove: (WorkRfiOption option) {
                 unawaited(
@@ -1107,7 +1169,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   : workRfiFormatDisplayDate(_progressDate!),
               hint: 'dd/mm/yyyy',
               icon: Icons.calendar_today_outlined,
-              enabled: !_submitting,
+              enabled: !_locked,
               onTap: () => _pickDate(
                 current: _progressDate,
                 onPicked: (DateTime date) =>
@@ -1121,6 +1183,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           child: _WorkRfiTextField(
             controller: _description,
             hint: 'Add Description',
+            enabled: !_locked,
             minLines: 3,
             maxLines: 5,
             textInputAction: TextInputAction.newline,
@@ -1149,7 +1212,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                 (chainage
                     ? activityChosen || _activityOptions.isNotEmpty
                     : _element.isNotEmpty && !_loadingActivities) &&
-                !_submitting,
+                !_locked,
             onTap: _pickActivities,
             onRemove: (WorkRfiOption option) {
               unawaited(
@@ -1171,7 +1234,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             key: WorkRfiFormPage.descriptionFieldKey,
             hint: 'Select...',
             selected: _optionsFor(_descriptionOptions, _descriptionIds),
-            enabled: _descriptionOptions.isNotEmpty && !_submitting,
+            enabled: _descriptionOptions.isNotEmpty && !_locked,
             onTap: _descriptionOptions.isEmpty ? null : _pickDescriptions,
             onRemove: (WorkRfiOption option) {
               unawaited(
@@ -1203,7 +1266,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             child: _selectBox(
               hint: 'Select...',
               value: _typeOfRfi.isEmpty ? null : _typeOfRfi,
-              enabled: !_submitting,
+              enabled: !_locked,
               onTap: _pickTypeOfRfi,
             ),
           ),
@@ -1212,7 +1275,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             child: _selectBox(
               hint: 'Select...',
               value: _optionLabel(_representatives, _representativeId),
-              enabled: !_submitting,
+              enabled: !_locked,
               onTap: _pickRepresentative,
             ),
           ),
@@ -1224,7 +1287,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   : workRfiDisplayTime(_apiTime(_inspectionTime!)),
               hint: '--:-- --',
               icon: Icons.schedule_rounded,
-              enabled: !_submitting,
+              enabled: !_locked,
               onTap: _pickTime,
             ),
           ),
@@ -1236,7 +1299,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   : workRfiFormatDisplayDate(_inspectionDate!),
               hint: 'dd/mm/yyyy',
               icon: Icons.calendar_today_outlined,
-              enabled: !_submitting,
+              enabled: !_locked,
               onTap: _pickInspectionDate,
             ),
           ),
@@ -1257,7 +1320,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             child: _multiBox(
               hint: 'Select...',
               selected: _optionsFor(_enclosureOptions, _enclosureIds),
-              enabled: _descriptionIds.isNotEmpty && !_submitting,
+              enabled: _descriptionIds.isNotEmpty && !_locked,
               onTap: _pickEnclosures,
               onRemove: (WorkRfiOption option) {
                 unawaited(
@@ -1283,7 +1346,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   : workRfiFormatDisplayDate(_progressDate!),
               hint: 'dd/mm/yyyy',
               icon: Icons.calendar_today_outlined,
-              enabled: !_submitting,
+              enabled: !_locked,
               onTap: () => _pickDate(
                 current: _progressDate,
                 onPicked: (DateTime date) =>
@@ -1297,6 +1360,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           child: _WorkRfiTextField(
             controller: _description,
             hint: 'Add Description',
+            enabled: !_locked,
             minLines: 3,
             maxLines: 5,
             textInputAction: TextInputAction.newline,
@@ -1396,6 +1460,21 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     );
   }
 
+  /// Component and element shown on each measurement row, as on the web.
+  /// The form holds one component/element today, so every row shares them.
+  String get _rowComponentLabel =>
+      _optionLabel(_components, _component) ?? _component;
+
+  String get _rowElementLabel => _optionLabel(_elements, _element) ?? _element;
+
+  Widget _measureText(String text) {
+    return Text(
+      text.isEmpty ? '—' : text,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
   Widget _measureDataRow(_MeasureRow row, int index) {
     final WorkRfiMeasureFields fields = workRfiFieldsFor(row.measurementType);
     final List<String> units = workRfiUnitsFor(row.measurementType);
@@ -1404,8 +1483,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       child: Row(
         children: <Widget>[
           _fixedCell(0, Center(child: Text('${index + 1}'))),
+          _fixedCell(1, _measureText(_rowComponentLabel)),
+          _fixedCell(2, _measureText(_rowElementLabel)),
           _fixedCell(
-            1,
+            3,
             Text(
               row.activityName,
               maxLines: 2,
@@ -1414,37 +1495,37 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             ),
           ),
           _fixedCell(
-            2,
+            4,
             _tablePicker(
               text: row.measurementType,
               hint: 'Select',
-              onTap: _submitting ? null : () => _pickMeasureType(row),
+              onTap: _locked ? null : () => _pickMeasureType(row),
             ),
           ),
           _fixedCell(
-            3,
+            5,
             _tablePicker(
               text: row.units,
               hint: 'Select',
-              onTap: _submitting || units.isEmpty
+              onTap: _locked || units.isEmpty
                   ? null
                   : () => _pickMeasureUnits(row, units),
             ),
           ),
-          _fixedCell(4, _numberCell(row.length, enabled: fields.length)),
-          _fixedCell(5, _numberCell(row.breadth, enabled: fields.breadth)),
-          _fixedCell(6, _numberCell(row.height, enabled: fields.height)),
-          _fixedCell(7, _numberCell(row.weight, enabled: fields.weight)),
-          _fixedCell(8, _numberCell(row.no, enabled: fields.no)),
-          _fixedCell(9, _totalCell(row)),
+          _fixedCell(6, _numberCell(row.length, enabled: fields.length)),
+          _fixedCell(7, _numberCell(row.breadth, enabled: fields.breadth)),
+          _fixedCell(8, _numberCell(row.height, enabled: fields.height)),
+          _fixedCell(9, _numberCell(row.weight, enabled: fields.weight)),
+          _fixedCell(10, _numberCell(row.no, enabled: fields.no)),
+          _fixedCell(11, _totalCell(row)),
           SizedBox(
-            width: _measureWidths[10],
+            width: _measureWidths[12],
             child: IconButton(
               tooltip: 'Remove',
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-              onPressed: _submitting
+              onPressed: _locked
                   ? null
                   : () => unawaited(
                       _setActivities(
@@ -1539,7 +1620,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     }
     return _WorkRfiTextField(
       controller: controller,
-      enabled: !_submitting,
+      enabled: !_locked,
       dense: true,
       radius: 8,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1551,6 +1632,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Widget _totalCell(_MeasureRow row) {
+    if (workRfiFieldsFor(row.measurementType).totalQty) {
+      // Percent: Total Qty is typed, like the web form.
+      return _numberCell(row.totalQty, enabled: true);
+    }
     final num? total = workRfiTotalQty(
       measurementType: row.measurementType,
       length: row.length.text,
@@ -1612,7 +1697,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                 backgroundColor: AppTheme.brandPrimary,
                 foregroundColor: Colors.white,
               ),
-              child: Text(_editing ? 'Update' : 'Create'),
+              child: Text(_editing ? 'Save Changes' : 'Create'),
             ),
           ],
         ),
@@ -1832,7 +1917,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     final bool chosen = _rfiRequired == 'Yes' || _rfiRequired == 'No';
     final _FieldTone tone = _fieldTone(
       context,
-      enabled: !_submitting,
+      enabled: !_fixedOnEdit,
       focused: false,
       selected: chosen,
     );
@@ -1846,7 +1931,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         ),
         child: RadioGroup<String>(
           groupValue: _rfiRequired.isEmpty ? null : _rfiRequired,
-          onChanged: _setRfiRequired,
+          onChanged: _fixedOnEdit ? (_) {} : _setRfiRequired,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -1882,6 +1967,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           children: <Widget>[
             Radio<String>(
               value: value,
+              enabled: !_fixedOnEdit,
               visualDensity: VisualDensity.compact,
               fillColor: WidgetStateProperty.resolveWith((
                 Set<WidgetState> states,
@@ -1972,6 +2058,35 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
 
   Future<void> _setEnclosures(List<String> ids) async {
     setState(() => _enclosureIds = ids);
+  }
+
+  /// Switching back to Update puts the saved representative and schedule
+  /// back, so only the field the chosen Action is about can change.
+  Future<void> _pickAction() async {
+    final String? picked = await _pickOne(
+      title: 'Action',
+      options: workRfiEditActions,
+      selectedId: _action,
+      emptyMessage: 'No actions',
+    );
+    if (picked == null || picked == _action || !mounted) {
+      return;
+    }
+    final WorkRfiDetail? saved = _savedDetail;
+    setState(() {
+      _action = picked;
+      if (saved == null) {
+        return;
+      }
+      if (!workRfiActionUnlocksRepresentative(picked)) {
+        _representativeId = saved.userIdOfRepresentative;
+        _representativeName = saved.nameOfRepresentative;
+      }
+      if (!workRfiActionUnlocksSchedule(picked)) {
+        _inspectionDate = parseWorkRfiDate(saved.dateOfInspection);
+        _inspectionTime = _timeOf(saved.timeOfInspection);
+      }
+    });
   }
 
   Future<void> _pickTypeOfRfi() async {
@@ -2108,6 +2223,9 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       }
       if (!fields.no) {
         row.no.clear();
+      }
+      if (!fields.totalQty) {
+        row.totalQty.clear();
       }
     });
   }
@@ -2290,7 +2408,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   void _setRfiRequired(String? value) {
-    if (value == null || value == _rfiRequired || _submitting) {
+    if (value == null || value == _rfiRequired || _fixedOnEdit) {
       return;
     }
     setState(() => _rfiRequired = value);
@@ -2482,6 +2600,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
 
 const List<String> _measureLabels = <String>[
   'S. No.',
+  'Component',
+  'Element',
   'Activity',
   'Type of Measurement',
   'Units',
@@ -2496,6 +2616,8 @@ const List<String> _measureLabels = <String>[
 
 const List<double> _measureWidths = <double>[
   56,
+  128,
+  128,
   120,
   148,
   88,
@@ -2550,6 +2672,13 @@ class _MeasureRow {
           enabled: workRfiFieldsFor(draft.measurementType).no,
           raw: draft.no,
         ),
+      ),
+      totalQty = TextEditingController(
+        text: _shown(
+          draft.measurementType,
+          enabled: workRfiFieldsFor(draft.measurementType).totalQty,
+          raw: draft.totalQty,
+        ),
       );
 
   final String activityId;
@@ -2561,6 +2690,9 @@ class _MeasureRow {
   final TextEditingController height;
   final TextEditingController weight;
   final TextEditingController no;
+
+  /// Typed Total Qty for Percent rows; other types compute the total.
+  final TextEditingController totalQty;
   bool _disposed = false;
 
   WorkRfiMeasurementDraft toDraft() {
@@ -2574,6 +2706,7 @@ class _MeasureRow {
       height: height.text,
       weight: weight.text,
       no: no.text,
+      totalQty: totalQty.text,
     );
   }
 
@@ -2587,6 +2720,7 @@ class _MeasureRow {
     height.dispose();
     weight.dispose();
     no.dispose();
+    totalQty.dispose();
   }
 
   static String _initialUnits(WorkRfiMeasurementDraft draft) {
@@ -2964,10 +3098,7 @@ _FieldTone _fieldTone(
       final ColorScheme scheme = Theme.of(context).colorScheme;
       final Color base = AppPalette.of(context).cardSurface;
       return _FieldTone(
-        fill: Color.alphaBlend(
-          scheme.onSurface.withValues(alpha: 0.12),
-          base,
-        ),
+        fill: Color.alphaBlend(scheme.onSurface.withValues(alpha: 0.12), base),
         border: scheme.onSurface.withValues(alpha: 0.32),
         width: 1,
         foreground: scheme.onSurface.withValues(alpha: 0.68),

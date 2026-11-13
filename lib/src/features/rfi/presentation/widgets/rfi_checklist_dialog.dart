@@ -240,6 +240,8 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
                             _metaField('Date', rfi.dateOfInspection),
                             _metaField('Structure Type', rfi.structureType),
                             _metaField('Component', rfi.component),
+                            _metaField('Element', rfi.element),
+                            _metaField('Activity', rfi.activity),
                             _metaField('RFI No', rfi.rfiId),
                             const SizedBox(height: 8),
                             Text(
@@ -434,6 +436,9 @@ class _ChecklistRowCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text('Contractor Status', style: Theme.of(context).textTheme.labelMedium),
+            if (!contractorEditable)
+              _statusText(item.contractorStatus)
+            else
             Wrap(
               spacing: 4,
               children: statusOptions
@@ -452,6 +457,9 @@ class _ChecklistRowCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('Engineer Status', style: Theme.of(context).textTheme.labelMedium),
+            if (!engineerEditable)
+              _statusText(item.engineerStatus)
+            else
             Wrap(
               spacing: 4,
               children: statusOptions
@@ -468,6 +476,9 @@ class _ChecklistRowCard extends StatelessWidget {
                   .toList(),
             ),
             const SizedBox(height: 8),
+            if (!contractorEditable)
+              _remarkText('Contractor Remark', item.contractorRemarks)
+            else
             TextFormField(
               enabled: contractorEditable,
               initialValue: item.contractorRemarks,
@@ -479,6 +490,9 @@ class _ChecklistRowCard extends StatelessWidget {
               onChanged: onContractorRemark,
             ),
             const SizedBox(height: 8),
+            if (!engineerEditable)
+              _remarkText('Engineer Remark', item.engineerRemark)
+            else
             TextFormField(
               enabled: engineerEditable,
               initialValue: item.engineerRemark,
@@ -492,6 +506,25 @@ class _ChecklistRowCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// The other side's status, read-only like the web ("Not Updated" when
+  /// empty).
+  Widget _statusText(String status) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Text(
+        status.isEmpty ? 'Not Updated' : status.toUpperCase(),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  Widget _remarkText(String label, String remark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text('$label: ${remark.isEmpty ? '—' : remark}'),
     );
   }
 }

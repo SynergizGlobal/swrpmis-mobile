@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,6 +11,10 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_uploaded_by.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/rfi_inspection_errors.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/work_rfi_form.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_final_submit_payload.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/rfi_inspection_pdf.dart';
+import 'package:flutter/services.dart';
 
 class RfiInspectionFlowArgs {
   const RfiInspectionFlowArgs({
@@ -38,6 +44,9 @@ class RfiInspectionFlowArgs {
 class RfiInspectionMeasurementRow {
   const RfiInspectionMeasurementRow({
     this.activityName = '',
+    this.component = '',
+    this.element = '',
+    this.activityIdFk,
     this.type = 'Select',
     this.units = 'Select U',
     this.length = '',
@@ -49,6 +58,13 @@ class RfiInspectionMeasurementRow {
   });
 
   final String activityName;
+
+  /// Shown in the table only, like the web; not edited or re-sent.
+  final String component;
+  final String element;
+
+  /// The P6 activity this row measures; sent back as `activityIdFk`.
+  final int? activityIdFk;
   final String type;
   final String units;
   final String length;
@@ -71,6 +87,9 @@ class RfiInspectionMeasurementRow {
   }) {
     return RfiInspectionMeasurementRow(
       activityName: activityName ?? this.activityName,
+      component: component,
+      element: element,
+      activityIdFk: activityIdFk,
       type: type ?? this.type,
       units: units ?? this.units,
       length: length ?? this.length,
@@ -101,17 +120,37 @@ class RfiLocalSupportingDoc {
   const RfiLocalSupportingDoc({
     required this.path,
     this.description = '',
+    this.onServer = false,
   });
 
+  /// Phone file path for a newly picked PDF, or the server path of one that
+  /// was already uploaded.
   final String path;
   final String description;
+
+  /// True for documents loaded from the RFI; only new phone files are sent
+  /// again with Submit.
+  final bool onServer;
+
+  bool get isNewUpload => !onServer && !path.startsWith('http');
 
   RfiLocalSupportingDoc copyWith({String? description}) {
     return RfiLocalSupportingDoc(
       path: path,
       description: description ?? this.description,
+      onServer: onServer,
     );
   }
+}
+
+/// The new PDFs Submit uploads as `supportingFiles`, each with its typed
+/// description, in the same order.
+List<RfiLocalSupportingDoc> rfiSupportingUploads(
+  List<RfiLocalSupportingDoc> docs,
+) {
+  return docs
+      .where((RfiLocalSupportingDoc d) => d.isNewUpload && d.path.isNotEmpty)
+      .toList(growable: false);
 }
 
 class RfiInspectionFlowState {
@@ -271,6 +310,9 @@ class RfiInspectionFlowController
                   .map(
                     (RfiInspectionMeasurement m) => RfiInspectionMeasurementRow(
                       activityName: m.activityName,
+                      component: m.component,
+                      element: m.element,
+                      activityIdFk: m.activityIdFk,
                       type: m.measurementType.isEmpty
                           ? 'Select'
                           : m.measurementType,
@@ -289,6 +331,7 @@ class RfiInspectionFlowController
             (RfiSupportingDocument d) => RfiLocalSupportingDoc(
               path: d.path,
               description: d.description,
+              onServer: true,
             ),
           )
           .toList();
@@ -381,7 +424,13 @@ class RfiInspectionFlowController
         no: '',
       );
     }
-    list[index] = updated.copyWith(totalQty: _computeQty(updated));
+    // Percent: Total Qty is typed (as on the web), not calculated.
+    final bool typedTotal = workRfiFieldsFor(updated.type).totalQty;
+    list[index] = typedTotal
+        ? updated.copyWith(
+            totalQty: list[index].type == updated.type ? updated.totalQty : 0,
+          )
+        : updated.copyWith(totalQty: _computeQty(updated));
     state = state.copyWith(measurements: list);
   }
 
@@ -484,31 +533,13 @@ class RfiInspectionFlowController
     }
   }
 
-  Future<void> saveStep1AndContinue() async {
+  /// Step 1 -> Step 2 is local only, like the web: the selfie stays on the
+  /// device and reaches the server with Save as Draft or Submit.
+  void continueToStep2() {
     if (!state.hasSelfie) {
       throw StateError('Selfie is required.');
     }
-    state = state.copyWith(busy: true, clearError: true);
-    try {
-      final int id = await _source.saveDraft(
-        data: <String, dynamic>{
-          'rfiId': arg.rfiId,
-          'chainage': state.chainage,
-          'inspectionMode': arg.inspectionMode,
-          'location': state.location,
-          'nameOfRepresentative': state.contractorRepresentative,
-          if (state.conInspectionId != null)
-            'conInspectionId': state.conInspectionId,
-        },
-        selfiePath: state.selfiePath!,
-      );
-      state = state.copyWith(busy: false, conInspectionId: id, currentStep: 2);
-      await fetchLocation();
-      await refreshDetails();
-    } on Object catch (error) {
-      state = state.copyWith(busy: false, error: error);
-      rethrow;
-    }
+    setStep(2);
   }
 
   Future<void> saveAsDraft() async {
@@ -535,8 +566,7 @@ class RfiInspectionFlowController
       final String message = await _source.finalSubmit(
         data: _submitPayload(),
         selfiePath: state.selfiePath,
-        supportingFiles: state.supportingDocuments
-            .where((RfiLocalSupportingDoc d) => !d.path.startsWith('http'))
+        supportingFiles: rfiSupportingUploads(state.supportingDocuments)
             .map(
               (RfiLocalSupportingDoc d) => (
                 path: d.path,
@@ -549,8 +579,279 @@ class RfiInspectionFlowController
       state = state.copyWith(busy: false);
       return message;
     } on Object catch (error) {
+      final bool draftSaved = await _saveDraftAfterFailedSubmit();
       state = state.copyWith(busy: false, error: error);
-      rethrow;
+      throw RfiSubmitFailure(error, draftSaved: draftSaved);
+    }
+  }
+
+  /// Full contractor submit, in the web's order:
+  /// session → generate PDF → upload PDF → e-sign/stamp → final submit.
+  /// [onStep] reports each step's progress for the progress sheet. Stamping
+  /// is skipped when RFI Required is "No". Returns the server's message.
+  Future<String> submitWithSteps(
+    void Function(RfiSubmitStep step, RfiStepStatus status) onStep,
+  ) async {
+    state = state.copyWith(busy: true, clearError: true);
+    RfiSubmitStep current = RfiSubmitStep.session;
+    try {
+      onStep(current, RfiStepStatus.active);
+      await _source.checkSession();
+      onStep(current, RfiStepStatus.done);
+
+      current = RfiSubmitStep.pdf;
+      onStep(current, RfiStepStatus.active);
+      final Uint8List pdf = await _buildInspectionPdf();
+      onStep(current, RfiStepStatus.done);
+
+      current = RfiSubmitStep.upload;
+      onStep(current, RfiStepStatus.active);
+      await _source.uploadContractorPdf(rfiId: arg.rfiId, pdf: pdf);
+      onStep(current, RfiStepStatus.done);
+
+      current = RfiSubmitStep.stamp;
+      if (rfiRequiresStamp(state.details?.rfi.field('isRfiRequired') ?? '')) {
+        onStep(current, RfiStepStatus.active);
+        await _source.stampContractorPdf(
+          rfiId: arg.rfiId,
+          txnId: rfiStampTxnId(),
+        );
+        onStep(current, RfiStepStatus.done);
+      } else {
+        onStep(current, RfiStepStatus.skipped);
+      }
+
+      current = RfiSubmitStep.finalize;
+      onStep(current, RfiStepStatus.active);
+      final String message = await _source.finalSubmit(
+        data: _submitPayload(),
+        selfiePath: state.selfiePath,
+        supportingFiles: rfiSupportingUploads(state.supportingDocuments)
+            .map(
+              (RfiLocalSupportingDoc d) => (
+                path: d.path,
+                description: d.description,
+              ),
+            )
+            .toList(growable: false),
+        testReportPath: state.testReportPath,
+      );
+      onStep(current, RfiStepStatus.done);
+      state = state.copyWith(busy: false);
+      return message;
+    } on Object catch (error) {
+      onStep(current, RfiStepStatus.failed);
+      // Only a failed final submit falls back to a draft; earlier steps
+      // changed nothing the inspector would lose.
+      final bool draftSaved = current == RfiSubmitStep.finalize &&
+          await _saveDraftAfterFailedSubmit();
+      state = state.copyWith(busy: false, error: error);
+      throw RfiSubmitStepFailure(current, error, draftSaved: draftSaved);
+    }
+  }
+
+  /// Collects everything the web's `pdfPayload` holds and builds the merged
+  /// inspection PDF.
+  Future<Uint8List> _buildInspectionPdf() async {
+    final RfiInspectionDetails details = state.details!;
+    final RfiInspectionDetailRfi rfi = details.rfi;
+
+    Future<Uint8List?> stored(String path) async {
+      if (path.trim().isEmpty) {
+        return null;
+      }
+      try {
+        return await _source.previewStoredFile(path.trim());
+      } on Object {
+        return null;
+      }
+    }
+
+    Future<List<Uint8List>> all(Iterable<Future<Uint8List?>> files) async =>
+        (await Future.wait(files)).whereType<Uint8List>().toList();
+
+    // Checklists for every enclosure, as at submit time on the web.
+    final List<RfiInspectionEnclosure> unique = <RfiInspectionEnclosure>[];
+    for (final RfiInspectionEnclosure e in details.enclosures) {
+      if (!unique.any(
+        (RfiInspectionEnclosure u) =>
+            u.enclosureName == e.enclosureName &&
+            u.rfiDescription == e.rfiDescription,
+      )) {
+        unique.add(e);
+      }
+    }
+    final List<RfiPdfEnclosure> enclosures = await Future.wait(
+      unique.map((RfiInspectionEnclosure e) async {
+        List<RfiChecklistItem> items = const <RfiChecklistItem>[];
+        try {
+          items = await loadChecklist(e);
+        } on Object {
+          items = const <RfiChecklistItem>[];
+        }
+        return RfiPdfEnclosure(
+          rfiDescription: e.rfiDescription,
+          enclosure: e.enclosureName,
+          checklist: items
+              .map(
+                (RfiChecklistItem i) => RfiPdfChecklistRow(
+                  description: i.checklistDescription,
+                  contractorStatus: i.contractorStatus,
+                  engineerStatus: i.engineerStatus,
+                  contractorRemark: i.contractorRemarks,
+                  engineerRemark: i.engineerRemark,
+                ),
+              )
+              .toList(),
+        );
+      }),
+    );
+
+    final Set<String> enclosurePaths = <String>{
+      for (final RfiInspectionEnclosure e in details.enclosures)
+        if (e.enclosureUploadedFile.trim().isNotEmpty)
+          e.enclosureUploadedFile.trim(),
+    };
+    final List<Uint8List> enclosurePdfs = await all(enclosurePaths.map(stored));
+
+    final List<Uint8List> conImages = await all(rfi.conSiteImgs.map(stored));
+    final List<Uint8List> enggImages = await all(rfi.enggSiteImgs.map(stored));
+
+    final List<Uint8List> supporting = await all(<Future<Uint8List?>>[
+      for (final RfiLocalSupportingDoc d in state.supportingDocuments)
+        d.onServer
+            ? stored(d.path)
+            : File(d.path).readAsBytes().then<Uint8List?>((Uint8List b) => b,
+                onError: (Object _) => null),
+      for (final RfiSupportingDocument d in rfi.enggSupDocs) stored(d.path),
+    ]);
+
+    final String? localReport = state.testReportPath;
+    final List<Uint8List> testReports = await all(<Future<Uint8List?>>[
+      if (localReport != null && localReport.isNotEmpty)
+        File(localReport).readAsBytes().then<Uint8List?>((Uint8List b) => b,
+            onError: (Object _) => null)
+      else
+        stored(rfi.field('testReport')),
+    ]);
+
+    final String structureKey =
+        rfi.structureType.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+    final bool chainageType = <String>{
+      'earthwork',
+      'blanketing',
+      'tunnel',
+      'trackwork',
+    }.contains(structureKey);
+    final bool layerType =
+        structureKey == 'earthwork' || structureKey == 'blanketing';
+
+    final RfiInspectionPdfData data = RfiInspectionPdfData(
+      rfiNo: rfi.rfiId,
+      rfiCategory: rfi.rfiCategory.isEmpty ? arg.rfiCategory : rfi.rfiCategory,
+      inspectionMode: arg.inspectionMode,
+      contract: rfi.contract,
+      contractor: rfi.field('contractorName'),
+      contractorRep: state.contractorRepresentative,
+      location: state.location,
+      conSubmittedOn: rfiPdfTimestamp(DateTime.now()),
+      enggSubmittedOn: '',
+      raisedOn: rfiPdfServerDate(rfi.field('createdAt')),
+      rfiDescriptionSelected: rfi.rfiDescription,
+      rfiDescription: rfi.description,
+      structureType: rfi.structureType,
+      structure: rfi.structure,
+      component: rfi.component,
+      element: rfi.element,
+      activity: rfi.activity,
+      chainageFrom: chainageType ? rfi.field('chainageFrom') : '',
+      chainageTo: chainageType ? rfi.field('chainageTo') : '',
+      layer: layerType ? rfi.field('layer') : '',
+      enclosures: enclosures,
+      inspDescriptionCon: state.contractorDescription,
+      inspDescriptionEngg: rfi.field('enggDescriptionEnclosure'),
+      measurements: state.measurements
+          .map(
+            (RfiInspectionMeasurementRow m) => RfiPdfMeasurement(
+              component: m.component,
+              element: m.element,
+              activityName: m.activityName,
+              type: m.type == rfiInspectionNoType ? '' : m.type,
+              units: m.units == rfiInspectionNoUnit ? '' : m.units,
+              l: m.length,
+              b: m.breadth,
+              h: m.height,
+              weight: m.weight,
+              no: m.no,
+              total: rfiPdfQuantity(m.totalQty),
+            ),
+          )
+          .toList(),
+      workDetails: <List<String>>[
+        for (final Map<String, dynamic> w in details.workDetails)
+          <String>[
+            for (final String key in const <String>[
+              'activityName',
+              'unit',
+              'scope',
+              'completedTillDate',
+              'inspectionQuantity',
+            ])
+              '${w[key] ?? ''}',
+          ],
+      ],
+      earthworkDetails: layerType
+          ? <(String, String)>[
+              for (final (String label, String key) in const <(String, String)>[
+                ('FDD Test Pit Nos', 'fddTestPitNos'),
+                ('Field Compaction (%)', 'fieldCompactionPercentage'),
+                ('Manpower Deployment', 'manpowerDeployment'),
+                ('M&P Deployment Details', 'mpDeploymentDetails'),
+              ])
+                if (rfi.field(key).isNotEmpty) (label, rfi.field(key)),
+            ]
+          : const <(String, String)>[],
+      validationRows: rfiPdfValidationRows(details.validationList),
+      contractorImages: conImages,
+      engineerImages: enggImages,
+    );
+
+    Uint8List? logo;
+    try {
+      logo = (await rootBundle.load('assets/brand/swr_logo.png'))
+          .buffer
+          .asUint8List();
+    } on Object {
+      logo = null;
+    }
+    final Uint8List main = await RfiInspectionPdf.build(
+      data: data,
+      fonts: await RfiInspectionPdfFonts.load(),
+      logo: logo,
+    );
+    return mergeRfiInspectionPdf(
+      main: main,
+      enclosures: enclosurePdfs,
+      supporting: supporting,
+      testReports: testReports,
+    );
+  }
+
+  /// When final submit fails the inspection is saved as a draft, as the web
+  /// does, so nothing the inspector entered is lost.
+  Future<bool> _saveDraftAfterFailedSubmit() async {
+    if (!state.hasSelfie) {
+      return false;
+    }
+    try {
+      final int id = await _source.saveDraft(
+        data: _draftPayload(),
+        selfiePath: state.selfiePath!,
+      );
+      state = state.copyWith(conInspectionId: id);
+      return true;
+    } on Object {
+      return false;
     }
   }
 
@@ -560,6 +861,24 @@ class RfiInspectionFlowController
       await _source.uploadSiteImage(
         rfiId: arg.rfiId,
         imagePath: path,
+        uploadedBy: uploadedBy,
+      );
+      await refreshDetails();
+      state = state.copyWith(busy: false);
+    } on Object catch (error) {
+      state = state.copyWith(busy: false, error: error);
+      rethrow;
+    }
+  }
+
+  /// Deletes one of this user's site images, then reloads the RFI so the
+  /// list matches the server.
+  Future<void> deleteSiteImage(String imagePath) async {
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      await _source.deleteSiteImage(
+        rfiId: arg.rfiId,
+        imagePath: imagePath,
         uploadedBy: uploadedBy,
       );
       await refreshDetails();
@@ -582,6 +901,25 @@ class RfiInspectionFlowController
         enclosureName: '${enclosure.enclosureId ?? enclosure.enclosureName}',
         rfiDescription:
             '${enclosure.rfiDescriptionId ?? enclosure.rfiDescription}',
+        uploadedBy: uploadedBy,
+      );
+      await refreshDetails();
+      state = state.copyWith(busy: false);
+    } on Object catch (error) {
+      state = state.copyWith(busy: false, error: error);
+      rethrow;
+    }
+  }
+
+  Future<Uint8List> downloadEnclosure(String filepath) =>
+      _source.downloadEnclosure(filepath);
+
+  /// Deletes one uploaded enclosure file, then reloads the RFI.
+  Future<void> deleteEnclosureFile(int enclosureUploadedFileId) async {
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      await _source.deleteEnclosureFile(
+        enclosureUploadedFileId: enclosureUploadedFileId,
         uploadedBy: uploadedBy,
       );
       await refreshDetails();
@@ -669,30 +1007,55 @@ class RfiInspectionFlowController
       'measurements': state.measurements
           .map((RfiInspectionMeasurementRow m) => m.toJson())
           .toList(growable: false),
-      'supportingDescriptions': state.supportingDocuments
+      'supportingDescriptions': rfiSupportingUploads(state.supportingDocuments)
           .map((RfiLocalSupportingDoc d) => d.description)
           .toList(growable: false),
     };
   }
 
+  /// The `/rfi/finalSubmit` `data` JSON, matching the web payload.
   Map<String, dynamic> _submitPayload() {
-    final Map<String, dynamic> data = _draftPayload();
-    data['uploadedBy'] = uploadedBy;
-    final AuthSession? session = ref.read(authControllerProvider).valueOrNull;
-    data['userId'] = session?.userId;
-    return data;
+    return buildRfiFinalSubmitPayload(
+      inspectionId: state.conInspectionId,
+      rfiId: arg.rfiId,
+      uploadedBy: uploadedBy,
+      location: state.location,
+      chainage: state.chainage,
+      nameOfRepresentative: state.contractorRepresentative,
+      measurements: state.measurements
+          .map(
+            (RfiInspectionMeasurementRow m) => RfiSubmitMeasurement(
+              activityIdFk: m.activityIdFk,
+              activityName: m.activityName,
+              measurementType: m.type == rfiInspectionNoType ? '' : m.type,
+              units: m.units == rfiInspectionNoUnit ? '' : m.units,
+              length: m.length,
+              breadth: m.breadth,
+              height: m.height,
+              weight: m.weight,
+              no: m.no,
+              totalQty: m.totalQty,
+            ),
+          )
+          .toList(growable: false),
+      testInsiteLab: _mapTestType(state.testInSiteLab),
+      // Accepted / Rejected is the engineer's decision (engineer flow, later);
+      // the contractor sends null like the web.
+      inspectionStatus: null,
+      engineerRemarks: null,
+      descriptionEnclosure: state.contractorDescription,
+      supportingDescriptions: rfiSupportingUploads(state.supportingDocuments)
+          .map((RfiLocalSupportingDoc d) => d.description)
+          .toList(growable: false),
+      inspectionMode: arg.inspectionMode,
+    );
   }
 
+  /// A type with a single unit (Number → Nos, Percent → %) picks it; others
+  /// wait for the inspector to choose, like the Work RFI form.
   static String _defaultUnit(String type) {
-    return switch (type) {
-      'Area' => 'sqm',
-      'Length' => 'm',
-      'Volume' => 'cum',
-      'Number' => 'nos',
-      'Weight' => 'kg',
-      'Percent' => '%',
-      _ => 'Select U',
-    };
+    final List<String> units = workRfiUnitsFor(type);
+    return units.length == 1 ? units.first : rfiInspectionNoUnit;
   }
 
   static double _computeQty(RfiInspectionMeasurementRow row) {
@@ -731,4 +1094,165 @@ class RfiInspectionFlowController
       _ => value.isEmpty ? null : value,
     };
   }
+}
+
+/// A failed final submit, and whether the draft backup was saved.
+class RfiSubmitFailure implements Exception {
+  const RfiSubmitFailure(this.cause, {required this.draftSaved});
+
+  final Object cause;
+  final bool draftSaved;
+
+  @override
+  String toString() => cause.toString();
+}
+
+/// Error text for a failed submit, saying whether the draft backup worked.
+String rfiSubmitFailureMessage(Object error) {
+  if (error is! RfiSubmitFailure) {
+    return rfiInspectionErrorMessage(error);
+  }
+  final String reason = rfiInspectionErrorMessage(error.cause);
+  return error.draftSaved
+      ? '$reason\n\nYour inspection was saved as a draft.'
+      : '$reason\n\nThe draft could not be saved either. Please try again.';
+}
+
+
+/// Placeholder shown before a unit is chosen.
+const String rfiInspectionNoUnit = 'Select U';
+
+/// Placeholder shown before a measurement type is chosen.
+const String rfiInspectionNoType = 'Select';
+
+/// Units offered for [type]: the same list as the Work RFI form (so a saved
+/// "Nos", "m²" or "MT" is always present), plus [current] if the server sent
+/// something else. Every dropdown value is therefore one of its items.
+List<String> rfiInspectionUnitOptions(String type, String current) {
+  final List<String> options = <String>[
+    rfiInspectionNoUnit,
+    ...workRfiUnitsFor(type),
+  ];
+  final String value = current.trim();
+  if (value.isNotEmpty && !options.contains(value)) {
+    options.add(value);
+  }
+  return options;
+}
+
+/// Measurement types for the dropdown, plus [current] if it is unknown.
+List<String> rfiInspectionTypeOptions(String current) {
+  final List<String> options = <String>[
+    rfiInspectionNoType,
+    ...workRfiMeasurementTypes,
+  ];
+  final String value = current.trim();
+  if (value.isNotEmpty && !options.contains(value)) {
+    options.add(value);
+  }
+  return options;
+}
+
+/// Tests in Site/Lab choices, plus [current] if the server sent another.
+List<String> rfiInspectionTestOptions(String current) {
+  final List<String> options = <String>['Visual', 'Lab Test', 'Site Test'];
+  final String value = current.trim();
+  if (value.isNotEmpty && !options.contains(value)) {
+    options.add(value);
+  }
+  return options;
+}
+
+/// Steps of the inspection submit, shown like the web's progress modal.
+enum RfiSubmitStep {
+  session('Verifying session'),
+  pdf('Generating Inspection PDF'),
+  upload('Uploading Inspection PDF'),
+  stamp('E-Sign / Stamping in progress'),
+  finalize('Finalizing inspection');
+
+  const RfiSubmitStep(this.label);
+
+  final String label;
+}
+
+enum RfiStepStatus { waiting, active, done, skipped, failed }
+
+/// A submit that stopped at [step].
+class RfiSubmitStepFailure implements Exception {
+  const RfiSubmitStepFailure(this.step, this.cause, {this.draftSaved = false});
+
+  final RfiSubmitStep step;
+  final Object cause;
+  final bool draftSaved;
+
+  @override
+  String toString() => cause.toString();
+}
+
+/// The web's per-step error text.
+String rfiSubmitStepMessage(RfiSubmitStepFailure failure) {
+  final String reason = rfiInspectionErrorMessage(failure.cause);
+  return switch (failure.step) {
+    RfiSubmitStep.session =>
+      'Your session has expired. Please log in again.',
+    RfiSubmitStep.pdf => 'PDF generation failed: $reason',
+    RfiSubmitStep.upload => 'Upload Inspection Pdf failed: $reason',
+    RfiSubmitStep.stamp => 'E-sign failed: $reason',
+    RfiSubmitStep.finalize =>
+      'PDF was uploaded and signed, but final submit failed: $reason'
+          '${failure.draftSaved ? '\n\nYour inspection was saved as a draft.' : ''}',
+  };
+}
+
+/// Stamping runs only when the RFI is required (web: `!isRfiNotRequired`).
+bool rfiRequiresStamp(String isRfiRequired) =>
+    isRfiRequired.trim().toLowerCase() != 'no';
+
+/// "13/11/2026 12:47", like the web's en-GB timestamp without the comma.
+String rfiPdfTimestamp(DateTime time) {
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${two(time.day)}/${two(time.month)}/${time.year} '
+      '${two(time.hour)}:${two(time.minute)}';
+}
+
+/// rfi-details `createdAt` ("13-11-2026 11:02") shown as "13/11/2026 11:02".
+String rfiPdfServerDate(String raw) {
+  final RegExpMatch? m = RegExp(
+    r'^(\d{2})-(\d{2})-(\d{4})(.*)$',
+  ).firstMatch(raw.trim());
+  if (m == null) {
+    return raw.trim();
+  }
+  return '${m[1]}/${m[2]}/${m[3]}${m[4]}';
+}
+
+String rfiPdfQuantity(double value) {
+  if (value == 0) {
+    return '';
+  }
+  return value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toString();
+}
+
+/// Validation history rows: No., Type, Validated By, Status, On, Remarks.
+List<List<String>> rfiPdfValidationRows(List<Map<String, dynamic>> list) {
+  String text(Object? v) => v == null ? '' : '$v'.trim();
+  return <List<String>>[
+    for (int i = 0; i < list.length; i++)
+      <String>[
+        '${i + 1}',
+        text(list[i]['validationType']),
+        text(list[i]['validatorName'] ?? list[i]['validatedByUserName']),
+        text(list[i]['status']).replaceAll('_', ' '),
+        text(list[i]['validatedOn'] ?? list[i]['sentForValidationAt']),
+        <String>[
+          if (text(list[i]['remarks']).isNotEmpty)
+            'Remarks: ${text(list[i]['remarks'])}',
+          if (text(list[i]['comment']).isNotEmpty)
+            'Comment: ${text(list[i]['comment'])}',
+        ].join('\n'),
+      ],
+  ];
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
@@ -12,6 +13,7 @@ import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
 import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_row.dart';
@@ -22,6 +24,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/rfi_inspection_start.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_delete_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
@@ -441,6 +444,8 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
           row: row,
           offline: false,
         );
+      case RfiInspectionAction.deleteRfi:
+        await _deleteRfi(context, row);
       default:
         await AppDialog.show(
           context,
@@ -449,6 +454,38 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
           message: '${picked.dialogTitle} will open here.',
         );
     }
+  }
+
+  /// Same reason dialog and `DELETE /rfi/delete` call as the Work RFI list.
+  Future<void> _deleteRfi(BuildContext context, RfiInspectionRow row) async {
+    final int? id = row.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Delete RFI',
+        message: 'This RFI cannot be deleted.',
+      );
+      return;
+    }
+    final RfiRemoteDataSource source = ref.read(rfiRemoteDataSourceProvider);
+    final String? message = await showRfiDeleteDialog(
+      context,
+      rfiCode: row.rfiId,
+      onDelete: (String reason) => source.deleteRfi(id: id, reason: reason),
+    );
+    if (message == null || !context.mounted) {
+      return;
+    }
+    unawaited(
+      ref.read(rfiInspectionControllerProvider.notifier).refreshDetails(),
+    );
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.success,
+      title: 'Deleted',
+      message: message,
+    );
   }
 }
 

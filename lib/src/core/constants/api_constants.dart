@@ -8,6 +8,7 @@ class ApiConstants {
   static const String forgotVerifyOtpPath = '/api/forgot/verify-otp';
   static const String forgotResetPasswordPath = '/api/forgot/reset-password';
   static const String projectsListPath = '/projects/api/getProjectList';
+
   /// Compact project id/name list used by Structure (and similar) forms.
   static const String projectsGetProjectsPath = '/projects/api/getProjects';
   static const String projectTypesPath = '/projects/api/projectTypes';
@@ -134,6 +135,7 @@ class ApiConstants {
   static const String contractAddFormPath = '/contract/add-contract-form';
   static const String contractFormStatusPath =
       '/contract/ajax/getContractStatusListFormContractFom';
+
   /// Best-effort save path (QA read-only; confirm against live network if needed).
   static const String contractAddPath = '/contract/addContract';
 
@@ -197,6 +199,12 @@ class ApiConstants {
   static const String rfiMenuAccessPath = '/rfi/menu-access';
   static const String materialRfiListPath = '/rfi/api/materialRfi/list';
   static const String workRfiListPath = '/rfi/api/workRfi/list';
+  static const String rfiCategoryViewOnlyPath = '/rfi/api/category-view-only';
+  static const String rfiCanCreatePath = '/rfi/api/can-create';
+
+  /// DELETE with body `{"id": 101, "description": "<reason>"}`. Soft delete:
+  /// the server replies "RFI marked as deleted successfully!".
+  static const String rfiDeletePath = '/rfi/delete';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';
   static const String qualityRfiListPath = '/rfi/api/qualityRfi/list';
   static const String newActivitiesUpdatePath = '/newActivitiesUpdate';
@@ -213,6 +221,7 @@ class ApiConstants {
       '/ajax/getStatusListFilterInP6New';
   static const String p6ContractsForProjectPath =
       '/ajax/getContractListInP6New';
+
   /// Multipart upload used by Baseline (and reused for Revised Baseline / Update
   /// until distinct endpoints are confirmed).
   static const String p6UploadNewDataPath = '/upload-p6-new-data';
@@ -228,7 +237,10 @@ class ApiConstants {
   static const String activitiesUpdateActivitiesPath =
       '/ajax/getNewActivitiesUpdateActivitiesList';
   static const String rfiTypeDescriptionsPath = '/rfi/rfi-type-descriptions';
-  static const String workRepresentativesPath = '/api/work-representatives';
+
+  /// GET `?contractId=P01EN01` → `[{userId, userName}]`, the contractor
+  /// representatives for that contract (same call as the web form).
+  static const String workRepresentativesPath = '/rfi/api/work-representatives';
   static const String workRfiEnclosuresPath = '/rfi/api/enclosures';
 
   static String workRfiPath(int id) => '/rfi/api/workRfi/$id';
@@ -254,6 +266,18 @@ class ApiConstants {
   static const String rfiFinalSubmitPath = '/rfi/finalSubmit';
   static const String rfiDeleteSiteImagePath = '/rfi/delete-site-img';
   static const String rfiDeleteEnclosurePath = '/rfi/enclosure/files';
+
+  /// GET `?filepath=<server path>` → file bytes (enclosure View/Download).
+  static const String rfiDownloadPrevPath = '/rfi/DownloadPrev';
+
+  /// Inspection submit (contractor): upload the generated PDF, then stamp it.
+  static const String rfiUploadPdfContractorPath = '/rfi/uploadPdfContractor';
+  static const String rfiStampPdfFromXmlPath = '/rfi/stampPdfFromXml';
+
+  /// GET `?filepath=` → file bytes; the web uses it for site images and
+  /// stored PDFs when building the inspection PDF.
+  static const String validationPreviewFilesPath =
+      '/api/validation/previewFiles';
   static const String rfiBulkSubmitNoRfiRequiredPath =
       '/rfi/bulkSubmitNoRfiRequired';
   static const String rfiLogListPath = '/api/rfiLog/getAllRfiLogDetails';
@@ -362,7 +386,8 @@ class ApiConstants {
   static const String mailDashboardPath = '/api/mail/dashboard';
   static const String mailLabelsPath = '/api/labels';
   static const String mailRecipientsSearchPath = '/api/mail/recipients/search';
-  static const String mailGenerateReferencePath = '/api/mail/generate-reference';
+  static const String mailGenerateReferencePath =
+      '/api/mail/generate-reference';
   static const String mailDraftPath = '/api/mail/draft';
   static const String mailSendPath = '/api/mail/send';
   static const String documentsRepositoryPath = '/api/documents/repository';

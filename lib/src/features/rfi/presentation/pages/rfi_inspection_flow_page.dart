@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,12 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_flow_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/rfi_inspection_errors.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_checklist_dialog.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_server_image.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/work_rfi_form.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_stored_file.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/rfi_log_print.dart';
+import 'package:printing/printing.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_submit_progress_dialog.dart';
 
 class RfiInspectionFlowPage extends ConsumerStatefulWidget {
   const RfiInspectionFlowPage({super.key, required this.args});
@@ -81,6 +87,8 @@ class _RfiInspectionFlowPageState
       final XFile? file = await _picker.pickImage(
         source: ImageSource.camera,
         preferredCameraDevice: CameraDevice.front,
+        maxWidth: 1280,
+        maxHeight: 1280,
         imageQuality: 85,
       );
       if (file == null) {
@@ -105,9 +113,14 @@ class _RfiInspectionFlowPageState
     required ImageSource source,
   }) async {
     try {
-      final XFile? file = source == ImageSource.gallery
-          ? await _picker.pickImage(source: ImageSource.gallery)
-          : await _picker.pickImage(source: ImageSource.camera);
+      // Resize before upload: full camera photos are 3–8 MB, slow to send
+      // and slow to decode again for the thumbnail.
+      final XFile? file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 80,
+      );
       if (file == null) {
         return;
       }
@@ -159,21 +172,6 @@ class _RfiInspectionFlowPageState
     return path;
   }
 
-  Future<void> _openPath(String path) async {
-    final Uri uri = path.startsWith('http')
-        ? Uri.parse(path)
-        : Uri.file(path);
-    final bool ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && mounted) {
-      await AppDialog.show(
-        context,
-        variant: AppDialogVariant.error,
-        title: 'Unable to open',
-        message: 'Could not open the selected file.',
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final RfiInspectionFlowState state =
@@ -214,7 +212,9 @@ class _RfiInspectionFlowPageState
                   },
           ),
         ),
-        body: Stack(
+        body: _compactButtons(
+          context,
+          Stack(
           children: <Widget>[
             if (state.loading)
               const AppFullscreenLoader()
@@ -257,7 +257,31 @@ class _RfiInspectionFlowPageState
               const AppFullscreenLoader.blocking(),
           ],
         ),
+        ),
       ),
+    );
+  }
+
+  /// The app theme makes filled/outlined buttons full width
+  /// (`Size.fromHeight`). On this screen buttons sit in rows, where that
+  /// width is infinite and breaks layout, so size them to their content.
+  Widget _compactButtons(BuildContext context, Widget child) {
+    final ThemeData theme = Theme.of(context);
+    const WidgetStatePropertyAll<Size> size = WidgetStatePropertyAll<Size>(
+      Size(0, 44),
+    );
+    return Theme(
+      data: theme.copyWith(
+        filledButtonTheme: FilledButtonThemeData(
+          style: (theme.filledButtonTheme.style ?? const ButtonStyle())
+              .copyWith(minimumSize: size),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: (theme.outlinedButtonTheme.style ?? const ButtonStyle())
+              .copyWith(minimumSize: size),
+        ),
+      ),
+      child: child,
     );
   }
 
@@ -366,7 +390,7 @@ class _RfiInspectionFlowPageState
                     ? null
                     : () async {
                         try {
-                          await notifier.saveStep1AndContinue();
+                          notifier.continueToStep2();
                         } on Object catch (error) {
                           if (!context.mounted) {
                             return;
@@ -510,11 +534,17 @@ class _RfiInspectionFlowPageState
                     _siteImagesRow(
                       'Contractor Site Images',
                       rfi.conSiteImgs,
+                      onDelete: !state.busy && notifier.uploadedBy == 'CON'
+                          ? (String path) => _deleteSiteImage(notifier, path)
+                          : null,
                     ),
                     const SizedBox(height: 8),
                     _siteImagesRow(
                       'Engineer Site Images',
                       rfi.enggSiteImgs,
+                      onDelete: !state.busy && notifier.uploadedBy != 'CON'
+                          ? (String path) => _deleteSiteImage(notifier, path)
+                          : null,
                     ),
                   ],
                 ),
@@ -522,24 +552,22 @@ class _RfiInspectionFlowPageState
               const SizedBox(height: 16),
               _sectionCard(
                 title: 'Enclosures *',
-                child: Column(
-                  children: details.enclosures.isEmpty
-                      ? <Widget>[
-                          const Text('No enclosures configured.'),
-                        ]
-                      : details.enclosures
-                          .map(
-                            (RfiInspectionEnclosure enclosure) =>
-                                _enclosureTile(
+                child: details.enclosures.isEmpty
+                    ? const Text('No enclosures configured.')
+                    : _scrollTable(
+                        columns: _enclosureColumns,
+                        rows: <List<Widget>>[
+                          for (final RfiInspectionEnclosure enclosure
+                              in details.enclosures)
+                            _enclosureCells(
                               context,
                               state,
                               notifier,
                               role,
                               enclosure,
                             ),
-                          )
-                          .toList(),
-                ),
+                        ],
+                      ),
               ),
               const SizedBox(height: 16),
               _sectionCard(
@@ -585,9 +613,15 @@ class _RfiInspectionFlowPageState
               _sectionCard(
                 title: 'Measurements *',
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    for (int i = 0; i < state.measurements.length; i++)
-                      _measurementEditor(state, notifier, i),
+                    _scrollTable(
+                      columns: _measurementColumns,
+                      rows: <List<Widget>>[
+                        for (int i = 0; i < state.measurements.length; i++)
+                          _measurementCells(state, notifier, i),
+                      ],
+                    ),
                     TextButton.icon(
                       onPressed: notifier.addMeasurementRow,
                       icon: const Icon(Icons.add),
@@ -606,11 +640,7 @@ class _RfiInspectionFlowPageState
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       initialValue: state.testInSiteLab,
-                      items: const <String>[
-                        'Visual',
-                        'Lab Test',
-                        'Site Test',
-                      ]
+                      items: rfiInspectionTestOptions(state.testInSiteLab)
                           .map(
                             (String value) => DropdownMenuItem<String>(
                               value: value,
@@ -661,110 +691,116 @@ class _RfiInspectionFlowPageState
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
+            child: Row(
               children: <Widget>[
-                FilledButton(
-                  onPressed: state.busy ? null : () => notifier.setStep(1),
-                  style: FilledButton.styleFrom(backgroundColor: AppTheme.brandPrimary),
-                  child: const Text('Back'),
-                ),
-                FilledButton(
-                  onPressed: state.busy
-                      ? null
-                      : () async {
-                          try {
-                            await notifier.saveAsDraft();
-                            if (!context.mounted) {
-                              return;
-                            }
-                            await AppDialog.show(
+                Expanded(
+                  child: FilledButton(
+                    onPressed: state.busy
+                        ? null
+                        : () async {
+                            final bool? confirmed = await AppDialog.show(
                               context,
-                              variant: AppDialogVariant.success,
-                              title: 'Draft saved',
-                              message: 'Draft saved successfully.',
+                              variant: AppDialogVariant.confirm,
+                              title: 'Close inspection',
+                              message:
+                                  'Close without submitting? Unsaved changes may be lost.',
                             );
-                          } on Object catch (error) {
-                            if (!context.mounted) {
-                              return;
+                            if (confirmed == true &&
+                                context.mounted &&
+                                context.canPop()) {
+                              context.pop();
                             }
-                            await AppDialog.show(
-                              context,
-                              variant: AppDialogVariant.error,
-                              title: 'Save draft failed',
-                              message: rfiInspectionErrorMessage(error),
-                            );
-                          }
-                        },
-                  style: FilledButton.styleFrom(backgroundColor: AppTheme.brandPrimary),
-                  child: const Text('Save As Draft'),
-                ),
-                FilledButton(
-                  onPressed: state.busy || !notifier.isStep2Valid()
-                      ? null
-                      : () async {
-                          final bool? confirmed = await AppDialog.show(
-                            context,
-                            variant: AppDialogVariant.confirm,
-                            title: 'Submit inspection',
-                            message:
-                                'Submit this RFI inspection now?',
-                          );
-                          if (confirmed != true) {
-                            return;
-                          }
-                          try {
-                            final String message = await notifier.submit();
-                            if (!context.mounted) {
-                              return;
-                            }
-                            await AppDialog.show(
-                              context,
-                              variant: AppDialogVariant.success,
-                              title: 'Submitted',
-                              message: message,
-                            );
-                            if (context.mounted && context.canPop()) {
-                              context.pop(true);
-                            }
-                          } on Object catch (error) {
-                            if (!context.mounted) {
-                              return;
-                            }
-                            await AppDialog.show(
-                              context,
-                              variant: AppDialogVariant.error,
-                              title: 'Submit failed',
-                              message: rfiInspectionErrorMessage(error),
-                            );
-                          }
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF198754),
+                          },
+                    style: FilledButton.styleFrom(backgroundColor: AppTheme.brandPrimary),
+                    child: const Text('Close'),
                   ),
-                  child: const Text('Submit'),
                 ),
-                FilledButton(
-                  onPressed: state.busy
-                      ? null
-                      : () async {
-                          final bool? confirmed = await AppDialog.show(
-                            context,
-                            variant: AppDialogVariant.confirm,
-                            title: 'Close inspection',
-                            message:
-                                'Close without submitting? Unsaved changes may be lost.',
-                          );
-                          if (confirmed == true &&
-                              context.mounted &&
-                              context.canPop()) {
-                            context.pop();
-                          }
-                        },
-                  style: FilledButton.styleFrom(backgroundColor: AppTheme.brandPrimary),
-                  child: const Text('Close'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: state.busy
+                        ? null
+                        : () async {
+                            try {
+                              await notifier.saveAsDraft();
+                              if (!context.mounted) {
+                                return;
+                              }
+                              await AppDialog.show(
+                                context,
+                                variant: AppDialogVariant.success,
+                                title: 'Draft saved',
+                                message: 'Draft saved successfully.',
+                              );
+                            } on Object catch (error) {
+                              if (!context.mounted) {
+                                return;
+                              }
+                              await AppDialog.show(
+                                context,
+                                variant: AppDialogVariant.error,
+                                title: 'Save draft failed',
+                                message: rfiInspectionErrorMessage(error),
+                              );
+                            }
+                          },
+                    style: FilledButton.styleFrom(backgroundColor: AppTheme.brandPrimary),
+                    child: const Text('Save Draft'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: state.busy || !notifier.isStep2Valid()
+                        ? null
+                        : () async {
+                            final bool? confirmed = await AppDialog.show(
+                              context,
+                              variant: AppDialogVariant.confirm,
+                              title: 'Submit inspection',
+                              message:
+                                  'Submit this RFI inspection now?',
+                            );
+                            if (confirmed != true) {
+                              return;
+                            }
+                            if (notifier.uploadedBy == 'CON') {
+                              await _submitWithProgress(notifier);
+                              return;
+                            }
+                            // Engineer flow (upload/Engg, Engg stamping) is
+                            // not built yet; keep the direct submit.
+                            try {
+                              final String message = await notifier.submit();
+                              if (!context.mounted) {
+                                return;
+                              }
+                              await AppDialog.show(
+                                context,
+                                variant: AppDialogVariant.success,
+                                title: 'Submitted',
+                                message: message,
+                              );
+                              if (context.mounted && context.canPop()) {
+                                context.pop(true);
+                              }
+                            } on Object catch (error) {
+                              if (!context.mounted) {
+                                return;
+                              }
+                              await AppDialog.show(
+                                context,
+                                variant: AppDialogVariant.error,
+                                title: 'Submit failed',
+                                message: rfiSubmitFailureMessage(error),
+                              );
+                            }
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF198754),
+                    ),
+                    child: const Text('Submit'),
+                  ),
                 ),
               ],
             ),
@@ -774,39 +810,31 @@ class _RfiInspectionFlowPageState
     );
   }
 
-  Widget _enclosureTile(
+  /// Enclosures table, laid out like the web: RFI Description, Enclosure,
+  /// Action (Open / Upload) and Uploaded (View / Download or ---).
+  static const List<(String, double)> _enclosureColumns = <(String, double)>[
+    ('RFI Description', 150),
+    ('Enclosure', 180),
+    ('Action', 190),
+    ('Uploaded', 190),
+  ];
+
+  List<Widget> _enclosureCells(
     BuildContext context,
     RfiInspectionFlowState state,
     RfiInspectionFlowController notifier,
     RfiUserRole role,
     RfiInspectionEnclosure enclosure,
   ) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0x331E4F8A)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            enclosure.rfiDescription.isEmpty
-                ? '—'
-                : enclosure.rfiDescription,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Text(enclosure.enclosureName),
-          const SizedBox(height: 8),
+    return <Widget>[
+      Text(enclosure.rfiDescription, textAlign: TextAlign.center),
+      Text(enclosure.enclosureName, textAlign: TextAlign.center),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
             children: <Widget>[
-              if (enclosure.hasOpenAction)
-                OutlinedButton(
+              OutlinedButton(
                   onPressed: state.busy
                       ? null
                       : () => showRfiChecklistDialog(
@@ -818,8 +846,7 @@ class _RfiInspectionFlowPageState
                           ),
                   child: const Text('Open'),
                 ),
-              if (enclosure.hasUploadAction || !enclosure.hasOpenAction)
-                OutlinedButton(
+              OutlinedButton(
                   onPressed: state.busy
                       ? null
                       : () async {
@@ -855,21 +882,241 @@ class _RfiInspectionFlowPageState
                         },
                   child: const Text('Upload'),
                 ),
-              if (enclosure.hasUploadedFile) ...<Widget>[
+            ],
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: <Widget>[
+              if (enclosure.enclosureUploadedFile.isNotEmpty) ...<Widget>[
                 OutlinedButton(
-                  onPressed: () => _openPath(enclosure.enclosureUploadedFile),
+                  onPressed: state.busy
+                      ? null
+                      : () => _viewEnclosure(notifier, enclosure),
                   child: const Text('View'),
                 ),
                 OutlinedButton(
-                  onPressed: () => _openPath(enclosure.enclosureUploadedFile),
+                  onPressed: state.busy
+                      ? null
+                      : () => _downloadEnclosure(notifier, enclosure),
                   child: const Text('Download'),
                 ),
+                if (enclosure.enclosureUploadedFileId != null)
+                  FilledButton(
+                    onPressed: state.busy
+                        ? null
+                        : () => _removeEnclosure(notifier, enclosure),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFD9534F),
+                    ),
+                    child: const Text('Remove'),
+                  ),
               ] else
-                const Text('Uploaded: ---'),
+                const Text('---'),
             ],
           ),
-        ],
+    ];
+  }
+
+  /// Contractor submit with the web's step-by-step progress dialog.
+  Future<void> _submitWithProgress(
+    RfiInspectionFlowController notifier,
+  ) async {
+    final RfiSubmitProgress progress = RfiSubmitProgress();
+    final Future<void> dialog = showRfiSubmitProgressDialog(context, progress);
+    try {
+      final String message = await notifier.submitWithSteps(progress.update);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context, rootNavigator: true).pop();
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.success,
+        title: 'Submitted',
+        message: message.trim().isEmpty
+            ? 'Inspection submitted successfully.'
+            : message,
+      );
+      if (mounted && context.canPop()) {
+        context.pop(true);
+      }
+    } on RfiSubmitStepFailure catch (failure) {
+      progress.fail(rfiSubmitStepMessage(failure));
+      await dialog;
+    } on Object catch (error) {
+      progress.fail(rfiInspectionErrorMessage(error));
+      await dialog;
+    } finally {
+      progress.dispose();
+    }
+  }
+
+  Future<Uint8List?> _fetchEnclosure(
+    RfiInspectionFlowController notifier,
+    RfiInspectionEnclosure enclosure,
+  ) => _fetchPdf(notifier, enclosure.enclosureUploadedFile, onServer: true);
+
+  /// PDF bytes from the phone ([onServer] false) or from the server via
+  /// DownloadPrev. Shows an error and returns null when it can't be read.
+  Future<Uint8List?> _fetchPdf(
+    RfiInspectionFlowController notifier,
+    String path, {
+    required bool onServer,
+  }) async {
+    try {
+      final Uint8List bytes = onServer
+          ? await notifier.downloadEnclosure(path)
+          : await File(path).readAsBytes();
+      if (!RfiStoredFile.looksLikePdf(bytes)) {
+        throw StateError('Not a PDF.');
+      }
+      return bytes;
+    } on Object catch (error) {
+      if (mounted) {
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.error,
+          title: 'File unavailable',
+          message: error is StateError
+              ? 'This file could not be opened.'
+              : rfiInspectionErrorMessage(error),
+        );
+      }
+      return null;
+    }
+  }
+
+  /// View: the uploaded PDF in an in-app preview.
+  Future<void> _viewEnclosure(
+    RfiInspectionFlowController notifier,
+    RfiInspectionEnclosure enclosure,
+  ) async {
+    final Uint8List? bytes = await _fetchEnclosure(notifier, enclosure);
+    if (bytes == null || !mounted) {
+      return;
+    }
+    await _previewPdf(
+      bytes,
+      RfiStoredFile.fileName(enclosure.enclosureUploadedFile),
+    );
+  }
+
+  Future<void> _previewPdf(Uint8List bytes, String name) async {
+    await Navigator.of(context, rootNavigator: true).push<void>(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (BuildContext context) => Scaffold(
+          appBar: AppBar(title: Text(name)),
+          body: PdfPreview(
+            build: (_) async => bytes,
+            pdfFileName: name,
+            canChangePageFormat: false,
+            canChangeOrientation: false,
+            canDebug: false,
+            allowPrinting: false,
+            allowSharing: true,
+          ),
+        ),
       ),
+    );
+  }
+
+  /// Download: hands the PDF to the share sheet (Save to Files, etc.).
+  Future<void> _downloadEnclosure(
+    RfiInspectionFlowController notifier,
+    RfiInspectionEnclosure enclosure,
+  ) async {
+    final Uint8List? bytes = await _fetchEnclosure(notifier, enclosure);
+    if (bytes == null || !mounted) {
+      return;
+    }
+    await shareRfiLogFile(
+      bytes: bytes,
+      fileName: RfiStoredFile.fileName(enclosure.enclosureUploadedFile),
+      sharePositionOrigin: _shareOrigin(),
+    );
+  }
+
+  Rect _shareOrigin() {
+    final Size size = MediaQuery.sizeOf(context);
+    return Rect.fromCenter(
+      center: Offset(size.width / 2, size.height / 2),
+      width: 2,
+      height: 2,
+    );
+  }
+
+  Future<void> _removeEnclosure(
+    RfiInspectionFlowController notifier,
+    RfiInspectionEnclosure enclosure,
+  ) async {
+    final bool confirmed = await AppDialog.confirm(
+      context,
+      title: 'Remove file',
+      message: 'Remove this uploaded enclosure file? This cannot be undone.',
+      primaryLabel: 'Remove',
+      destructive: true,
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    try {
+      await notifier.deleteEnclosureFile(enclosure.enclosureUploadedFileId!);
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.success,
+        title: 'Removed',
+        message: 'Enclosure file removed.',
+      );
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Remove failed',
+        message: rfiInspectionErrorMessage(error),
+      );
+    }
+  }
+
+  Future<void> _viewSupportingDoc(
+    RfiInspectionFlowController notifier,
+    RfiLocalSupportingDoc doc,
+  ) async {
+    final Uint8List? bytes = await _fetchPdf(
+      notifier,
+      doc.path,
+      onServer: doc.onServer,
+    );
+    if (bytes == null || !mounted) {
+      return;
+    }
+    await _previewPdf(bytes, RfiStoredFile.fileName(doc.path));
+  }
+
+  Future<void> _downloadSupportingDoc(
+    RfiInspectionFlowController notifier,
+    RfiLocalSupportingDoc doc,
+  ) async {
+    final Uint8List? bytes = await _fetchPdf(
+      notifier,
+      doc.path,
+      onServer: doc.onServer,
+    );
+    if (bytes == null || !mounted) {
+      return;
+    }
+    await shareRfiLogFile(
+      bytes: bytes,
+      fileName: RfiStoredFile.fileName(doc.path),
+      sharePositionOrigin: _shareOrigin(),
     );
   }
 
@@ -904,178 +1151,297 @@ class _RfiInspectionFlowPageState
                   notifier.updateSupportingDocDescription(index, value),
             ),
           ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: () => _openPath(doc.path),
-            child: const Text('View'),
+          IconButton(
+            tooltip: 'View',
+            onPressed: state.busy
+                ? null
+                : () => _viewSupportingDoc(notifier, doc),
+            icon: const Icon(Icons.visibility_outlined),
           ),
-          const SizedBox(width: 4),
-          OutlinedButton(
-            onPressed: () => _openPath(doc.path),
-            child: const Text('Download'),
+          IconButton(
+            tooltip: 'Download',
+            onPressed: state.busy
+                ? null
+                : () => _downloadSupportingDoc(notifier, doc),
+            icon: const Icon(Icons.download_rounded),
           ),
-          const SizedBox(width: 4),
-          FilledButton(
+          IconButton(
+            tooltip: 'Remove',
             onPressed: () => notifier.removeSupportingDoc(index),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFC1121F),
-            ),
-            child: const Text('Remove'),
+            icon: const Icon(Icons.delete_outline, color: Color(0xFFC1121F)),
           ),
         ],
       ),
     );
   }
 
-  Widget _measurementEditor(
+  /// Measurements table, laid out like the web. Fields a type does not use
+  /// are disabled; Percent locks Units to % and takes a typed Total Qty.
+  static const List<(String, double)> _measurementColumns = <(String, double)>[
+    ('Component', 120),
+    ('Element', 130),
+    ('Activity', 160),
+    ('Type of Measurement', 150),
+    ('Units', 110),
+    ('Length', 90),
+    ('Breadth', 90),
+    ('Height', 90),
+    ('Weight', 90),
+    ('No.', 90),
+    ('Total Qty', 100),
+  ];
+
+  List<Widget> _measurementCells(
     RfiInspectionFlowState state,
     RfiInspectionFlowController notifier,
     int index,
   ) {
     final RfiInspectionMeasurementRow row = state.measurements[index];
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0x331E4F8A)),
-        borderRadius: BorderRadius.circular(8),
+    final WorkRfiMeasureFields fields = workRfiFieldsFor(row.type);
+    final List<String> units = rfiInspectionUnitOptions(row.type, row.units);
+    final bool unitsEditable = workRfiUnitsFor(row.type).length > 1;
+    void update(RfiInspectionMeasurementRow next) =>
+        notifier.updateMeasurement(index, next);
+    String qtyText(double v) =>
+        v.toStringAsFixed(v == v.roundToDouble() ? 0 : 2);
+    return <Widget>[
+      Text(row.component.isEmpty ? '—' : row.component),
+      Text(row.element.isEmpty ? '—' : row.element),
+      row.activityName.isEmpty
+          ? _cellField(
+              key: 'activity-$index',
+              value: row.activityName,
+              enabled: true,
+              numeric: false,
+              onChanged: (String v) => update(row.copyWith(activityName: v)),
+            )
+          : Text(row.activityName),
+      _cellDropdown(
+        key: 'type-$index-${row.type}',
+        value: row.type,
+        items: rfiInspectionTypeOptions(row.type),
+        enabled: !state.busy,
+        onChanged: (String v) => update(row.copyWith(type: v)),
       ),
-      child: Column(
-        children: <Widget>[
-          TextFormField(
-            initialValue: row.activityName,
-            decoration: const InputDecoration(
-              labelText: 'Activity Name',
-              border: OutlineInputBorder(),
-              isDense: true,
+      _cellDropdown(
+        key: 'units-$index-${row.type}-${row.units}',
+        value: row.units,
+        items: units,
+        enabled: unitsEditable && !state.busy,
+        onChanged: (String v) => update(row.copyWith(units: v)),
+      ),
+      _cellField(
+        key: 'l-$index-${row.type}',
+        value: row.length,
+        enabled: fields.length,
+        onChanged: (String v) => update(row.copyWith(length: v)),
+      ),
+      _cellField(
+        key: 'b-$index-${row.type}',
+        value: row.breadth,
+        enabled: fields.breadth,
+        onChanged: (String v) => update(row.copyWith(breadth: v)),
+      ),
+      _cellField(
+        key: 'h-$index-${row.type}',
+        value: row.height,
+        enabled: fields.height,
+        onChanged: (String v) => update(row.copyWith(height: v)),
+      ),
+      _cellField(
+        key: 'w-$index-${row.type}',
+        value: row.weight,
+        enabled: fields.weight,
+        onChanged: (String v) => update(row.copyWith(weight: v)),
+      ),
+      _cellField(
+        key: 'n-$index-${row.type}',
+        value: row.no,
+        enabled: fields.no,
+        onChanged: (String v) => update(row.copyWith(no: v)),
+      ),
+      fields.totalQty
+          ? _cellField(
+              key: 't-$index-${row.type}',
+              value: row.totalQty == 0 ? '' : qtyText(row.totalQty),
+              enabled: true,
+              onChanged: (String v) =>
+                  update(row.copyWith(totalQty: double.tryParse(v) ?? 0)),
+            )
+          : _cellField(
+              key: 'tc-$index-${row.type}-${row.totalQty}',
+              value: row.totalQty == 0 ? '' : qtyText(row.totalQty),
+              enabled: false,
+              onChanged: (_) {},
             ),
-            onChanged: (String value) => notifier.updateMeasurement(
-              index,
-              row.copyWith(activityName: value),
+    ];
+  }
+
+  Widget _cellField({
+    required String key,
+    required String value,
+    required bool enabled,
+    required ValueChanged<String> onChanged,
+    bool numeric = true,
+  }) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return TextFormField(
+      key: ValueKey<String>(key),
+      initialValue: value,
+      enabled: enabled,
+      textAlign: numeric ? TextAlign.center : TextAlign.start,
+      keyboardType: numeric
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.text,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: !enabled,
+        fillColor: scheme.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        border: const OutlineInputBorder(),
+      ),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _cellDropdown({
+    required String key,
+    required String value,
+    required List<String> items,
+    required bool enabled,
+    required ValueChanged<String> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      key: ValueKey<String>(key),
+      initialValue: value,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        border: OutlineInputBorder(),
+      ),
+      items: items
+          .map(
+            (String v) => DropdownMenuItem<String>(
+              value: v,
+              child: Text(v, overflow: TextOverflow.ellipsis),
             ),
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: row.type,
-            decoration: const InputDecoration(
-              labelText: 'Type of Measurement',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            items: const <String>[
-              'Select',
-              'Area',
-              'Length',
-              'Volume',
-              'Number',
-              'Weight',
-              'Percent',
-            ]
-                .map(
-                  (String value) => DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  ),
-                )
-                .toList(),
-            onChanged: (String? value) {
-              if (value != null) {
-                notifier.updateMeasurement(index, row.copyWith(type: value));
+          )
+          .toList(),
+      onChanged: enabled
+          ? (String? v) {
+              if (v != null) {
+                onChanged(v);
               }
-            },
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: row.units,
-            decoration: const InputDecoration(
-              labelText: 'Units',
-              border: OutlineInputBorder(),
-              isDense: true,
+            }
+          : null,
+    );
+  }
+
+  /// A web-style table that scrolls sideways: tinted header row, fixed
+  /// column widths, a divider under each row.
+  Widget _scrollTable({
+    required List<(String, double)> columns,
+    required List<List<Widget>> rows,
+  }) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final bool dark = scheme.brightness == Brightness.dark;
+    final Color headerFill = dark
+        ? const Color(0xFF1B3556)
+        : const Color(0xFFE8F1FB);
+    final BorderSide line = BorderSide(color: scheme.outlineVariant);
+    Widget cell(double width, Widget child, {Color? color}) => Container(
+      width: width,
+      color: color,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      alignment: Alignment.center,
+      child: child,
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DecoratedBox(
+        decoration: BoxDecoration(border: Border.fromBorderSide(line)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                for (final (String label, double width) in columns)
+                  cell(
+                    width,
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.brandPrimary,
+                      ),
+                    ),
+                    color: headerFill,
+                  ),
+              ],
             ),
-            items: const <String>[
-              'Select U',
-              'sqm',
-              'm',
-              'cum',
-              'nos',
-              'kg',
-              '%',
-            ]
-                .map(
-                  (String value) => DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  ),
-                )
-                .toList(),
-            onChanged: (String? value) {
-              if (value != null) {
-                notifier.updateMeasurement(index, row.copyWith(units: value));
-              }
-            },
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              _dimField('Length', row.length, (String v) {
-                notifier.updateMeasurement(index, row.copyWith(length: v));
-              }),
-              _dimField('Breadth', row.breadth, (String v) {
-                notifier.updateMeasurement(index, row.copyWith(breadth: v));
-              }),
-              _dimField('Height', row.height, (String v) {
-                notifier.updateMeasurement(index, row.copyWith(height: v));
-              }),
-              _dimField('Weight', row.weight, (String v) {
-                notifier.updateMeasurement(index, row.copyWith(weight: v));
-              }),
-              _dimField('No.', row.no, (String v) {
-                notifier.updateMeasurement(index, row.copyWith(no: v));
-              }),
-              SizedBox(
-                width: 110,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Total Qty',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  child: Text(row.totalQty.toStringAsFixed(
-                    row.totalQty == row.totalQty.roundToDouble() ? 0 : 2,
-                  )),
+            for (final List<Widget> cells in rows)
+              DecoratedBox(
+                decoration: BoxDecoration(border: Border(top: line)),
+                child: Row(
+                  children: <Widget>[
+                    for (int i = 0; i < columns.length; i++)
+                      cell(columns[i].$2, cells[i]),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dimField(
-    String label,
-    String value,
-    ValueChanged<String> onChanged,
-  ) {
-    return SizedBox(
-      width: 110,
-      child: TextFormField(
-        initialValue: value,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          isDense: true,
+          ],
         ),
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        onChanged: onChanged,
       ),
     );
   }
 
-  Widget _siteImagesRow(String label, List<String> images) {
+  /// Confirms, deletes one site image and shows the result. The controller
+  /// reloads the RFI afterwards so the thumbnails match the server.
+  Future<void> _deleteSiteImage(
+    RfiInspectionFlowController notifier,
+    String path,
+  ) async {
+    final bool confirmed = await AppDialog.confirm(
+      context,
+      title: 'Delete site image',
+      message: 'Delete this site image? This cannot be undone.',
+      primaryLabel: 'Delete',
+      destructive: true,
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    try {
+      await notifier.deleteSiteImage(path);
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.success,
+        title: 'Deleted',
+        message: 'Site image deleted successfully.',
+      );
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Delete failed',
+        message: rfiInspectionErrorMessage(error),
+      );
+    }
+  }
+
+  Widget _siteImagesRow(
+    String label,
+    List<String> images, {
+    ValueChanged<String>? onDelete,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -1084,17 +1450,7 @@ class _RfiInspectionFlowPageState
         if (images.isEmpty)
           const Text('No images uploaded')
         else
-          Wrap(
-            spacing: 8,
-            children: images
-                .map(
-                  (String path) => TextButton(
-                    onPressed: () => _openPath(path),
-                    child: Text(path.split('/').last),
-                  ),
-                )
-                .toList(),
-          ),
+          RfiServerImageGrid(paths: images, onDelete: onDelete),
       ],
     );
   }

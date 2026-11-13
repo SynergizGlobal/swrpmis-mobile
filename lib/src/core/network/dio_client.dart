@@ -41,6 +41,7 @@ final dioProvider = Provider<Dio>((ref) {
         responseHeader: true,
         responseBody: true,
         maxWidth: 120,
+        filter: shouldLogDioTraffic,
       ),
     );
   }
@@ -66,3 +67,13 @@ final dioProvider = Provider<Dio>((ref) {
 
   return dio;
 });
+
+/// Debug logging skips binary downloads (images, PDFs). Printing a
+/// multi-megabyte byte list on the UI thread froze the screen for seconds.
+bool shouldLogDioTraffic(RequestOptions options, FilterArgs args) {
+  if (options.responseType == ResponseType.bytes ||
+      options.responseType == ResponseType.stream) {
+    return false;
+  }
+  return !(args.isResponse && args.data is List<int>);
+}

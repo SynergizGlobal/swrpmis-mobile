@@ -163,9 +163,10 @@ class WorkRfiRemoteDataSource {
     return parseWorkRfiEnclosures(response.data);
   }
 
-  Future<List<WorkRfiOption>> fetchRepresentatives() async {
+  Future<List<WorkRfiOption>> fetchRepresentatives(String contractId) async {
     final Response<dynamic> response = await _dio.get<dynamic>(
       ApiConstants.workRepresentativesPath,
+      queryParameters: <String, dynamic>{'contractId': contractId.trim()},
     );
     return parseWorkRfiRepresentatives(response.data);
   }

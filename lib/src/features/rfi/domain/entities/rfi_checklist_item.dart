@@ -75,7 +75,34 @@ class RfiChecklistItem {
   }
 }
 
+/// Reads `GET /api/v1/enclouser/checklist-items`, which answers
+/// `{gradeOfConcrete, rfiDescription, enclosureName, checklistItems: [...]}`.
+/// A bare list is still accepted. The top-level grade is copied onto items
+/// that have none, so callers can read it from any item.
 List<RfiChecklistItem> parseRfiChecklistItems(Object? raw) {
+  if (raw is Map) {
+    final Map<String, dynamic> map = Map<String, dynamic>.from(raw);
+    final String grade = _text(map['gradeOfConcrete']);
+    final String enclosure = _text(map['enclosureName']);
+    return parseRfiChecklistItems(map['checklistItems'] ?? map['items'])
+        .map(
+          (RfiChecklistItem item) => RfiChecklistItem(
+            checklistDescId: item.checklistDescId,
+            checklistDescription: item.checklistDescription,
+            contractorStatus: item.contractorStatus,
+            engineerStatus: item.engineerStatus,
+            contractorRemarks: item.contractorRemarks,
+            engineerRemark: item.engineerRemark,
+            gradeOfConcrete: item.gradeOfConcrete.isEmpty
+                ? grade
+                : item.gradeOfConcrete,
+            enclosureName: item.enclosureName.isEmpty
+                ? enclosure
+                : item.enclosureName,
+          ),
+        )
+        .toList(growable: false);
+  }
   if (raw is! List) {
     return const <RfiChecklistItem>[];
   }

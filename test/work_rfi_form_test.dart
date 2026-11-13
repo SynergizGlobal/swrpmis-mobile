@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/work_rfi_form.dart';
 
 void main() {
@@ -444,11 +445,15 @@ void main() {
         breadth: '',
         height: '',
         weight: '',
-        no: '75',
+        no: '',
+        totalQty: '75',
       ),
       75,
     );
-    expect(workRfiFieldsFor('Percent').no, isTrue);
+    // Percent: Total Qty is typed; No. is disabled like the web.
+    expect(workRfiFieldsFor('Percent').totalQty, isTrue);
+    expect(workRfiFieldsFor('Percent').no, isFalse);
+    expect(workRfiFieldsFor('Number').totalQty, isFalse);
     expect(workRfiFieldsFor('Percent').length, isFalse);
     expect(workRfiUnitsFor('Percent'), <String>['%']);
     expect(workRfiMeasurementTypes, contains('Percent'));
@@ -476,7 +481,7 @@ void main() {
             activityName: 'PCC Layer',
             measurementType: 'Percent',
             units: '%',
-            no: '40',
+            totalQty: '40',
           ),
         ],
         descriptionIds: <String>['71', '8'],
@@ -502,6 +507,7 @@ void main() {
     expect(activities[1]['measurementType'], 'Percent');
     expect(activities[1]['units'], '%');
     expect(activities[1]['totalQty'], 40);
+    expect(activities[1]['no'], '');
   });
 
   test(
@@ -1295,5 +1301,162 @@ void main() {
       ),
       'Missing Project, Contract, Structure Type, Structure, Component, Element, Activity, RFI Description, RFI Required.',
     );
+  });
+
+  group('edit Action', () {
+    WorkRfiSubmitDraft draft({required bool editing, String? action}) {
+      return WorkRfiSubmitDraft(
+        project: 'P01',
+        contract: 'P01EN01',
+        structureType: 'Minor Bridge',
+        structure: '113',
+        component: 'Excavation & Levelling',
+        element: 'Excavation',
+        activities: const <WorkRfiMeasurementDraft>[],
+        descriptionIds: const <String>[],
+        rfiRequired: 'Yes',
+        typeOfRfi: 'Spot RFI',
+        contractorRepresentative: '42',
+        progressDate: '',
+        dateOfSubmission: '2026-11-12',
+        timeOfInspection: '10:59',
+        dateOfInspection: '2026-11-12',
+        enclosureIds: const <String>[],
+        description: 'Testing',
+        editing: editing,
+        action: action ?? workRfiFixedAction,
+      );
+    }
+
+    test('create posts Create', () {
+      expect(buildWorkRfiPayload(draft(editing: false))['action'], 'Create');
+    });
+
+    test('edit posts the chosen action', () {
+      for (final String action in <String>[
+        workRfiActionUpdate,
+        workRfiActionReassign,
+        workRfiActionRescheduled,
+      ]) {
+        expect(
+          buildWorkRfiPayload(draft(editing: true, action: action))['action'],
+          action,
+        );
+      }
+    });
+
+    test('Rescheduled posts the value the web sends', () {
+      expect(
+        buildWorkRfiPayload(
+          draft(editing: true, action: workRfiActionRescheduled),
+        )['action'],
+        'Reschedule',
+      );
+    });
+
+    test('offers the web options and opens on Update', () {
+      expect(workRfiEditActions.map((WorkRfiOption o) => o.label), <String>[
+        'Update',
+        'Reassign',
+        'Rescheduled',
+      ]);
+      expect(workRfiDefaultEditAction, 'Update');
+    });
+
+    test('only Reassign unlocks the representative', () {
+      expect(workRfiActionUnlocksRepresentative('Reassign'), isTrue);
+      expect(workRfiActionUnlocksRepresentative('Update'), isFalse);
+      expect(
+        workRfiActionUnlocksRepresentative(workRfiActionRescheduled),
+        isFalse,
+      );
+    });
+
+    test('only Rescheduled unlocks the inspection date and time', () {
+      expect(workRfiActionUnlocksSchedule(workRfiActionRescheduled), isTrue);
+      expect(workRfiActionUnlocksSchedule('Update'), isFalse);
+      expect(workRfiActionUnlocksSchedule('Reassign'), isFalse);
+    });
+  });
+
+  group('Percent Total Qty on edit', () {
+    WorkRfiMeasurementDraft restored(WorkRfiMeasurementDraft saved) {
+      return resolveWorkRfiEditActivities(
+        options: const <WorkRfiOption>[
+          WorkRfiOption(id: '9', label: 'Earthwork'),
+        ],
+        activityList: const <String>['9'],
+        activityId: '9',
+        measurements: <WorkRfiMeasurementDraft>[saved],
+      ).rows.single;
+    }
+
+    test('restores the saved Total Qty', () {
+      final WorkRfiMeasurementDraft row = restored(
+        const WorkRfiMeasurementDraft(
+          activityId: '9',
+          activityName: 'Earthwork',
+          measurementType: 'Percent',
+          units: '%',
+          totalQty: '33',
+        ),
+      );
+      expect(row.totalQty, '33');
+      expect(row.units, '%');
+    });
+
+    test('older Percent rows saved in No. move into Total Qty', () {
+      final WorkRfiMeasurementDraft row = restored(
+        const WorkRfiMeasurementDraft(
+          activityId: '9',
+          activityName: 'Earthwork',
+          measurementType: 'Percent',
+          units: '%',
+          no: '40',
+        ),
+      );
+      expect(row.totalQty, '40');
+    });
+
+    test('Total Qty is required for Percent', () {
+      expect(
+        workRfiTotalQty(
+          measurementType: 'Percent',
+          length: '',
+          breadth: '',
+          height: '',
+          weight: '',
+          no: '5',
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('contractor representatives', () {
+    test('uses the same endpoint as the web form', () {
+      expect(
+        ApiConstants.workRepresentativesPath,
+        '/rfi/api/work-representatives',
+      );
+    });
+
+    test('reads the QA response for a contract', () {
+      final List<WorkRfiOption> options = parseWorkRfiRepresentatives(
+        <Map<String, dynamic>>[
+          <String, dynamic>{'userId': 'PMIS_CO_035', 'userName': 'altaf con'},
+          <String, dynamic>{'userId': 'PMIS_CO_002', 'userName': 'KOUSTAV PAL'},
+          <String, dynamic>{
+            'userId': 'PMIS_IT_019',
+            'userName': 'Vikas Gowda M',
+          },
+        ],
+      );
+      expect(options, hasLength(3));
+      final WorkRfiOption koustav = options.firstWhere(
+        (WorkRfiOption o) => o.id == 'PMIS_CO_002',
+      );
+      expect(koustav.label, 'KOUSTAV PAL');
+    });
   });
 }

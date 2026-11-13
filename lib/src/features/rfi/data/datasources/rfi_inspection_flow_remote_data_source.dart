@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,7 +74,31 @@ class RfiInspectionFlowRemoteDataSource {
         filename: p.basename(imagePath),
       ),
     });
-    await _dio.post<dynamic>(ApiConstants.rfiUploadSiteImagePath, data: form);
+    // The server answers with plain text ("Site image uploaded successfully
+    // for RFI ID 105."), so read it as text instead of JSON.
+    await _dio.post<dynamic>(
+      ApiConstants.rfiUploadSiteImagePath,
+      data: form,
+      options: Options(responseType: ResponseType.plain),
+    );
+  }
+
+  /// Removes one site image. [imagePath] is the full server path from
+  /// `conSiteImgs` / `enggSiteImgs`; the reply is plain text.
+  Future<void> deleteSiteImage({
+    required int rfiId,
+    required String imagePath,
+    required String uploadedBy,
+  }) async {
+    await _dio.post<dynamic>(
+      ApiConstants.rfiDeleteSiteImagePath,
+      queryParameters: <String, dynamic>{
+        'rfiId': rfiId,
+        'img': imagePath,
+        'uploadedBy': uploadedBy,
+      },
+      options: Options(responseType: ResponseType.plain),
+    );
   }
 
   Future<void> uploadEnclosure({
@@ -93,7 +118,11 @@ class RfiInspectionFlowRemoteDataSource {
         filename: p.basename(filePath),
       ),
     });
-    await _dio.post<dynamic>(ApiConstants.rfiUploadEnclosurePath, data: form);
+    await _dio.post<dynamic>(
+      ApiConstants.rfiUploadEnclosurePath,
+      data: form,
+      options: Options(responseType: ResponseType.plain),
+    );
   }
 
   Future<List<RfiChecklistItem>> fetchChecklistItems({
@@ -112,6 +141,108 @@ class RfiInspectionFlowRemoteDataSource {
     return parseRfiChecklistItems(response.data);
   }
 
+  /// `GET /session-check`; throws when the session is no longer valid.
+  Future<void> checkSession() async {
+    await _dio.get<dynamic>(
+      ApiConstants.sessionCheckPath,
+      options: Options(responseType: ResponseType.plain),
+    );
+  }
+
+  /// Uploads the generated inspection PDF (contractor), retrying once on a
+  /// network error like the web's `uploadWithRetry`.
+  Future<void> uploadContractorPdf({
+    required int rfiId,
+    required Uint8List pdf,
+  }) async {
+    Future<void> attempt() async {
+      final FormData form = FormData.fromMap(<String, dynamic>{
+        'pdf': MultipartFile.fromBytes(
+          pdf,
+          filename: '$rfiId.pdf',
+          contentType: DioMediaType('application', 'pdf'),
+        ),
+        'rfiId': rfiId,
+        'uploadedBy': 'CON',
+      });
+      await _dio.post<dynamic>(
+        ApiConstants.rfiUploadPdfContractorPath,
+        data: form,
+        options: Options(responseType: ResponseType.plain),
+      );
+    }
+
+    try {
+      await attempt();
+    } on DioException catch (error) {
+      if (error.response != null) {
+        rethrow;
+      }
+      await attempt();
+    }
+  }
+
+  /// E-sign / stamp the uploaded PDF. Answers
+  /// `{"status": "success", "message": "..."}`; anything else is a failure.
+  Future<String> stampContractorPdf({
+    required int rfiId,
+    required String txnId,
+  }) async {
+    final FormData form = FormData.fromMap(<String, dynamic>{
+      'rfiId': rfiId,
+      'txnId': txnId,
+    });
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.rfiStampPdfFromXmlPath,
+      data: form,
+      options: Options(responseType: ResponseType.plain),
+    );
+    return rfiStampResult(response.data);
+  }
+
+  /// Stored file bytes through the validation preview endpoint.
+  Future<Uint8List> previewStoredFile(String filepath) async {
+    final Response<List<int>> response = await _dio.get<List<int>>(
+      ApiConstants.validationPreviewFilesPath,
+      queryParameters: <String, dynamic>{'filepath': filepath},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final List<int>? data = response.data;
+    if (data == null || data.isEmpty) {
+      throw StateError('File is empty.');
+    }
+    return Uint8List.fromList(data);
+  }
+
+  /// Bytes of an uploaded enclosure (PDF), for View and Download.
+  Future<Uint8List> downloadEnclosure(String filepath) async {
+    final Response<List<int>> response = await _dio.get<List<int>>(
+      ApiConstants.rfiDownloadPrevPath,
+      queryParameters: <String, dynamic>{'filepath': filepath},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final List<int>? data = response.data;
+    if (data == null || data.isEmpty) {
+      throw StateError('File is empty.');
+    }
+    return Uint8List.fromList(data);
+  }
+
+  /// Removes one uploaded enclosure file; the reply is plain text.
+  Future<void> deleteEnclosureFile({
+    required int enclosureUploadedFileId,
+    required String uploadedBy,
+  }) async {
+    await _dio.delete<dynamic>(
+      ApiConstants.rfiDeleteEnclosurePath,
+      queryParameters: <String, dynamic>{
+        'enclosureUploadedFileId': enclosureUploadedFileId,
+        'uploadedBy': uploadedBy,
+      },
+      options: Options(responseType: ResponseType.plain),
+    );
+  }
+
   Future<String> saveChecklist(Map<String, dynamic> payload) async {
     final FormData form = FormData.fromMap(<String, dynamic>{
       'data': jsonEncode(payload),
@@ -119,6 +250,7 @@ class RfiInspectionFlowRemoteDataSource {
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.rfiSaveChecklistPath,
       data: form,
+      options: Options(responseType: ResponseType.plain),
     );
     return _message(response.data, fallback: 'Checklist saved successfully.');
   }
@@ -171,6 +303,7 @@ class RfiInspectionFlowRemoteDataSource {
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.rfiFinalSubmitPath,
       data: form,
+      options: Options(responseType: ResponseType.plain),
     );
     return _message(
       response.data,
@@ -244,4 +377,29 @@ class RfiInspectionFlowRemoteDataSource {
     }
     return fallback;
   }
+}
+
+/// Reads the stamp reply. Returns the message on success, throws otherwise.
+String rfiStampResult(Object? data) {
+  Object? decoded = data;
+  if (data is String) {
+    try {
+      decoded = jsonDecode(data);
+    } on FormatException {
+      decoded = data;
+    }
+  }
+  if (decoded is Map) {
+    final String status = '${decoded['status'] ?? ''}'.trim().toLowerCase();
+    final String message = '${decoded['message'] ?? ''}'.trim();
+    if (status == 'success') {
+      return message.isEmpty ? 'E-sign completed.' : message;
+    }
+    throw StateError(message.isEmpty ? 'E-sign failed.' : message);
+  }
+  final String text = '${decoded ?? ''}'.trim();
+  if (text.toLowerCase().contains('success')) {
+    return text;
+  }
+  throw StateError(text.isEmpty ? 'E-sign failed.' : text);
 }

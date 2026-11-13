@@ -6,9 +6,13 @@ class RfiInspectionDetails {
     required this.attachments,
     required this.materialDetails,
     required this.workDetails,
+    this.validationList = const <Map<String, dynamic>>[],
   });
 
   final RfiInspectionDetailRfi rfi;
+
+  /// Validation history rows, printed on the inspection PDF.
+  final List<Map<String, dynamic>> validationList;
   final List<RfiInspectionEnclosure> enclosures;
   final List<RfiInspectionMeasurement> measurements;
   final List<Map<String, dynamic>> attachments;
@@ -26,6 +30,7 @@ class RfiInspectionDetails {
       attachments: _listMaps(json['attachments']),
       materialDetails: _listMaps(json['materialDetails']),
       workDetails: _listMaps(json['workDetails']),
+      validationList: _listMaps(json['validationList']),
     );
   }
 }
@@ -54,7 +59,16 @@ class RfiInspectionDetailRfi {
     required this.enggSupDocs,
     required this.conInspectionId,
     required this.component,
+    this.element = '',
+    this.activity = '',
+    this.raw = const <String, dynamic>{},
   });
+
+  /// The full `rfi` object from rfi-details, for fields only the inspection
+  /// PDF needs (contractorName, createdAt, isRfiRequired, testReport...).
+  final Map<String, dynamic> raw;
+
+  String field(String key) => _text(raw[key]);
 
   final int? id;
   final String rfiId;
@@ -78,6 +92,10 @@ class RfiInspectionDetailRfi {
   final List<RfiSupportingDocument> enggSupDocs;
   final int? conInspectionId;
   final String component;
+  final String element;
+
+  /// Comma-joined activity names, e.g. "Reinforcement & Shuttering, Concreting".
+  final String activity;
 
   factory RfiInspectionDetailRfi.fromJson(Map<String, dynamic> json) {
     final String underscored = _text(json['rfi_Id']);
@@ -107,7 +125,10 @@ class RfiInspectionDetailRfi {
       conSupDocs: _supportingDocs(json['conSupDocs']),
       enggSupDocs: _supportingDocs(json['enggSupDocs']),
       conInspectionId: _int(json['conInspectionId']),
-      component: _firstText(json, const <String>['component', 'element']),
+      component: _text(json['component']),
+      element: _text(json['element']),
+      activity: _text(json['activity']),
+      raw: Map<String, dynamic>.unmodifiable(json),
     );
   }
 }
@@ -169,9 +190,15 @@ class RfiInspectionMeasurement {
     required this.weight,
     required this.noOfItems,
     required this.totalQty,
+    this.component = '',
+    this.element = '',
+    this.activityIdFk,
   });
 
   final String activityName;
+  final int? activityIdFk;
+  final String component;
+  final String element;
   final String measurementType;
   final String units;
   final String length;
@@ -200,6 +227,9 @@ class RfiInspectionMeasurement {
       weight: _numText(json['weight']),
       noOfItems: _numText(json['noOfItems'] ?? json['no']),
       totalQty: _double(json['totalQty']) ?? 0,
+      component: _text(json['component']),
+      element: _text(json['element']),
+      activityIdFk: _int(json['activityIdFk'] ?? json['activityId']),
     );
   }
 }
@@ -253,6 +283,15 @@ List<RfiInspectionMeasurement> _parseMeasurements(Object? value) {
 }
 
 List<RfiSupportingDocument> _supportingDocs(Object? value) {
+  if (value is String && value.trim().isNotEmpty) {
+    // Comma-joined server paths, like conSiteImgs.
+    return value
+        .split(',')
+        .map((String part) => part.trim())
+        .where((String part) => part.isNotEmpty)
+        .map((String path) => RfiSupportingDocument(path: path, description: ''))
+        .toList(growable: false);
+  }
   if (value is! List) {
     return const <RfiSupportingDocument>[];
   }

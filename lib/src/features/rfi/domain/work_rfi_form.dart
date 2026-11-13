@@ -43,6 +43,7 @@ class WorkRfiMeasureFields {
     this.height = false,
     this.weight = false,
     this.no = false,
+    this.totalQty = false,
   });
 
   final bool length;
@@ -50,6 +51,9 @@ class WorkRfiMeasureFields {
   final bool height;
   final bool weight;
   final bool no;
+
+  /// True when Total Qty is typed instead of computed (Percent).
+  final bool totalQty;
 }
 
 class WorkRfiMeasurementDraft {
@@ -63,6 +67,7 @@ class WorkRfiMeasurementDraft {
     this.height = '',
     this.weight = '',
     this.no = '',
+    this.totalQty = '',
   });
 
   final String activityId;
@@ -74,6 +79,9 @@ class WorkRfiMeasurementDraft {
   final String height;
   final String weight;
   final String no;
+
+  /// Typed Total Qty; only used when the type has `totalQty` (Percent).
+  final String totalQty;
 }
 
 class WorkRfiSubmitDraft {
@@ -102,6 +110,7 @@ class WorkRfiSubmitDraft {
     this.originalTypeOfRfi = '',
     this.originalDateOfInspection = '',
     this.editing = false,
+    this.action = workRfiFixedAction,
   });
 
   final String project;
@@ -138,6 +147,10 @@ class WorkRfiSubmitDraft {
   /// True when the draft updates an existing RFI. Edit keeps posting measurement
   /// factors as JSON numbers; create posts them as strings like the web form.
   final bool editing;
+
+  /// Posted as `action`: Create on create; Update, Reassign or Rescheduled on
+  /// edit.
+  final String action;
 }
 
 class WorkRfiDetail {
@@ -212,6 +225,31 @@ const List<WorkRfiOption> workRfiTypeOptions = <WorkRfiOption>[
 ];
 
 const String workRfiFixedAction = 'Create';
+
+/// Action choices the web offers when editing a Work RFI. The label is also
+/// the value posted as `action`.
+const String workRfiActionUpdate = 'Update';
+const String workRfiActionReassign = 'Reassign';
+/// Value the web posts for the "Rescheduled" choice; the server sets status
+/// RESCHEDULED only for this exact value.
+const String workRfiActionRescheduled = 'Reschedule';
+
+const List<WorkRfiOption> workRfiEditActions = <WorkRfiOption>[
+  WorkRfiOption(id: workRfiActionUpdate, label: workRfiActionUpdate),
+  WorkRfiOption(id: workRfiActionReassign, label: workRfiActionReassign),
+  WorkRfiOption(id: workRfiActionRescheduled, label: 'Rescheduled'),
+];
+
+/// Edit always opens on Update, as the web does, whatever was saved before.
+const String workRfiDefaultEditAction = workRfiActionUpdate;
+
+/// Reassign hands the RFI to another contractor's representative.
+bool workRfiActionUnlocksRepresentative(String action) =>
+    action == workRfiActionReassign;
+
+/// Rescheduled moves the inspection to a new date and time.
+bool workRfiActionUnlocksSchedule(String action) =>
+    action == workRfiActionRescheduled;
 
 const String workRfiRegularRfi = 'Regular RFI';
 const String workRfiSpotRfi = 'Spot RFI';
@@ -416,8 +454,8 @@ WorkRfiMeasureFields workRfiFieldsFor(String type) {
     ),
     'Number' => const WorkRfiMeasureFields(no: true),
     'Weight' => const WorkRfiMeasureFields(weight: true, no: true),
-    // Same shape as Number: value goes in No.; unit is %.
-    'Percent' => const WorkRfiMeasureFields(no: true),
+    // Like the web: L/B/H/Weight/No. stay disabled and Total Qty is typed.
+    'Percent' => const WorkRfiMeasureFields(totalQty: true),
     _ => const WorkRfiMeasureFields(),
   };
 }
@@ -441,8 +479,13 @@ num? workRfiTotalQty({
   required String height,
   required String weight,
   required String no,
+  String totalQty = '',
 }) {
   final WorkRfiMeasureFields fields = workRfiFieldsFor(measurementType);
+  if (fields.totalQty) {
+    final num? typed = num.tryParse(totalQty.trim());
+    return typed == null ? null : _whole(typed);
+  }
   final List<(bool, String)> factors = <(bool, String)>[
     (fields.length, length),
     (fields.breadth, breadth),
@@ -532,6 +575,7 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
     requireNumber(fields.height, row.height, 'Height');
     requireNumber(fields.weight, row.weight, 'Weight');
     requireNumber(fields.no, row.no, 'No.');
+    requireNumber(fields.totalQty, row.totalQty, 'Total Qty');
   }
   if (draft.rfiRequired == 'Yes') {
     requireText(draft.typeOfRfi, 'Type of RFI');
@@ -625,7 +669,7 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
     'rfiDescription': '',
     'selectedRfiDescriptions': descriptionIds,
     'rfiRequired': draft.rfiRequired,
-    'action': workRfiFixedAction,
+    'action': draft.action.trim().isEmpty ? workRfiFixedAction : draft.action,
     'typeOfRfi': yes ? draft.typeOfRfi : '',
     'contractorRepresentative': yes ? draft.contractorRepresentative : '',
     'progressDate': no ? workRfiApiDate(draft.progressDate) : '',
@@ -1155,6 +1199,7 @@ Map<String, dynamic> _activityPayload(
     height: row.height,
     weight: row.weight,
     no: row.no,
+    totalQty: row.totalQty,
   );
   return <String, dynamic>{
     'id': wireId,
@@ -1247,6 +1292,10 @@ WorkRfiMeasurementDraft _draftForOption(
     height: saved.height,
     weight: saved.weight,
     no: saved.no,
+    totalQty: workRfiFieldsFor(type).totalQty && saved.totalQty.trim().isEmpty
+        // Percent rows saved before Total Qty was typed kept the value in No.
+        ? saved.no
+        : saved.totalQty,
   );
 }
 
@@ -1275,6 +1324,7 @@ List<WorkRfiMeasurementDraft> _measurements(Object? value) {
         height: workRfiNumberText(row['height']),
         weight: workRfiNumberText(row['weight']),
         no: workRfiNumberText(row['noOfItems'] ?? row['no']),
+        totalQty: workRfiNumberText(row['totalQty'] ?? row['totalQuantity']),
       ),
   ];
 }

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
 import 'package:swr_pmis_mobile/src/core/network/dio_client.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_category_access.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 
@@ -24,6 +25,38 @@ class RfiRemoteDataSource {
     return _asList(
       response.data,
     ).map(RfiListItem.fromJson).toList(growable: false);
+  }
+
+  /// Both access checks the web list page makes before it renders actions.
+  Future<RfiCategoryAccess> fetchCategoryAccess(String rfiCategory) async {
+    final Map<String, dynamic> query = <String, dynamic>{
+      'rfiCategory': rfiCategory,
+    };
+    final List<Response<dynamic>> responses =
+        await Future.wait(<Future<Response<dynamic>>>[
+          _dio.get<dynamic>(
+            ApiConstants.rfiCategoryViewOnlyPath,
+            queryParameters: query,
+          ),
+          _dio.get<dynamic>(
+            ApiConstants.rfiCanCreatePath,
+            queryParameters: query,
+          ),
+        ]);
+    return RfiCategoryAccess(
+      viewOnly: parseRfiViewOnly(responses[0].data),
+      canCreate: parseRfiCanCreate(responses[1].data),
+    );
+  }
+
+  /// Marks an RFI as deleted with the user's reason. Returns the server's
+  /// message, or a default when it sends none.
+  Future<String> deleteRfi({required int id, required String reason}) async {
+    final Response<dynamic> response = await _dio.delete<dynamic>(
+      ApiConstants.rfiDeletePath,
+      data: <String, dynamic>{'id': id, 'description': reason.trim()},
+    );
+    return rfiDeleteMessage(response.data);
   }
 
   List<Map<String, dynamic>> _asList(dynamic data) {
@@ -50,4 +83,21 @@ class RfiRemoteDataSource {
     }
     return <Map<String, dynamic>>[];
   }
+}
+
+const String rfiDeleteDefaultMessage = 'RFI marked as deleted successfully!';
+
+/// The delete endpoint answers with plain text; a JSON `message` is also
+/// accepted in case the server wraps it later.
+String rfiDeleteMessage(dynamic data) {
+  if (data is String && data.trim().isNotEmpty) {
+    return data.trim();
+  }
+  if (data is Map) {
+    final Object? message = data['message'] ?? data['msg'];
+    if (message is String && message.trim().isNotEmpty) {
+      return message.trim();
+    }
+  }
+  return rfiDeleteDefaultMessage;
 }
