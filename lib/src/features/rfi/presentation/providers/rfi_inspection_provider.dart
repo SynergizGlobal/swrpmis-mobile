@@ -4,6 +4,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_row.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_section_launch.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_inspection_flow_remote_data_source.dart';
 
 final rfiInspectionControllerProvider =
     NotifierProvider.autoDispose<RfiInspectionController, RfiInspectionState>(
@@ -193,3 +194,17 @@ class RfiInspectionController extends AutoDisposeNotifier<RfiInspectionState> {
     return _source.bulkSubmit();
   }
 }
+
+/// `accessType` from `/inspection-access` per RFI category ('' on error).
+final rfiInspectionAccessTypeProvider = FutureProvider.autoDispose
+    .family<String, String>((ref, String category) async {
+      final String value = category.trim().isEmpty ? 'WORK' : category.trim();
+      try {
+        final access = await ref
+            .read(rfiInspectionFlowRemoteDataSourceProvider)
+            .fetchAccess(value);
+        return access.accessType;
+      } on Object {
+        return '';
+      }
+    });

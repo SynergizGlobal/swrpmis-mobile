@@ -29,6 +29,27 @@ class RfiUserSignature {
   factory RfiUserSignature.fromJson(Map<String, dynamic> json) {
     return RfiUserSignature(exists: _bool(json['exists']));
   }
+
+  /// `/api/checkUserSignature` reply: `{"exists": true}`, a bare `true`, or
+  /// the text "true". Anything else means no signature.
+  factory RfiUserSignature.parse(Object? data) {
+    if (data is Map) {
+      final Map<String, dynamic> map = Map<String, dynamic>.from(data);
+      for (final String key in const <String>[
+        'exists',
+        'hasSignature',
+        'signatureExists',
+        'data',
+        'result',
+      ]) {
+        if (map.containsKey(key)) {
+          return RfiUserSignature(exists: _bool(map[key]));
+        }
+      }
+      return const RfiUserSignature(exists: false);
+    }
+    return RfiUserSignature(exists: _bool(data));
+  }
 }
 
 bool _bool(Object? value) {

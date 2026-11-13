@@ -33,7 +33,7 @@ class RfiInspectionFlowRemoteDataSource {
       ApiConstants.checkUserSignaturePath,
       queryParameters: <String, String>{'userId': userId},
     );
-    return RfiUserSignature.fromJson(_asMap(response.data));
+    return RfiUserSignature.parse(response.data);
   }
 
   Future<RfiInspectionDetails> fetchDetails(int rfiId) async {
@@ -180,6 +180,54 @@ class RfiInspectionFlowRemoteDataSource {
       }
       await attempt();
     }
+  }
+
+  /// Uploads the engineer's inspection PDF with the decision, retrying once
+  /// on a network error (web: `/rfi/rfi/uploadPdf/Engg`).
+  Future<void> uploadEngineerPdf({
+    required int rfiId,
+    required Uint8List pdf,
+    required String inspectionStatus,
+    required String engineerRemarks,
+  }) async {
+    Future<void> attempt() async {
+      final FormData form = FormData.fromMap(<String, dynamic>{
+        'inspectionStatus': inspectionStatus,
+        'engineerRemarks': engineerRemarks,
+        'pdf': MultipartFile.fromBytes(
+          pdf,
+          filename: '$rfiId.pdf',
+          contentType: DioMediaType('application', 'pdf'),
+        ),
+        'rfiId': rfiId,
+        'uploadedBy': 'ENGG',
+      });
+      await _dio.post<dynamic>(
+        ApiConstants.rfiUploadPdfEngineerPath,
+        data: form,
+        options: Options(responseType: ResponseType.plain),
+      );
+    }
+
+    try {
+      await attempt();
+    } on DioException catch (error) {
+      if (error.response != null) {
+        rethrow;
+      }
+      await attempt();
+    }
+  }
+
+  /// Engineer e-sign; the web only fails on `{"status": "error"}`.
+  Future<String> stampEngineerPdf({required int rfiId}) async {
+    final FormData form = FormData.fromMap(<String, dynamic>{'rfiId': rfiId});
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.rfiStampEnggPdfFromXmlPath,
+      data: form,
+      options: Options(responseType: ResponseType.plain),
+    );
+    return rfiStampResult(response.data, requireSuccess: false);
   }
 
   /// E-sign / stamp the uploaded PDF. Answers
@@ -380,7 +428,7 @@ class RfiInspectionFlowRemoteDataSource {
 }
 
 /// Reads the stamp reply. Returns the message on success, throws otherwise.
-String rfiStampResult(Object? data) {
+String rfiStampResult(Object? data, {bool requireSuccess = true}) {
   Object? decoded = data;
   if (data is String) {
     try {
@@ -392,14 +440,15 @@ String rfiStampResult(Object? data) {
   if (decoded is Map) {
     final String status = '${decoded['status'] ?? ''}'.trim().toLowerCase();
     final String message = '${decoded['message'] ?? ''}'.trim();
-    if (status == 'success') {
+    if (status == 'success' || (!requireSuccess && status != 'error')) {
       return message.isEmpty ? 'E-sign completed.' : message;
     }
     throw StateError(message.isEmpty ? 'E-sign failed.' : message);
   }
   final String text = '${decoded ?? ''}'.trim();
-  if (text.toLowerCase().contains('success')) {
-    return text;
+  if (text.toLowerCase().contains('success') ||
+      (!requireSuccess && !text.toLowerCase().contains('error'))) {
+    return text.isEmpty ? 'E-sign completed.' : text;
   }
   throw StateError(text.isEmpty ? 'E-sign failed.' : text);
 }

@@ -81,7 +81,9 @@ Future<void> startRfiInspectionFlow({
         context,
         variant: AppDialogVariant.error,
         title: 'Signature required',
-        message: 'Signature not found. Please upload signature first.',
+        message:
+            'Signature not found. Please upload your e-sign signature from the '
+            'web application, then start the inspection again.',
       );
       return;
     }

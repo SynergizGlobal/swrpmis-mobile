@@ -4,14 +4,20 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_insp
 
 /// Live state of the submit, read by [RfiSubmitProgressDialog].
 class RfiSubmitProgress extends ChangeNotifier {
-  final Map<RfiSubmitStep, RfiStepStatus> _status =
+  RfiSubmitProgress({List<RfiSubmitStep>? steps})
+    : steps = steps ?? rfiSubmitSteps(rectification: false);
+
+  /// The steps shown, in order (rectification shows its own two).
+  final List<RfiSubmitStep> steps;
+
+  late final Map<RfiSubmitStep, RfiStepStatus> _status =
       <RfiSubmitStep, RfiStepStatus>{
-        for (final RfiSubmitStep step in RfiSubmitStep.values)
-          step: RfiStepStatus.waiting,
+        for (final RfiSubmitStep step in steps) step: RfiStepStatus.waiting,
       };
   String? _error;
 
-  RfiStepStatus statusOf(RfiSubmitStep step) => _status[step]!;
+  RfiStepStatus statusOf(RfiSubmitStep step) =>
+      _status[step] ?? RfiStepStatus.waiting;
   String? get error => _error;
   bool get finished =>
       _error != null ||
@@ -21,6 +27,9 @@ class RfiSubmitProgress extends ChangeNotifier {
       );
 
   void update(RfiSubmitStep step, RfiStepStatus status) {
+    if (!_status.containsKey(step)) {
+      return;
+    }
     _status[step] = status;
     notifyListeners();
   }
@@ -91,11 +100,11 @@ class RfiSubmitProgressDialog extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  for (final RfiSubmitStep step in RfiSubmitStep.values)
+                  for (final RfiSubmitStep step in progress.steps)
                     _StepRow(
                       step: step,
                       status: progress.statusOf(step),
-                      last: step == RfiSubmitStep.values.last,
+                      last: step == progress.steps.last,
                     ),
                   if (error != null) ...<Widget>[
                     const SizedBox(height: 8),

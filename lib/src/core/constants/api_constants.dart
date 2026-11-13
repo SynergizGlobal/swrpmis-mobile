@@ -274,6 +274,10 @@ class ApiConstants {
   static const String rfiUploadPdfContractorPath = '/rfi/uploadPdfContractor';
   static const String rfiStampPdfFromXmlPath = '/rfi/stampPdfFromXml';
 
+  /// Inspection submit (engineer). The doubled `/rfi/rfi/` is the web's path.
+  static const String rfiUploadPdfEngineerPath = '/rfi/rfi/uploadPdf/Engg';
+  static const String rfiStampEnggPdfFromXmlPath = '/rfi/stampEnggPdfFromXml';
+
   /// GET `?filepath=` → file bytes; the web uses it for site images and
   /// stored PDFs when building the inspection PDF.
   static const String validationPreviewFilesPath =

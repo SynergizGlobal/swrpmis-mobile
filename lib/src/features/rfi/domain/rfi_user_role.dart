@@ -240,3 +240,20 @@ extension RfiUserRolePermissions on RfiUserRole {
     return false;
   }
 }
+
+/// The role used for inspection actions. Roles mobile cannot work out from
+/// the user type fall back to the server's `/inspection-access` answer
+/// (ENGINEER or CONTRACTOR), which is what the web relies on.
+RfiUserRole rfiInspectionRole(RfiUserRole sessionRole, String accessType) {
+  final bool known = sessionRole != RfiUserRole.unknown &&
+      sessionRole != RfiUserRole.superUser &&
+      sessionRole != RfiUserRole.itAdmin;
+  if (known) {
+    return sessionRole;
+  }
+  return switch (accessType.trim().toUpperCase()) {
+    'ENGINEER' => RfiUserRole.engineer,
+    'CONTRACTOR' => RfiUserRole.contractorRep,
+    _ => sessionRole,
+  };
+}

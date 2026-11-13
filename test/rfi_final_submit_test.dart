@@ -145,7 +145,7 @@ void main() {
       ),
     );
     expect(find.text('Submitting Inspection'), findsOneWidget);
-    for (final RfiSubmitStep step in RfiSubmitStep.values) {
+    for (final RfiSubmitStep step in progress.steps) {
       expect(find.text(step.label), findsOneWidget);
     }
     expect(find.text('Completed'), findsNWidgets(2));

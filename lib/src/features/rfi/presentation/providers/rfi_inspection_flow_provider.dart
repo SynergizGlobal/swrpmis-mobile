@@ -177,6 +177,8 @@ class RfiInspectionFlowState {
     this.supportingDocuments = const <RfiLocalSupportingDoc>[],
     this.locationPermissionDenied = false,
     this.locationLoading = false,
+    this.engineerStatus = '',
+    this.engineerRemarks = '',
   });
 
   final RfiInspectionFlowArgs args;
@@ -199,6 +201,12 @@ class RfiInspectionFlowState {
   final List<RfiLocalSupportingDoc> supportingDocuments;
   final bool locationPermissionDenied;
   final bool locationLoading;
+
+  /// Engineer's decision: Accepted, Rejected or Returned_For_Rectification.
+  final String engineerStatus;
+
+  /// "Remarks By Client"; required unless the status is Accepted.
+  final String engineerRemarks;
 
   bool get hasSelfie => selfiePath != null && selfiePath!.trim().isNotEmpty;
 
@@ -227,6 +235,8 @@ class RfiInspectionFlowState {
     List<RfiLocalSupportingDoc>? supportingDocuments,
     bool? locationPermissionDenied,
     bool? locationLoading,
+    String? engineerStatus,
+    String? engineerRemarks,
   }) {
     return RfiInspectionFlowState(
       args: args,
@@ -262,6 +272,8 @@ class RfiInspectionFlowState {
       locationPermissionDenied:
           locationPermissionDenied ?? this.locationPermissionDenied,
       locationLoading: locationLoading ?? this.locationLoading,
+      engineerStatus: engineerStatus ?? this.engineerStatus,
+      engineerRemarks: engineerRemarks ?? this.engineerRemarks,
     );
   }
 }
@@ -286,9 +298,16 @@ class RfiInspectionFlowController
   RfiInspectionFlowRemoteDataSource get _source =>
       ref.read(rfiInspectionFlowRemoteDataSourceProvider);
 
+  /// `/inspection-access` answer, used when the user type is not one the
+  /// app recognises.
+  String _accessType = '';
+
   RfiUserRole get role {
     final AuthSession? session = ref.read(authControllerProvider).valueOrNull;
-    return RfiUserRoleResolver.fromSession(session);
+    return rfiInspectionRole(
+      RfiUserRoleResolver.fromSession(session),
+      _accessType,
+    );
   }
 
   String get uploadedBy => rfiInspectionUploadedBy(role);
@@ -296,6 +315,15 @@ class RfiInspectionFlowController
   String get checklistUploadedBy => rfiChecklistUploadedBy(role);
 
   Future<void> load() async {
+    if (_accessType.isEmpty) {
+      try {
+        _accessType = (await _source.fetchAccess(
+          arg.rfiCategory.isEmpty ? 'WORK' : arg.rfiCategory,
+        )).accessType;
+      } on Object {
+        _accessType = '';
+      }
+    }
     state = state.copyWith(loading: true, clearError: true);
     try {
       final RfiInspectionDetails details =
@@ -379,6 +407,50 @@ class RfiInspectionFlowController
 
   void updateContractorRepresentative(String value) =>
       state = state.copyWith(contractorRepresentative: value);
+
+  /// True for the client/engineer side; the web's `inspectionAccessType`
+  /// is ENGINEER for every non-contractor role.
+  bool get isEngineer => !rfiRoleIsContractorSide(role);
+
+  /// `uploadedBy` for submit and PDF upload: CON or ENGG (web values).
+  String get submitUploadedBy => isEngineer ? 'ENGG' : 'CON';
+
+  bool get isRfiNotRequired =>
+      !rfiRequiresStamp(state.details?.rfi.field('isRfiRequired') ?? '');
+
+  bool get isReturningForRectification =>
+      isEngineer && state.engineerStatus == rfiReturnForRectification;
+
+  void updateEngineerStatus(String value) =>
+      state = state.copyWith(engineerStatus: value);
+
+  void updateEngineerRemarks(String value) => state = state.copyWith(
+    engineerRemarks: value.length > 1000 ? value.substring(0, 1000) : value,
+  );
+
+  /// Web rule: a checklist row the contractor marked YES and the engineer
+  /// marked NO forces the inspection to Rejected.
+  Future<bool> checklistConflict() async {
+    final RfiInspectionDetails? details = state.details;
+    if (details == null) {
+      return false;
+    }
+    for (final RfiInspectionEnclosure e in details.enclosures) {
+      try {
+        final List<RfiChecklistItem> items = await loadChecklist(e);
+        if (items.any(
+          (RfiChecklistItem i) =>
+              i.contractorStatus.toUpperCase() == 'YES' &&
+              i.engineerStatus.toUpperCase() == 'NO',
+        )) {
+          return true;
+        }
+      } on Object {
+        // An unreadable checklist cannot prove a conflict.
+      }
+    }
+    return false;
+  }
 
   void updateContractorDescription(String value) =>
       state = state.copyWith(contractorDescription: value);
@@ -593,8 +665,35 @@ class RfiInspectionFlowController
     void Function(RfiSubmitStep step, RfiStepStatus status) onStep,
   ) async {
     state = state.copyWith(busy: true, clearError: true);
-    RfiSubmitStep current = RfiSubmitStep.session;
+    final bool rectification = isReturningForRectification;
+    RfiSubmitStep current =
+        rectification ? RfiSubmitStep.rectifyPrepare : RfiSubmitStep.session;
+    Future<String> finalSubmit() => _source.finalSubmit(
+      data: _submitPayload(),
+      selfiePath: state.selfiePath,
+      supportingFiles: rfiSupportingUploads(state.supportingDocuments)
+          .map(
+            (RfiLocalSupportingDoc d) => (
+              path: d.path,
+              description: d.description,
+            ),
+          )
+          .toList(growable: false),
+      testReportPath: state.testReportPath,
+    );
     try {
+      // Engineer returning for rectification: no PDF, upload or stamping.
+      if (rectification) {
+        onStep(current, RfiStepStatus.active);
+        onStep(current, RfiStepStatus.done);
+        current = RfiSubmitStep.rectifySend;
+        onStep(current, RfiStepStatus.active);
+        final String message = await finalSubmit();
+        onStep(current, RfiStepStatus.done);
+        state = state.copyWith(busy: false);
+        return message;
+      }
+
       onStep(current, RfiStepStatus.active);
       await _source.checkSession();
       onStep(current, RfiStepStatus.done);
@@ -606,36 +705,37 @@ class RfiInspectionFlowController
 
       current = RfiSubmitStep.upload;
       onStep(current, RfiStepStatus.active);
-      await _source.uploadContractorPdf(rfiId: arg.rfiId, pdf: pdf);
+      if (isEngineer) {
+        await _source.uploadEngineerPdf(
+          rfiId: arg.rfiId,
+          pdf: pdf,
+          inspectionStatus: state.engineerStatus,
+          engineerRemarks: state.engineerRemarks,
+        );
+      } else {
+        await _source.uploadContractorPdf(rfiId: arg.rfiId, pdf: pdf);
+      }
       onStep(current, RfiStepStatus.done);
 
       current = RfiSubmitStep.stamp;
-      if (rfiRequiresStamp(state.details?.rfi.field('isRfiRequired') ?? '')) {
-        onStep(current, RfiStepStatus.active);
-        await _source.stampContractorPdf(
-          rfiId: arg.rfiId,
-          txnId: rfiStampTxnId(),
-        );
-        onStep(current, RfiStepStatus.done);
-      } else {
+      if (isRfiNotRequired) {
         onStep(current, RfiStepStatus.skipped);
+      } else {
+        onStep(current, RfiStepStatus.active);
+        if (isEngineer) {
+          await _source.stampEngineerPdf(rfiId: arg.rfiId);
+        } else {
+          await _source.stampContractorPdf(
+            rfiId: arg.rfiId,
+            txnId: rfiStampTxnId(),
+          );
+        }
+        onStep(current, RfiStepStatus.done);
       }
 
       current = RfiSubmitStep.finalize;
       onStep(current, RfiStepStatus.active);
-      final String message = await _source.finalSubmit(
-        data: _submitPayload(),
-        selfiePath: state.selfiePath,
-        supportingFiles: rfiSupportingUploads(state.supportingDocuments)
-            .map(
-              (RfiLocalSupportingDoc d) => (
-                path: d.path,
-                description: d.description,
-              ),
-            )
-            .toList(growable: false),
-        testReportPath: state.testReportPath,
-      );
+      final String message = await finalSubmit();
       onStep(current, RfiStepStatus.done);
       state = state.copyWith(busy: false);
       return message;
@@ -643,7 +743,8 @@ class RfiInspectionFlowController
       onStep(current, RfiStepStatus.failed);
       // Only a failed final submit falls back to a draft; earlier steps
       // changed nothing the inspector would lose.
-      final bool draftSaved = current == RfiSubmitStep.finalize &&
+      final bool draftSaved =
+          current == RfiSubmitStep.finalize &&
           await _saveDraftAfterFailedSubmit();
       state = state.copyWith(busy: false, error: error);
       throw RfiSubmitStepFailure(current, error, draftSaved: draftSaved);
@@ -754,8 +855,15 @@ class RfiInspectionFlowController
       contractor: rfi.field('contractorName'),
       contractorRep: state.contractorRepresentative,
       location: state.location,
-      conSubmittedOn: rfiPdfTimestamp(DateTime.now()),
-      enggSubmittedOn: '',
+      // Web: the submitter's side gets "now"; for an engineer the contractor
+      // date is printed only when the RFI is not required.
+      conSubmittedOn: isEngineer
+          ? (isRfiNotRequired ? rfi.field('contractorSubmittedOn') : '')
+          : rfiPdfTimestamp(DateTime.now()),
+      enggSubmittedOn: isEngineer ? rfiPdfTimestamp(DateTime.now()) : '',
+      rfiNotRequired: isRfiNotRequired,
+      inspectionStatus: isEngineer ? state.engineerStatus : '',
+      engineerRemarks: isEngineer ? state.engineerRemarks : '',
       raisedOn: rfiPdfServerDate(rfi.field('createdAt')),
       rfiDescriptionSelected: rfi.rfiDescription,
       rfiDescription: rfi.description,
@@ -768,8 +876,12 @@ class RfiInspectionFlowController
       chainageTo: chainageType ? rfi.field('chainageTo') : '',
       layer: layerType ? rfi.field('layer') : '',
       enclosures: enclosures,
-      inspDescriptionCon: state.contractorDescription,
-      inspDescriptionEngg: rfi.field('enggDescriptionEnclosure'),
+      inspDescriptionCon: isEngineer
+          ? rfi.field('conDescriptionEnclosure')
+          : state.contractorDescription,
+      inspDescriptionEngg: isEngineer
+          ? state.contractorDescription
+          : rfi.field('enggDescriptionEnclosure'),
       measurements: state.measurements
           .map(
             (RfiInspectionMeasurementRow m) => RfiPdfMeasurement(
@@ -829,11 +941,12 @@ class RfiInspectionFlowController
       fonts: await RfiInspectionPdfFonts.load(),
       logo: logo,
     );
+    // RFI Required = No appends supporting documents only (web RFI-NO).
     return mergeRfiInspectionPdf(
       main: main,
-      enclosures: enclosurePdfs,
+      enclosures: isRfiNotRequired ? const <Uint8List>[] : enclosurePdfs,
       supporting: supporting,
-      testReports: testReports,
+      testReports: isRfiNotRequired ? const <Uint8List>[] : testReports,
     );
   }
 
@@ -1016,9 +1129,11 @@ class RfiInspectionFlowController
   /// The `/rfi/finalSubmit` `data` JSON, matching the web payload.
   Map<String, dynamic> _submitPayload() {
     return buildRfiFinalSubmitPayload(
-      inspectionId: state.conInspectionId,
+      inspectionId: isEngineer
+          ? int.tryParse(state.details?.rfi.field('enggInspectionId') ?? '')
+          : state.conInspectionId,
       rfiId: arg.rfiId,
-      uploadedBy: uploadedBy,
+      uploadedBy: submitUploadedBy,
       location: state.location,
       chainage: state.chainage,
       nameOfRepresentative: state.contractorRepresentative,
@@ -1039,10 +1154,10 @@ class RfiInspectionFlowController
           )
           .toList(growable: false),
       testInsiteLab: _mapTestType(state.testInSiteLab),
-      // Accepted / Rejected is the engineer's decision (engineer flow, later);
-      // the contractor sends null like the web.
-      inspectionStatus: null,
-      engineerRemarks: null,
+      // Accepted / Rejected / Returned is the engineer's decision; the
+      // contractor sends null like the web.
+      inspectionStatus: isEngineer ? state.engineerStatus : null,
+      engineerRemarks: isEngineer ? state.engineerRemarks : null,
       descriptionEnclosure: state.contractorDescription,
       supportingDescriptions: rfiSupportingUploads(state.supportingDocuments)
           .map((RfiLocalSupportingDoc d) => d.description)
@@ -1169,7 +1284,9 @@ enum RfiSubmitStep {
   pdf('Generating Inspection PDF'),
   upload('Uploading Inspection PDF'),
   stamp('E-Sign / Stamping in progress'),
-  finalize('Finalizing inspection');
+  finalize('Finalizing inspection'),
+  rectifyPrepare('Preparing rectification return'),
+  rectifySend('Sending back for rectification');
 
   const RfiSubmitStep(this.label);
 
@@ -1199,10 +1316,54 @@ String rfiSubmitStepMessage(RfiSubmitStepFailure failure) {
     RfiSubmitStep.pdf => 'PDF generation failed: $reason',
     RfiSubmitStep.upload => 'Upload Inspection Pdf failed: $reason',
     RfiSubmitStep.stamp => 'E-sign failed: $reason',
+    RfiSubmitStep.rectifyPrepare ||
+    RfiSubmitStep.rectifySend => 'Return for rectification failed: $reason',
     RfiSubmitStep.finalize =>
       'PDF was uploaded and signed, but final submit failed: $reason'
           '${failure.draftSaved ? '\n\nYour inspection was saved as a draft.' : ''}',
   };
+}
+
+/// The steps shown for a submit, like the web's step list.
+List<RfiSubmitStep> rfiSubmitSteps({required bool rectification}) =>
+    rectification
+    ? const <RfiSubmitStep>[
+        RfiSubmitStep.rectifyPrepare,
+        RfiSubmitStep.rectifySend,
+      ]
+    : const <RfiSubmitStep>[
+        RfiSubmitStep.session,
+        RfiSubmitStep.pdf,
+        RfiSubmitStep.upload,
+        RfiSubmitStep.stamp,
+        RfiSubmitStep.finalize,
+      ];
+
+const String rfiInspectionAccepted = 'Accepted';
+const String rfiInspectionRejected = 'Rejected';
+const String rfiReturnForRectification = 'Returned_For_Rectification';
+
+/// Engineer status choices; Return For Rectification is online only.
+List<(String, String)> rfiEngineerStatusOptions({required bool offline}) =>
+    <(String, String)>[
+      (rfiInspectionAccepted, 'Accepted'),
+      (rfiInspectionRejected, 'Rejected'),
+      if (!offline) (rfiReturnForRectification, 'Return For Rectification'),
+    ];
+
+/// Web validation before an engineer submit; null when it may go ahead.
+String? rfiEngineerSubmitError(RfiInspectionFlowState state) {
+  if (state.engineerStatus.trim().isEmpty) {
+    return 'Please select Inspection Status!';
+  }
+  if (state.engineerStatus != rfiInspectionAccepted &&
+      state.engineerRemarks.trim().isEmpty) {
+    final String label = state.engineerStatus == rfiReturnForRectification
+        ? 'Returned For Rectification'
+        : state.engineerStatus;
+    return 'Remarks are mandatory when Inspection is $label!';
+  }
+  return null;
 }
 
 /// Stamping runs only when the RFI is required (web: `!isRfiNotRequired`).

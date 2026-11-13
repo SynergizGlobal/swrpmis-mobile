@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_access.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_row.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_inspection_actions.dart';
@@ -100,7 +101,10 @@ void main() {
   test(
     'sample row lets an engineer start inspection and hides it from a contractor',
     () {
-      final RfiInspectionRow row = RfiInspectionRow.fromJson(sample);
+      final RfiInspectionRow row = RfiInspectionRow.fromJson(<String, dynamic>{
+        ...sample,
+        'status': 'INSPECTED_BY_CON',
+      });
       final DateTime now = DateTime(2026, 10, 8, 16);
 
       final List<RfiInspectionAction> engineer = rfiInspectionActions(
@@ -115,9 +119,10 @@ void main() {
       );
 
       expect(engineer, contains(RfiInspectionAction.startOnline));
-      expect(engineer, contains(RfiInspectionAction.startOffline));
-      expect(engineer, contains(RfiInspectionAction.viewDetails));
-      expect(engineer, contains(RfiInspectionAction.submit));
+      expect(engineer, <RfiInspectionAction>[
+        RfiInspectionAction.startOnline,
+        RfiInspectionAction.viewDetails,
+      ]);
       expect(engineer, isNot(contains(RfiInspectionAction.sendForValidation)));
       expect(contractor, isNot(contains(RfiInspectionAction.startOnline)));
       expect(contractor, isNot(contains(RfiInspectionAction.startOffline)));
@@ -125,4 +130,89 @@ void main() {
       expect(contractor, isNot(contains(RfiInspectionAction.submit)));
     },
   );
+
+  test('engineer side gets Start Inspection Online without row qty', () {
+    final RfiInspectionRow row = RfiInspectionRow.fromJson(<String, dynamic>{
+      ...sample,
+      'status': 'INSPECTED_BY_CON',
+      'measurementType': null,
+      'totalQty': null,
+    });
+    final DateTime now = DateTime(2026, 10, 8, 16);
+    for (final RfiUserRole role in <RfiUserRole>[
+      RfiUserRole.engineer,
+      RfiUserRole.dyHod,
+      RfiUserRole.dyHodEngineer,
+      RfiUserRole.hod,
+    ]) {
+      expect(
+        rfiInspectionActions(role: role, row: row, now: now),
+        contains(RfiInspectionAction.startOnline),
+        reason: role.name,
+      );
+    }
+    expect(
+      rfiInspectionActions(role: RfiUserRole.contractor, row: row, now: now),
+      isNot(contains(RfiInspectionAction.startOnline)),
+    );
+  });
+
+  test('signature check accepts the server reply shapes', () {
+    expect(
+      RfiUserSignature.parse(<String, dynamic>{'exists': true}).exists,
+      isTrue,
+    );
+    expect(RfiUserSignature.parse(true).exists, isTrue);
+    expect(RfiUserSignature.parse('true').exists, isTrue);
+    expect(
+      RfiUserSignature.parse(<String, dynamic>{'exists': false}).exists,
+      isFalse,
+    );
+    expect(RfiUserSignature.parse(null).exists, isFalse);
+  });
+
+  test('engineer cannot start once past INSPECTED_BY_CON', () {
+    final DateTime now = DateTime(2026, 10, 8, 16);
+    for (final String status in <String>[
+      'AE_INSP_ONGOING',
+      'UNDER_ENGG_RECTIFICATION',
+      'CREATED',
+    ]) {
+      final RfiInspectionRow row = RfiInspectionRow.fromJson(<String, dynamic>{
+        ...sample,
+        'status': status,
+      });
+      final List<RfiInspectionAction> actions = rfiInspectionActions(
+        role: RfiUserRole.engineer,
+        row: row,
+        now: now,
+      );
+      expect(
+        actions,
+        isNot(contains(RfiInspectionAction.startOnline)),
+        reason: status,
+      );
+      expect(
+        actions,
+        isNot(contains(RfiInspectionAction.startOffline)),
+        reason: status,
+      );
+    }
+  });
+
+  test('unknown user types use the server inspection access', () {
+    expect(
+      rfiInspectionRole(RfiUserRole.unknown, 'ENGINEER'),
+      RfiUserRole.engineer,
+    );
+    expect(
+      rfiInspectionRole(RfiUserRole.unknown, 'CONTRACTOR'),
+      RfiUserRole.contractorRep,
+    );
+    expect(
+      rfiInspectionRole(RfiUserRole.contractor, 'ENGINEER'),
+      RfiUserRole.contractor,
+    );
+    expect(rfiInspectionRole(RfiUserRole.unknown, ''), RfiUserRole.unknown);
+  });
 }

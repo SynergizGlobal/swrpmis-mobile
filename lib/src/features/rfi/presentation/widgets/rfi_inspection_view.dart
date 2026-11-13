@@ -373,8 +373,13 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
           if (row == null) {
             return const Text('—');
           }
+          final String accessType =
+              ref
+                  .watch(rfiInspectionAccessTypeProvider(row.rfiCategory))
+                  .valueOrNull ??
+              '';
           final List<RfiInspectionAction> actions = rfiInspectionActions(
-            role: role,
+            role: rfiInspectionRole(role, accessType),
             row: row,
           );
           if (actions.isEmpty) {

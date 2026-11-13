@@ -86,8 +86,8 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
       _error = null;
     });
     try {
-      final List<RfiChecklistItem> items =
-          await widget.controller.loadChecklist(widget.enclosure);
+      final List<RfiChecklistItem> items = await widget.controller
+          .loadChecklist(widget.enclosure);
       final String grade = items
           .map((RfiChecklistItem item) => item.gradeOfConcrete)
           .firstWhere((String value) => value.isNotEmpty, orElse: () => '');
@@ -219,132 +219,108 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
               Container(
                 width: double.infinity,
                 color: const Color(0xFFE8F1FB),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 child: Text(_info, style: theme.textTheme.bodyMedium),
               ),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(_error!),
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(_error!),
+                      ),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: <Widget>[
+                        _metaField('Name of Contract', rfi.contract),
+                        _metaField('Date', rfi.dateOfInspection),
+                        _metaField('Structure Type', rfi.structureType),
+                        _metaField('Component', rfi.component),
+                        _metaField('Element', rfi.element),
+                        _metaField('Activity', rfi.activity),
+                        _metaField('RFI No', rfi.rfiId),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Grade of Concrete/Steel',
+                          style: theme.textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _gradeController,
+                          enabled: _isContractor && !_saving,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
                           ),
-                        )
-                      : ListView(
-                          padding: const EdgeInsets.all(16),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          color: AppTheme.brandPrimary,
+                          child: Text(
+                            widget.enclosure.enclosureName.toUpperCase(),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
                           children: <Widget>[
-                            _metaField('Name of Contract', rfi.contract),
-                            _metaField('Date', rfi.dateOfInspection),
-                            _metaField('Structure Type', rfi.structureType),
-                            _metaField('Component', rfi.component),
-                            _metaField('Element', rfi.element),
-                            _metaField('Activity', rfi.activity),
-                            _metaField('RFI No', rfi.rfiId),
-                            const SizedBox(height: 8),
                             Text(
-                              'Grade of Concrete/Steel',
-                              style: theme.textTheme.labelLarge,
+                              _isContractor
+                                  ? 'Contractor Select All:'
+                                  : 'Engineer Select All:',
                             ),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: _gradeController,
-                              enabled: _isContractor && !_saving,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              color: AppTheme.brandPrimary,
-                              child: Text(
-                                widget.enclosure.enclosureName.toUpperCase(),
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                key: ValueKey<String>('all-$_selectAll'),
+                                initialValue: _selectAll,
+                                items: _selectAllOptions
+                                    .map(
+                                      (String option) =>
+                                          DropdownMenuItem<String>(
+                                            value: option,
+                                            child: Text(option),
+                                          ),
+                                    )
+                                    .toList(),
+                                onChanged: _saving ? null : _applySelectAll,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
                                 ),
                               ),
                             ),
-                            if (_isContractor) ...<Widget>[
-                              const SizedBox(height: 12),
-                              Row(
-                                children: <Widget>[
-                                  const Text('Contractor Select All:'),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: DropdownButtonFormField<String>(
-                                      initialValue: _selectAll,
-                                      items: _selectAllOptions
-                                          .map(
-                                            (String option) =>
-                                                DropdownMenuItem<String>(
-                                              value: option,
-                                              child: Text(option),
-                                            ),
-                                          )
-                                          .toList(),
-                                      onChanged: _saving ? null : _applySelectAll,
-                                      decoration: const InputDecoration(
-                                        border: OutlineInputBorder(),
-                                        isDense: true,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            for (int i = 0; i < _items.length; i++)
-                              _ChecklistRowCard(
-                                index: i + 1,
-                                item: _items[i],
-                                statusOptions: _statusOptions,
-                                contractorEditable: _isContractor && !_saving,
-                                engineerEditable:
-                                    !_isContractor && !_saving,
-                                onContractorStatus: (String? value) {
-                                  setState(() {
-                                    _items = List<RfiChecklistItem>.from(
-                                      _items,
-                                    );
-                                    _items[i] = _items[i].copyWith(
-                                      contractorStatus: value ?? '',
-                                    );
-                                  });
-                                },
-                                onEngineerStatus: (String? value) {
-                                  setState(() {
-                                    _items = List<RfiChecklistItem>.from(
-                                      _items,
-                                    );
-                                    _items[i] = _items[i].copyWith(
-                                      engineerStatus: value ?? '',
-                                    );
-                                  });
-                                },
-                                onContractorRemark: (String value) {
-                                  _items = List<RfiChecklistItem>.from(_items);
-                                  _items[i] = _items[i].copyWith(
-                                    contractorRemarks: value,
-                                  );
-                                },
-                                onEngineerRemark: (String value) {
-                                  _items = List<RfiChecklistItem>.from(_items);
-                                  _items[i] = _items[i].copyWith(
-                                    engineerRemark: value,
-                                  );
-                                },
-                              ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        _ChecklistTable(
+                          items: _items,
+                          statusOptions: _statusOptions,
+                          contractorEditable: _isContractor && !_saving,
+                          engineerEditable: !_isContractor && !_saving,
+                          onChanged: (int i, RfiChecklistItem item) {
+                            setState(() {
+                              _items = List<RfiChecklistItem>.from(_items)
+                                ..[i] = item;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -353,8 +329,11 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
                 children: <Widget>[
                   FilledButton(
                     onPressed: _saving || _loading ? null : _submit,
+                    // The app theme makes filled buttons full width; in this
+                    // Row that is infinite and the dialog fails to lay out.
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.brandPrimary,
+                      minimumSize: const Size(96, 44),
                     ),
                     child: _saving
                         ? const SizedBox(
@@ -366,10 +345,14 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
                   ),
                   const SizedBox(width: 12),
                   FilledButton(
-                    onPressed:
-                        _saving ? null : () => Navigator.of(context).pop(),
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    // The app theme makes filled buttons full width; in this
+                    // Row that is infinite and the dialog fails to lay out.
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.brandPrimary,
+                      minimumSize: const Size(96, 44),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -398,133 +381,190 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
   }
 }
 
-class _ChecklistRowCard extends StatelessWidget {
-  const _ChecklistRowCard({
-    required this.index,
-    required this.item,
+/// Web-style checklist table: ID, Description, Contractor Status,
+/// Engineer Status, Contractor Remark, Engineer Remark. Each side edits only
+/// its own two columns; the other side's are read-only text.
+class _ChecklistTable extends StatelessWidget {
+  const _ChecklistTable({
+    required this.items,
     required this.statusOptions,
     required this.contractorEditable,
     required this.engineerEditable,
-    required this.onContractorStatus,
-    required this.onEngineerStatus,
-    required this.onContractorRemark,
-    required this.onEngineerRemark,
+    required this.onChanged,
   });
 
-  final int index;
-  final RfiChecklistItem item;
+  final List<RfiChecklistItem> items;
   final List<String> statusOptions;
   final bool contractorEditable;
   final bool engineerEditable;
-  final ValueChanged<String?> onContractorStatus;
-  final ValueChanged<String?> onEngineerStatus;
-  final ValueChanged<String> onContractorRemark;
-  final ValueChanged<String> onEngineerRemark;
+  final void Function(int index, RfiChecklistItem item) onChanged;
+
+  static const List<(String, double)> _columns = <(String, double)>[
+    ('ID', 44),
+    ('Description', 230),
+    ('Contractor Status', 130),
+    ('Engineer Status', 130),
+    ('Contractor Remark', 170),
+    ('Engineer Remark', 170),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final BorderSide line = BorderSide(color: scheme.outlineVariant);
+    Widget cell(double width, Widget child, {Color? color}) => Container(
+      width: width,
+      color: color,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      alignment: Alignment.centerLeft,
+      child: child,
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DecoratedBox(
+        decoration: BoxDecoration(border: Border.fromBorderSide(line)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              '$index. ${item.checklistDescription}',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 10),
-            Text('Contractor Status', style: Theme.of(context).textTheme.labelMedium),
-            if (!contractorEditable)
-              _statusText(item.contractorStatus)
-            else
-            Wrap(
-              spacing: 4,
-              children: statusOptions
-                  .map(
-                    (String option) => ChoiceChip(
-                      label: Text(option),
-                      selected:
-                          item.contractorStatus.toUpperCase() == option,
-                      onSelected: contractorEditable
-                          ? (bool selected) =>
-                              onContractorStatus(selected ? option : '')
-                          : null,
+            Row(
+              children: <Widget>[
+                for (final (String label, double width) in _columns)
+                  cell(
+                    width,
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.brandPrimary,
+                      ),
                     ),
-                  )
-                  .toList(),
+                    color: scheme.brightness == Brightness.dark
+                        ? const Color(0xFF1B3556)
+                        : const Color(0xFFE8F1FB),
+                  ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text('Engineer Status', style: Theme.of(context).textTheme.labelMedium),
-            if (!engineerEditable)
-              _statusText(item.engineerStatus)
-            else
-            Wrap(
-              spacing: 4,
-              children: statusOptions
-                  .map(
-                    (String option) => ChoiceChip(
-                      label: Text(option),
-                      selected: item.engineerStatus.toUpperCase() == option,
-                      onSelected: engineerEditable
-                          ? (bool selected) =>
-                              onEngineerStatus(selected ? option : '')
-                          : null,
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 8),
-            if (!contractorEditable)
-              _remarkText('Contractor Remark', item.contractorRemarks)
-            else
-            TextFormField(
-              enabled: contractorEditable,
-              initialValue: item.contractorRemarks,
-              decoration: const InputDecoration(
-                labelText: 'Contractor Remark',
-                border: OutlineInputBorder(),
-                isDense: true,
+            for (int i = 0; i < items.length; i++)
+              DecoratedBox(
+                decoration: BoxDecoration(border: Border(top: line)),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      cell(_columns[0].$2, Text('${i + 1}')),
+                      cell(_columns[1].$2, Text(items[i].checklistDescription)),
+                      cell(
+                        _columns[2].$2,
+                        _status(
+                          context,
+                          'c-$i-${items[i].contractorStatus}',
+                          items[i].contractorStatus,
+                          contractorEditable,
+                          (String v) => onChanged(
+                            i,
+                            items[i].copyWith(contractorStatus: v),
+                          ),
+                        ),
+                      ),
+                      cell(
+                        _columns[3].$2,
+                        _status(
+                          context,
+                          'e-$i-${items[i].engineerStatus}',
+                          items[i].engineerStatus,
+                          engineerEditable,
+                          (String v) => onChanged(
+                            i,
+                            items[i].copyWith(engineerStatus: v),
+                          ),
+                        ),
+                      ),
+                      cell(
+                        _columns[4].$2,
+                        _remark(
+                          'cr-$i',
+                          items[i].contractorRemarks,
+                          contractorEditable,
+                          (String v) => onChanged(
+                            i,
+                            items[i].copyWith(contractorRemarks: v),
+                          ),
+                        ),
+                      ),
+                      cell(
+                        _columns[5].$2,
+                        _remark(
+                          'er-$i',
+                          items[i].engineerRemark,
+                          engineerEditable,
+                          (String v) => onChanged(
+                            i,
+                            items[i].copyWith(engineerRemark: v),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              onChanged: onContractorRemark,
-            ),
-            const SizedBox(height: 8),
-            if (!engineerEditable)
-              _remarkText('Engineer Remark', item.engineerRemark)
-            else
-            TextFormField(
-              enabled: engineerEditable,
-              initialValue: item.engineerRemark,
-              decoration: const InputDecoration(
-                labelText: 'Engineer Remark',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              onChanged: onEngineerRemark,
-            ),
           ],
         ),
       ),
     );
   }
 
-  /// The other side's status, read-only like the web ("Not Updated" when
-  /// empty).
-  Widget _statusText(String status) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Text(
-        status.isEmpty ? 'Not Updated' : status.toUpperCase(),
-        style: const TextStyle(fontWeight: FontWeight.w700),
+  Widget _status(
+    BuildContext context,
+    String key,
+    String value,
+    bool editable,
+    ValueChanged<String> onPicked,
+  ) {
+    final String current = value.toUpperCase();
+    if (!editable) {
+      return Text(
+        current.isEmpty ? 'Not Updated' : current,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      );
+    }
+    return DropdownButtonFormField<String>(
+      key: ValueKey<String>(key),
+      initialValue: statusOptions.contains(current) ? current : null,
+      hint: const Text('Select'),
+      isExpanded: true,
+      items: statusOptions
+          .map((String o) => DropdownMenuItem<String>(value: o, child: Text(o)))
+          .toList(),
+      onChanged: (String? v) => onPicked(v ?? ''),
+      decoration: const InputDecoration(
+        isDense: true,
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       ),
     );
   }
 
-  Widget _remarkText(String label, String remark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text('$label: ${remark.isEmpty ? '—' : remark}'),
+  Widget _remark(
+    String key,
+    String value,
+    bool editable,
+    ValueChanged<String> onEdited,
+  ) {
+    if (!editable) {
+      return Text(value.isEmpty ? '—' : value);
+    }
+    return TextFormField(
+      key: ValueKey<String>(key),
+      initialValue: value,
+      minLines: 1,
+      maxLines: 3,
+      decoration: const InputDecoration(
+        isDense: true,
+        hintText: 'Remark',
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      ),
+      onChanged: onEdited,
     );
   }
 }

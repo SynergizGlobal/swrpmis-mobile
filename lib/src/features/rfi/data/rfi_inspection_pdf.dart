@@ -108,7 +108,13 @@ class RfiInspectionPdfData {
     this.validationRows = const <List<String>>[],
     this.contractorImages = const <Uint8List>[],
     this.engineerImages = const <Uint8List>[],
+    this.rfiNotRequired = false,
   });
+
+  /// RFI Required = No uses the web's shorter layout
+  /// (`generateInspectionPdfRfiNo`): no location, enclosures, contractor
+  /// description or checklists, and the client description on page 1.
+  final bool rfiNotRequired;
 
   final String rfiNo;
   final String rfiCategory;
@@ -306,7 +312,17 @@ class RfiInspectionPdf {
               width: 250,
             ),
             _text(40, 205, "Name of Contractor's Representative :", 10),
-            _text(212, 205, t(d.contractorRep), 10, width: 135),
+            _text(
+              212,
+              205,
+              t(
+                d.rfiNotRequired && d.contractorRep.trim().isEmpty
+                    ? 'NA'
+                    : d.contractorRep,
+              ),
+              10,
+              width: 135,
+            ),
             _text(350, 205, 'Contractor Submitted On:', 10),
             _text(465, 205, t(d.conSubmittedOn), 10, width: 100),
             _text(40, 225, 'RFI Raised On:', 10),
@@ -315,14 +331,16 @@ class RfiInspectionPdf {
             _text(465, 225, t(d.enggSubmittedOn), 10, width: 100),
             _text(40, 245, label, 10, bold: true, color: _grey, width: 520),
             _text(40, 260, t(value), 10, width: 500),
-            _text(40, 282, 'Location:', 10, bold: true),
-            _text(
-              85,
-              282,
-              t(d.location.isEmpty ? 'Not Provided' : d.location),
-              10,
-              width: 400,
-            ),
+            if (!d.rfiNotRequired) ...<pw.Widget>[
+              _text(40, 282, 'Location:', 10, bold: true),
+              _text(
+                85,
+                282,
+                t(d.location.isEmpty ? 'Not Provided' : d.location),
+                10,
+                width: 400,
+              ),
+            ],
             _text(40, 317, 'RFI Description:', 10, bold: true),
             _box(40, 328, 510, 40),
             _text(45, 343, t(d.rfiDescription), 10, width: 500),
@@ -340,6 +358,22 @@ class RfiInspectionPdf {
             _text(40, 530, 'Remarks:', 11, bold: true),
             if (status.toLowerCase() == 'rejected')
               _text(50, 550, t(d.engineerRemarks), 10, width: 495),
+            if (d.rfiNotRequired) ...<pw.Widget>[
+              _text(
+                40,
+                590,
+                'Inspection Description (Client):',
+                10,
+                bold: true,
+              ),
+              _text(
+                40,
+                606,
+                t(_normalize(d.inspDescriptionEngg)),
+                9,
+                width: 500,
+              ),
+            ],
             _text(80, _pageH - 60, 'Contractor Representative', 10),
             _text(316, _pageH - 60, 'SWR Representative', 10),
           ],
@@ -504,7 +538,7 @@ class RfiInspectionPdf {
         ),
       ),
       build: (pw.Context context) => <pw.Widget>[
-        if (d.validationRows.isNotEmpty) ...<pw.Widget>[
+        if (!d.rfiNotRequired && d.validationRows.isNotEmpty) ...<pw.Widget>[
           _heading('Validation History:', 11),
           _table(
             const <String>[
@@ -521,16 +555,18 @@ class RfiInspectionPdf {
           ),
           pw.SizedBox(height: 20),
         ],
-        _heading('Enclosures:', 11),
-        pw.SizedBox(height: 8),
-        _enclosureTicks(d, t),
-        pw.SizedBox(height: 22),
-        _heading('Inspection Description (Contractor):', 10),
-        pw.Text(t(_normalize(d.inspDescriptionCon)), style: _body9),
-        pw.SizedBox(height: 15),
-        _heading('Inspection Description (Client):', 10),
-        pw.Text(t(_normalize(d.inspDescriptionEngg)), style: _body9),
-        pw.SizedBox(height: 20),
+        if (!d.rfiNotRequired) ...<pw.Widget>[
+          _heading('Enclosures:', 11),
+          pw.SizedBox(height: 8),
+          _enclosureTicks(d, t),
+          pw.SizedBox(height: 22),
+          _heading('Inspection Description (Contractor):', 10),
+          pw.Text(t(_normalize(d.inspDescriptionCon)), style: _body9),
+          pw.SizedBox(height: 15),
+          _heading('Inspection Description (Client):', 10),
+          pw.Text(t(_normalize(d.inspDescriptionEngg)), style: _body9),
+          pw.SizedBox(height: 20),
+        ],
         if (d.isWork && d.workDetails.isNotEmpty) ...<pw.Widget>[
           _heading('Work Details', 11),
           _table(
@@ -546,7 +582,9 @@ class RfiInspectionPdf {
           ),
           pw.SizedBox(height: 20),
         ],
-        if (d.isWork && d.earthworkDetails.isNotEmpty) ...<pw.Widget>[
+        if (!d.rfiNotRequired &&
+            d.isWork &&
+            d.earthworkDetails.isNotEmpty) ...<pw.Widget>[
           _heading(
             '${d.structureType.isEmpty ? 'Additional' : d.structureType} Inspection Details',
             11,
@@ -595,7 +633,7 @@ class RfiInspectionPdf {
           t,
         ),
         pw.SizedBox(height: 30),
-        ..._checklists(d, t),
+        if (!d.rfiNotRequired) ..._checklists(d, t),
         ..._images('Contractor Site Images:', d.contractorImages),
         ..._images('Engineer Site Images:', d.engineerImages),
       ],

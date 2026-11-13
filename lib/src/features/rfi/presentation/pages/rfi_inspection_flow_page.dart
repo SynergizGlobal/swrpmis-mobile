@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +8,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
-import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_details.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_flow_provider.dart';
@@ -21,6 +19,8 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_stored_file.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/rfi_log_print.dart';
 import 'package:printing/printing.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_submit_progress_dialog.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 class RfiInspectionFlowPage extends ConsumerStatefulWidget {
   const RfiInspectionFlowPage({super.key, required this.args});
@@ -84,8 +84,38 @@ class _RfiInspectionFlowPageState
 
   Future<void> _captureSelfie(RfiInspectionFlowController notifier) async {
     try {
+      // Debug builds may take the selfie from the photo library (the iOS
+      // Simulator has no camera). Release builds are camera-only.
+      ImageSource source = ImageSource.camera;
+      if (kDebugMode) {
+        final ImageSource? picked = await showModalBottomSheet<ImageSource>(
+          context: context,
+          showDragHandle: true,
+          builder: (BuildContext sheet) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: const Text('Camera'),
+                  onTap: () => Navigator.pop(sheet, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Photo library (debug only)'),
+                  onTap: () => Navigator.pop(sheet, ImageSource.gallery),
+                ),
+              ],
+            ),
+          ),
+        );
+        if (picked == null) {
+          return;
+        }
+        source = picked;
+      }
       final XFile? file = await _picker.pickImage(
-        source: ImageSource.camera,
+        source: source,
         preferredCameraDevice: CameraDevice.front,
         maxWidth: 1280,
         maxHeight: 1280,
@@ -179,9 +209,8 @@ class _RfiInspectionFlowPageState
     final RfiInspectionFlowController notifier =
         ref.read(rfiInspectionFlowControllerProvider(widget.args).notifier);
     _syncControllers(state);
-    final RfiUserRole role = RfiUserRoleResolver.fromSession(
-      ref.watch(authControllerProvider).valueOrNull,
-    );
+    // Includes the /inspection-access fallback for unrecognised user types.
+    final RfiUserRole role = notifier.role;
     final String title = state.currentStep == 1
         ? 'RFI Inspection - Step 1'
         : 'RFI Inspection - Step 2';
@@ -597,7 +626,9 @@ class _RfiInspectionFlowPageState
               ),
               const SizedBox(height: 16),
               _sectionCard(
-                title: 'Description By Contractor',
+                title: notifier.isEngineer
+                    ? 'Description By Client'
+                    : 'Description By Contractor',
                 child: TextField(
                   controller: _contractorDescription,
                   minLines: 3,
@@ -636,6 +667,59 @@ class _RfiInspectionFlowPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
+                    if (notifier.isEngineer) ...<Widget>[
+                      const Text('Inspection Status *'),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey<String>(
+                          'engg-status-${state.engineerStatus}',
+                        ),
+                        initialValue: state.engineerStatus.isEmpty
+                            ? null
+                            : state.engineerStatus,
+                        hint: const Text('Select Inspection Status'),
+                        items: <DropdownMenuItem<String>>[
+                          for (final (String value, String label)
+                              in rfiEngineerStatusOptions(
+                                offline: widget.args.offline,
+                              ))
+                            DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(label),
+                            ),
+                        ],
+                        onChanged: state.busy
+                            ? null
+                            : (String? value) {
+                                if (value != null) {
+                                  notifier.updateEngineerStatus(value);
+                                }
+                              },
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                      if (state.engineerStatus.isNotEmpty &&
+                              state.engineerStatus != rfiInspectionAccepted ||
+                          state.engineerRemarks.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 12),
+                        const Text('Remarks By Client *'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          initialValue: state.engineerRemarks,
+                          minLines: 3,
+                          maxLines: 5,
+                          maxLength: 1000,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter remarks',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: notifier.updateEngineerRemarks,
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                    ],
                     const Text('Tests in Site/Lab'),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -753,49 +837,7 @@ class _RfiInspectionFlowPageState
                   child: FilledButton(
                     onPressed: state.busy || !notifier.isStep2Valid()
                         ? null
-                        : () async {
-                            final bool? confirmed = await AppDialog.show(
-                              context,
-                              variant: AppDialogVariant.confirm,
-                              title: 'Submit inspection',
-                              message:
-                                  'Submit this RFI inspection now?',
-                            );
-                            if (confirmed != true) {
-                              return;
-                            }
-                            if (notifier.uploadedBy == 'CON') {
-                              await _submitWithProgress(notifier);
-                              return;
-                            }
-                            // Engineer flow (upload/Engg, Engg stamping) is
-                            // not built yet; keep the direct submit.
-                            try {
-                              final String message = await notifier.submit();
-                              if (!context.mounted) {
-                                return;
-                              }
-                              await AppDialog.show(
-                                context,
-                                variant: AppDialogVariant.success,
-                                title: 'Submitted',
-                                message: message,
-                              );
-                              if (context.mounted && context.canPop()) {
-                                context.pop(true);
-                              }
-                            } on Object catch (error) {
-                              if (!context.mounted) {
-                                return;
-                              }
-                              await AppDialog.show(
-                                context,
-                                variant: AppDialogVariant.error,
-                                title: 'Submit failed',
-                                message: rfiSubmitFailureMessage(error),
-                              );
-                            }
-                          },
+                        : () => _onSubmitPressed(notifier),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF198754),
                     ),
@@ -919,11 +961,65 @@ class _RfiInspectionFlowPageState
     ];
   }
 
-  /// Contractor submit with the web's step-by-step progress dialog.
+  /// Web checks before submitting: engineer status/remarks, the checklist
+  /// YES/NO auto-reject, and the rectification confirmation.
+  Future<void> _onSubmitPressed(RfiInspectionFlowController notifier) async {
+    if (notifier.isEngineer) {
+      final String? problem = rfiEngineerSubmitError(
+        ref.read(rfiInspectionFlowControllerProvider(widget.args)),
+      );
+      if (problem != null) {
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.warning,
+          title: 'Inspection status',
+          message: problem,
+        );
+        return;
+      }
+      if (!notifier.isRfiNotRequired &&
+          !notifier.isReturningForRectification &&
+          await notifier.checklistConflict()) {
+        notifier.updateEngineerStatus(rfiInspectionRejected);
+        if (!mounted) {
+          return;
+        }
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.warning,
+          title: 'Inspection auto-rejected',
+          message:
+              'Contractor marked YES but Engineer marked NO — Inspection auto-rejected.',
+        );
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    final bool confirmed = await AppDialog.confirm(
+      context,
+      title: notifier.isReturningForRectification
+          ? 'Return for rectification'
+          : 'Submit inspection',
+      message: notifier.isReturningForRectification
+          ? 'Are you sure you want to return this for rectification?'
+          : 'Submit this RFI inspection now?',
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    await _submitWithProgress(notifier);
+  }
+
+  /// Submit with the web's step-by-step progress dialog.
   Future<void> _submitWithProgress(
     RfiInspectionFlowController notifier,
   ) async {
-    final RfiSubmitProgress progress = RfiSubmitProgress();
+    final RfiSubmitProgress progress = RfiSubmitProgress(
+      steps: rfiSubmitSteps(
+        rectification: notifier.isReturningForRectification,
+      ),
+    );
     final Future<void> dialog = showRfiSubmitProgressDialog(context, progress);
     try {
       final String message = await notifier.submitWithSteps(progress.update);
