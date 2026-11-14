@@ -10,6 +10,7 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_details.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
+import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_flow_provider.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/rfi_inspection_errors.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_checklist_dialog.dart';
@@ -1041,6 +1042,9 @@ class _RfiInspectionFlowPageState
     } on RfiSubmitStepFailure catch (failure) {
       progress.fail(rfiSubmitStepMessage(failure));
       await dialog;
+      if (failure.step == RfiSubmitStep.session && mounted) {
+        await ref.read(authControllerProvider.notifier).logout();
+      }
     } on Object catch (error) {
       progress.fail(rfiInspectionErrorMessage(error));
       await dialog;

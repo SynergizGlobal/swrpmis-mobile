@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/router/app_page.dart';
 import 'package:swr_pmis_mobile/src/app/router/go_router_refresh.dart';
+import 'package:swr_pmis_mobile/src/core/network/dio_client.dart';
 import 'package:swr_pmis_mobile/src/core/app_update/app_update_host.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/app_system_back.dart';
 import 'package:swr_pmis_mobile/src/core/navigation/module_catalog.dart';
@@ -71,6 +72,12 @@ final goRouterRefreshProvider = Provider<GoRouterRefresh>((ref) {
     AsyncValue<AuthSession?> next,
   ) {
     notifier.notifyAuthChanged();
+  });
+  ref.listen<bool>(sessionExpiredProvider, (bool? prev, bool next) {
+    if (next) {
+      ref.read(sessionExpiredProvider.notifier).state = false;
+      ref.read(authControllerProvider.notifier).logout();
+    }
   });
   return notifier;
 });

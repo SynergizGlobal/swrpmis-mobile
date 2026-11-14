@@ -127,11 +127,12 @@ class ProfilePage extends ConsumerWidget {
                 FutureBuilder<PackageInfo>(
                   future: PackageInfo.fromPlatform(),
                   builder: (BuildContext context, AsyncSnapshot<PackageInfo> snap) {
-                    final String version = snap.data == null
-                        ? AppConstants.appName
-                        : '${AppConstants.appName}  ${snap.data!.version} (${snap.data!.buildNumber})';
+                    final PackageInfo? info = snap.data;
+                    if (info == null) {
+                      return const SizedBox(height: 16);
+                    }
                     return Text(
-                      version,
+                      'Version ${info.version} (${info.buildNumber})',
                       textAlign: TextAlign.center,
                       style: Theme.of(
                         context,
