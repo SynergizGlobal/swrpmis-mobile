@@ -737,7 +737,7 @@ class _KpiCard extends StatelessWidget {
     final AppPalette palette = AppPalette.of(context);
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Container(
-      height: 120,
+      constraints: const BoxConstraints(minHeight: 120),
       padding: AppTheme.cardPadding,
       decoration: BoxDecoration(
         color: palette.kpiFill,
@@ -746,6 +746,7 @@ class _KpiCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Icon(icon, size: 18, color: colors.primary),
           const SizedBox(height: 8),

@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/fcm_notification_navigator.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/local_notification_service.dart';
 
-/// Starts FCM notification-tap navigation once per app launch.
+/// Starts FCM notification-tap navigation and the local-notification display
+/// service once per app launch.
 class FcmNotificationBootstrap extends ConsumerStatefulWidget {
   const FcmNotificationBootstrap({super.key, required this.child});
 
@@ -18,7 +20,8 @@ class _FcmNotificationBootstrapState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(localNotificationServiceProvider).initialize();
       ref.read(fcmNotificationNavigatorProvider).start();
     });
   }

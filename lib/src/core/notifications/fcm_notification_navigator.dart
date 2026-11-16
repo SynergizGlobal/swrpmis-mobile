@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/firebase_options.dart';
 import 'package:swr_pmis_mobile/src/app/router/app_router.dart';
+import 'package:swr_pmis_mobile/src/core/notifications/local_notification_service.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/notification_route_resolver.dart';
 import 'package:swr_pmis_mobile/src/core/notifications/pending_notification_location.dart';
 import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
@@ -31,11 +33,35 @@ class FcmNotificationNavigator {
       _handleMessage(initial);
     }
 
+    _consumeLocalNotificationPayload();
+    LocalNotificationService.onTapCallback = _onLocalNotificationTap;
+
     _openedSub = FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
+  void _consumeLocalNotificationPayload() {
+    final String? raw = LocalNotificationService.pendingPayload;
+    if (raw == null) {
+      return;
+    }
+    LocalNotificationService.pendingPayload = null;
+    try {
+      final Map<String, dynamic> data = Map<String, dynamic>.from(
+        jsonDecode(raw) as Map,
+      );
+      _navigateFromData(data);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Local notification payload parse failed: $error');
+      }
+    }
+  }
+
   void _handleMessage(RemoteMessage message) {
-    final Map<String, dynamic> data = Map<String, dynamic>.from(message.data);
+    _navigateFromData(Map<String, dynamic>.from(message.data));
+  }
+
+  void _navigateFromData(Map<String, dynamic> data) {
     final String? type = NotificationRouteResolver.typeFromData(data);
     final String? referenceType =
         NotificationRouteResolver.referenceTypeFromData(data);
@@ -49,7 +75,7 @@ class FcmNotificationNavigator {
 
     if (kDebugMode) {
       debugPrint(
-        'FCM tap → type=$type referenceType=$referenceType '
+        'Notification tap → type=$type referenceType=$referenceType '
         'referenceId=$referenceId userId=$notificationUserId '
         'loggedIn=${session != null}',
       );
@@ -62,7 +88,7 @@ class FcmNotificationNavigator {
         )) {
       if (kDebugMode) {
         debugPrint(
-          'FCM tap ignored: notification userId=$notificationUserId '
+          'Notification tap ignored: userId=$notificationUserId '
           '!= session=${session.userId}',
         );
       }
@@ -94,13 +120,27 @@ class FcmNotificationNavigator {
         _ref.read(pendingNotificationNavProvider.notifier).state = null;
       } catch (error, stack) {
         if (kDebugMode) {
-          debugPrint('FCM navigation failed: $error\n$stack');
+          debugPrint('Notification navigation failed: $error\n$stack');
         }
       }
     });
   }
 
+  void _onLocalNotificationTap(String payload) {
+    try {
+      final Map<String, dynamic> data = Map<String, dynamic>.from(
+        jsonDecode(payload) as Map,
+      );
+      _navigateFromData(data);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Local notification tap parse failed: $error');
+      }
+    }
+  }
+
   void dispose() {
+    LocalNotificationService.onTapCallback = null;
     _openedSub?.cancel();
     _openedSub = null;
   }
