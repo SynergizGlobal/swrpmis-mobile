@@ -57,42 +57,52 @@ class _MailInboxListViewState extends ConsumerState<MailInboxListView> {
         final List<MailMessage> filtered = items
             .where((MailMessage m) => mailMatchesQuery(m, _search.text))
             .toList(growable: false);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
-                controller: _search,
-                decoration: mailSearchDecoration(context: context, hint: 'Search mail...'),
-                onChanged: (_) => setState(() {}),
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(mailInboxProvider),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  controller: _search,
+                  decoration: mailSearchDecoration(context: context, hint: 'Search mail...'),
+                  onChanged: (_) => setState(() {}),
+                ),
               ),
-            ),
-            Expanded(
-              child: filtered.isEmpty
-                  ? const Center(child: Text('No mail in inbox'))
-                  : ListView.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (BuildContext context, int index) {
-                        return _InboxRow(
-                          message: filtered[index],
-                          onOpen: () => showMailDetailSheet(context, filtered[index]),
-                          onStar: () => mailToggleStarAction(
-                            context,
-                            ref,
-                            filtered[index],
-                          ),
-                          onTrash: () => mailTrashAction(
-                            context,
-                            ref,
-                            filtered[index],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+              Expanded(
+                child: filtered.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const <Widget>[
+                          SizedBox(height: 120),
+                          Center(child: Text('No mail in inbox')),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (BuildContext context, int index) {
+                          return _InboxRow(
+                            message: filtered[index],
+                            onOpen: () => showMailDetailSheet(context, filtered[index]),
+                            onStar: () => mailToggleStarAction(
+                              context,
+                              ref,
+                              filtered[index],
+                            ),
+                            onTrash: () => mailTrashAction(
+                              context,
+                              ref,
+                              filtered[index],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -256,64 +266,67 @@ class _MailDraftsListViewState extends ConsumerState<MailDraftsListView> {
           page: _page,
           pageSize: _pageSize,
         );
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'Drafts',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: MailTheme.heading(context),
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(mailDraftsProvider),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Drafts',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: MailTheme.heading(context),
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${filtered.length} drafts messages',
-                          style: MailTheme.mutedStyle(context),
-                        ),
-                      ],
+                          Text(
+                            '${filtered.length} drafts messages',
+                            style: MailTheme.mutedStyle(context),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: 220,
-                    child: TextField(
-                      controller: _search,
-                      decoration: mailSearchDecoration(context: context, hint: 'Search drafts...'),
-                      onChanged: (_) => setState(() => _page = 1),
+                    SizedBox(
+                      width: 220,
+                      child: TextField(
+                        controller: _search,
+                        decoration: mailSearchDecoration(context: context, hint: 'Search drafts...'),
+                        onChanged: (_) => setState(() => _page = 1),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: ListView(
-                children: <Widget>[
-                  const Divider(height: 1),
-                  for (final MailMessage message in page.items)
-                    _DraftRow(
-                      message: message,
-                      onEdit: () {
-                        context.push(
-                          MailComposePage.draftPath(message.mailId),
-                        );
-                      },
-                      onStar: () =>
-                          mailToggleStarAction(context, ref, message),
-                      onTrash: () =>
-                          mailTrashAction(context, ref, message),
-                    ),
-                ],
+              Expanded(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: <Widget>[
+                    const Divider(height: 1),
+                    for (final MailMessage message in page.items)
+                      _DraftRow(
+                        message: message,
+                        onEdit: () {
+                          context.push(
+                            MailComposePage.draftPath(message.mailId),
+                          );
+                        },
+                        onStar: () =>
+                            mailToggleStarAction(context, ref, message),
+                        onTrash: () =>
+                            mailTrashAction(context, ref, message),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            TablePaginationFooter(
+              TablePaginationFooter(
               label: page.label,
               total: page.total,
               page: page.page,
@@ -326,7 +339,8 @@ class _MailDraftsListViewState extends ConsumerState<MailDraftsListView> {
                     _page = 1;
                   }),
             ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -446,73 +460,77 @@ class _MailSentListViewState extends ConsumerState<MailSentListView> {
           page: _page,
           pageSize: _pageSize,
         );
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'Sent Mail',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: MailTheme.heading(context),
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(mailSentProvider),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Sent Mail',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: MailTheme.heading(context),
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${filtered.length} messages',
-                          style: MailTheme.mutedStyle(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    width: 220,
-                    child: TextField(
-                      controller: _search,
-                      decoration: mailSearchDecoration(
-                        context: context,
-                        hint: 'Search sent mails...',
+                          Text(
+                            '${filtered.length} messages',
+                            style: MailTheme.mutedStyle(context),
+                          ),
+                        ],
                       ),
-                      onChanged: (_) => setState(() => _page = 1),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                children: <Widget>[
-                  const Divider(height: 1),
-                  for (final MailMessage message in page.items)
-                    _SentRow(
-                      message: message,
-                      onTrash: () =>
-                          mailTrashAction(context, ref, message),
+                    SizedBox(
+                      width: 220,
+                      child: TextField(
+                        controller: _search,
+                        decoration: mailSearchDecoration(
+                          context: context,
+                          hint: 'Search sent mails...',
+                        ),
+                        onChanged: (_) => setState(() => _page = 1),
+                      ),
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            TablePaginationFooter(
-              label: page.label,
-              total: page.total,
-              page: page.page,
-              pageCount: page.pageCount,
-              pageSize: page.pageSize,
-              onPageChanged: (int value) => setState(() => _page = value),
-              onPageSizeChanged: (int value) =>
-                  setState(() {
-                    _pageSize = value;
-                    _page = 1;
-                  }),
-            ),
-          ],
+              Expanded(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: <Widget>[
+                    const Divider(height: 1),
+                    for (final MailMessage message in page.items)
+                      _SentRow(
+                        message: message,
+                        onTrash: () =>
+                            mailTrashAction(context, ref, message),
+                      ),
+                  ],
+                ),
+              ),
+              TablePaginationFooter(
+                label: page.label,
+                total: page.total,
+                page: page.page,
+                pageCount: page.pageCount,
+                pageSize: page.pageSize,
+                onPageChanged: (int value) => setState(() => _page = value),
+                onPageSizeChanged: (int value) =>
+                    setState(() {
+                      _pageSize = value;
+                      _page = 1;
+                    }),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -607,71 +625,81 @@ class _MailStarredListViewState extends ConsumerState<MailStarredListView> {
         final List<MailMessage> filtered = items
             .where((MailMessage m) => mailMatchesQuery(m, _search.text))
             .toList(growable: false);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    widget.title,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: MailTheme.heading(context),
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(mailStarredProvider),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: MailTheme.heading(context),
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${filtered.length} starred threads',
-                    style: MailTheme.mutedStyle(context),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _search,
-                    decoration: mailSearchDecoration(
-                      context: context,
-                      hint: 'Search starred mails...',
+                    Text(
+                      '${filtered.length} starred threads',
+                      style: MailTheme.mutedStyle(context),
                     ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _search,
+                      decoration: mailSearchDecoration(
+                        context: context,
+                        hint: 'Search starred mails...',
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: filtered.isEmpty
-                  ? const Center(child: Text('No starred mail'))
-                  : ListView.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (BuildContext context, int index) {
-                        final MailMessage message = filtered[index];
-                        return ListTile(
-                          leading: const Icon(
-                            Icons.star_rounded,
-                            color: Colors.amber,
-                          ),
-                          title: Text(
-                            message.displaySender,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            '${message.displaySubject} — ${message.snippet}',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: Text(
-                            formatMailDateShort(message.sentAt ?? message.createdAt),
-                            style: MailTheme.mutedStyle(context),
-                          ),
-                          onTap: () => showMailDetailSheet(context, message),
-                        );
-                      },
-                    ),
-            ),
-          ],
+              Expanded(
+                child: filtered.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const <Widget>[
+                          SizedBox(height: 120),
+                          Center(child: Text('No starred mail')),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (BuildContext context, int index) {
+                          final MailMessage message = filtered[index];
+                          return ListTile(
+                            leading: const Icon(
+                              Icons.star_rounded,
+                              color: Colors.amber,
+                            ),
+                            title: Text(
+                              message.displaySender,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              '${message.displaySubject} — ${message.snippet}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: Text(
+                              formatMailDateShort(message.sentAt ?? message.createdAt),
+                              style: MailTheme.mutedStyle(context),
+                            ),
+                            onTap: () => showMailDetailSheet(context, message),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -716,95 +744,105 @@ class _MailTrashListViewState extends ConsumerState<MailTrashListView> {
           page: _page,
           pageSize: _pageSize,
         );
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'Trash',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: MailTheme.heading(context),
-                          ),
-                        ),
-                        Text(
-                          '${filtered.length} deleted items',
-                          style: MailTheme.mutedStyle(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    width: 220,
-                    child: TextField(
-                      controller: _search,
-                      decoration: mailSearchDecoration(
-                        context: context,
-                        hint: 'Search trash...',
-                      ),
-                      onChanged: (_) => setState(() => _page = 1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: filtered.isEmpty
-                  ? const Center(child: Text('Trash is empty'))
-                  : ListView(
-                      children: <Widget>[
-                        const Divider(height: 1),
-                        for (final MailMessage message in page.items)
-                          _TrashRow(
-                            message: message,
-                            onRestore: () =>
-                                mailRestoreAction(context, ref, message),
-                            onDelete: () => mailPermanentDeleteAction(
-                              context,
-                              ref,
-                              message,
-                            ),
-                            onOpen: () =>
-                                showMailDetailSheet(context, message),
-                          ),
-                      ],
-                    ),
-            ),
-            if (filtered.isNotEmpty) ...<Widget>[
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(mailTrashProvider),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: OutlinedButton.icon(
-                    onPressed: () =>
-                        mailRestoreAllAction(context, ref, filtered),
-                    icon: const Icon(Icons.restore_rounded),
-                    label: const Text('Restore All'),
-                  ),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Trash',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: MailTheme.heading(context),
+                            ),
+                          ),
+                          Text(
+                            '${filtered.length} deleted items',
+                            style: MailTheme.mutedStyle(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: TextField(
+                        controller: _search,
+                        decoration: mailSearchDecoration(
+                          context: context,
+                          hint: 'Search trash...',
+                        ),
+                        onChanged: (_) => setState(() => _page = 1),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              TablePaginationFooter(
-                label: page.label,
-                total: page.total,
-                page: page.page,
-                pageCount: page.pageCount,
-                pageSize: page.pageSize,
-                onPageChanged: (int value) => setState(() => _page = value),
-                onPageSizeChanged: (int value) => setState(() {
-                  _pageSize = value;
-                  _page = 1;
-                }),
+              Expanded(
+                child: filtered.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const <Widget>[
+                          SizedBox(height: 120),
+                          Center(child: Text('Trash is empty')),
+                        ],
+                      )
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: <Widget>[
+                          const Divider(height: 1),
+                          for (final MailMessage message in page.items)
+                            _TrashRow(
+                              message: message,
+                              onRestore: () =>
+                                  mailRestoreAction(context, ref, message),
+                              onDelete: () => mailPermanentDeleteAction(
+                                context,
+                                ref,
+                                message,
+                              ),
+                              onOpen: () =>
+                                  showMailDetailSheet(context, message),
+                            ),
+                        ],
+                      ),
               ),
+              if (filtered.isNotEmpty) ...<Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          mailRestoreAllAction(context, ref, filtered),
+                      icon: const Icon(Icons.restore_rounded),
+                      label: const Text('Restore All'),
+                    ),
+                  ),
+                ),
+                TablePaginationFooter(
+                  label: page.label,
+                  total: page.total,
+                  page: page.page,
+                  pageCount: page.pageCount,
+                  pageSize: page.pageSize,
+                  onPageChanged: (int value) => setState(() => _page = value),
+                  onPageSizeChanged: (int value) => setState(() {
+                    _pageSize = value;
+                    _page = 1;
+                  }),
+                ),
+              ],
             ],
-          ],
+          ),
         );
       },
     );
@@ -929,64 +967,68 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
         final List<MailMessage> filtered = items
             .where((MailMessage m) => mailMatchesQuery(m, _search.text))
             .toList(growable: false);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'LABEL',
-                          style: MailTheme.mutedStyle(context, fontSize: 11).copyWith(
-                            letterSpacing: 0.8,
+        return RefreshIndicator(
+          onRefresh: () async =>
+              ref.invalidate(mailLabelMailsProvider(widget.labelName)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'LABEL',
+                            style: MailTheme.mutedStyle(context, fontSize: 11).copyWith(
+                              letterSpacing: 0.8,
+                            ),
                           ),
-                        ),
-                        Text(
-                          widget.labelName,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
+                          Text(
+                            widget.labelName,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Mails assigned to this label',
-                          style: MailTheme.mutedStyle(context),
-                        ),
-                      ],
+                          Text(
+                            'Mails assigned to this label',
+                            style: MailTheme.mutedStyle(context),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: MailTheme.borderSubtle(context)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('${filtered.length} mails'),
                     ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: MailTheme.borderSubtle(context)),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('${filtered.length} mails'),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _search,
-                decoration: mailSearchDecoration(context: context, hint: 'Search mails...'),
-                onChanged: (_) => setState(() {}),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _search,
+                  decoration: mailSearchDecoration(context: context, hint: 'Search mails...'),
+                  onChanged: (_) => setState(() {}),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.separated(
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (BuildContext context, int index) {
                   final MailMessage message = filtered[index];
                   return ListTile(
@@ -1016,7 +1058,8 @@ class _MailLabelListViewState extends ConsumerState<MailLabelListView> {
                 },
               ),
             ),
-          ],
+            ],
+          ),
         );
       },
     );

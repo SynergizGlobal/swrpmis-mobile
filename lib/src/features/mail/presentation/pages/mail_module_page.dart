@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_list_scaffold.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
-import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_repository_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_dashboard_view.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_folder_views.dart';
@@ -95,8 +94,29 @@ class MailModulePage extends ConsumerStatefulWidget {
 class _MailModulePageState extends ConsumerState<MailModulePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  Future<void> _refreshAll() async {
-    await mailRefreshAll(ref);
+  String _folderTitle() {
+    switch (widget.folder) {
+      case MailFolder.dashboard:
+        return 'Mail Correspondence Dashboard';
+      case MailFolder.inbox:
+        return 'Inbox';
+      case MailFolder.drafts:
+        return 'Drafts';
+      case MailFolder.sent:
+        return 'Sent Mail';
+      case MailFolder.trash:
+        return 'Trash';
+      case MailFolder.starred:
+        return 'Flagged';
+      case MailFolder.important:
+        return 'Important';
+      case MailFolder.repository:
+        return 'My Repository';
+      case MailFolder.label:
+        return widget.labelName ?? 'Label';
+      case MailFolder.compose:
+        return 'Compose';
+    }
   }
 
   Widget _folderBody() {
@@ -132,21 +152,12 @@ class _MailModulePageState extends ConsumerState<MailModulePage> {
     return AppListScaffold(
       scaffoldKey: _scaffoldKey,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: const BackButton(),
         title: const Text('Mail'),
-        leading: wide
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              ),
-        actions: <Widget>[
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _refreshAll,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          const MailNotificationsMenu(),
-          const SizedBox(width: 8),
+        actions: const <Widget>[
+          MailNotificationsMenu(),
+          SizedBox(width: 8),
         ],
       ),
       drawer: wide
@@ -159,19 +170,57 @@ class _MailModulePageState extends ConsumerState<MailModulePage> {
                 onNavigate: () => Navigator.of(context).pop(),
               ),
             ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          if (wide)
-            SizedBox(
-              width: 260,
-              child: MailSidebar(
-                selected: widget.folder,
-                labelName: widget.labelName,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (wide)
+              SizedBox(
+                width: 260,
+                child: MailSidebar(
+                  selected: widget.folder,
+                  labelName: widget.labelName,
+                ),
+              ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  if (!wide)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 16, 0),
+                      child: Row(
+                        children: <Widget>[
+                          IconButton(
+                            tooltip: 'Menu',
+                            icon: const Icon(Icons.menu, size: 22),
+                            onPressed: () =>
+                                _scaffoldKey.currentState?.openDrawer(),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _folderTitle(),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Expanded(child: _folderBody()),
+                ],
               ),
             ),
-          Expanded(child: _folderBody()),
-        ],
+          ],
+        ),
       ),
     );
   }

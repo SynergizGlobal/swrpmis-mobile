@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
@@ -14,6 +16,9 @@ import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_pr
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_correspondence_detail_sheet.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_correspondence_table.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_ui_helpers.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
 
 class MailDashboardView extends ConsumerStatefulWidget {
   const MailDashboardView({super.key});
@@ -27,6 +32,12 @@ class _MailDashboardViewState extends ConsumerState<MailDashboardView> {
   int _page = 1;
   int _pageSize = 10;
   bool _exporting = false;
+
+  String _contractFilter = '';
+  String _replyFilter = '';
+  String _statusFilter = '';
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   @override
   void dispose() {
@@ -117,15 +128,48 @@ class _MailDashboardViewState extends ConsumerState<MailDashboardView> {
         final List<MailCorrespondenceRow> filtered = data.rows.where((
           MailCorrespondenceRow row,
         ) {
-          if (q.isEmpty) {
-            return true;
+          if (q.isNotEmpty) {
+            final bool matchesSearch =
+                row.mailNo.toLowerCase().contains(q) ||
+                row.reference.toLowerCase().contains(q) ||
+                row.contractor.toLowerCase().contains(q) ||
+                row.contract.toLowerCase().contains(q) ||
+                row.subject.toLowerCase().contains(q) ||
+                row.person.toLowerCase().contains(q);
+            if (!matchesSearch) {
+              return false;
+            }
           }
-          return row.mailNo.toLowerCase().contains(q) ||
-              row.reference.toLowerCase().contains(q) ||
-              row.contractor.toLowerCase().contains(q) ||
-              row.contract.toLowerCase().contains(q) ||
-              row.subject.toLowerCase().contains(q) ||
-              row.person.toLowerCase().contains(q);
+          if (_contractFilter.isNotEmpty) {
+            final String combined =
+                '${row.contract} / ${row.contractor}'.trim();
+            if (combined != _contractFilter) {
+              return false;
+            }
+          }
+          if (_replyFilter.isNotEmpty &&
+              row.replyRequired != _replyFilter) {
+            return false;
+          }
+          if (_statusFilter.isNotEmpty && row.status != _statusFilter) {
+            return false;
+          }
+          if (_dateFrom != null || _dateTo != null) {
+            final DateTime? rowDate = _parseRowDate(row.date);
+            if (rowDate == null) {
+              return false;
+            }
+            if (_dateFrom != null && rowDate.isBefore(_dateFrom!)) {
+              return false;
+            }
+            if (_dateTo != null &&
+                rowDate.isAfter(
+                  _dateTo!.add(const Duration(days: 1)),
+                )) {
+              return false;
+            }
+          }
+          return true;
         }).toList(growable: false);
         final TablePage<MailCorrespondenceRow> page =
             TablePage.slice<MailCorrespondenceRow>(
@@ -143,24 +187,18 @@ class _MailDashboardViewState extends ConsumerState<MailDashboardView> {
         final MailDashboardSummary s = data.summary;
         final bool showFooter = filtered.isNotEmpty;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(mailDashboardProvider),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Text(
-                      'Mail',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: MailTheme.heading(context),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
@@ -211,6 +249,43 @@ class _MailDashboardViewState extends ConsumerState<MailDashboardView> {
                         fontWeight: FontWeight.w700,
                         color: MailTheme.heading(context),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    _CorrespondenceFilterBar(
+                      rows: data.rows,
+                      contractFilter: _contractFilter,
+                      replyFilter: _replyFilter,
+                      statusFilter: _statusFilter,
+                      dateFrom: _dateFrom,
+                      dateTo: _dateTo,
+                      onContractChanged: (String? v) => setState(() {
+                        _contractFilter = v ?? '';
+                        _page = 1;
+                      }),
+                      onReplyChanged: (String? v) => setState(() {
+                        _replyFilter = v ?? '';
+                        _page = 1;
+                      }),
+                      onStatusChanged: (String? v) => setState(() {
+                        _statusFilter = v ?? '';
+                        _page = 1;
+                      }),
+                      onDateFromChanged: (DateTime? d) => setState(() {
+                        _dateFrom = d;
+                        _page = 1;
+                      }),
+                      onDateToChanged: (DateTime? d) => setState(() {
+                        _dateTo = d;
+                        _page = 1;
+                      }),
+                      onClear: () => setState(() {
+                        _contractFilter = '';
+                        _replyFilter = '';
+                        _statusFilter = '';
+                        _dateFrom = null;
+                        _dateTo = null;
+                        _page = 1;
+                      }),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -299,9 +374,205 @@ class _MailDashboardViewState extends ConsumerState<MailDashboardView> {
                   });
                 },
               ),
-          ],
+            ],
+          ),
         );
       },
+    );
+  }
+}
+
+DateTime? _parseRowDate(String text) {
+  final String t = text.trim();
+  if (t.isEmpty || t == '-') {
+    return null;
+  }
+  try {
+    return DateFormat('dd-MM-yyyy').parseStrict(t);
+  } on FormatException {
+    return DateTime.tryParse(t);
+  }
+}
+
+class _CorrespondenceFilterBar extends StatelessWidget {
+  const _CorrespondenceFilterBar({
+    required this.rows,
+    required this.contractFilter,
+    required this.replyFilter,
+    required this.statusFilter,
+    required this.dateFrom,
+    required this.dateTo,
+    required this.onContractChanged,
+    required this.onReplyChanged,
+    required this.onStatusChanged,
+    required this.onDateFromChanged,
+    required this.onDateToChanged,
+    required this.onClear,
+  });
+
+  final List<MailCorrespondenceRow> rows;
+  final String contractFilter;
+  final String replyFilter;
+  final String statusFilter;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  final ValueChanged<String?> onContractChanged;
+  final ValueChanged<String?> onReplyChanged;
+  final ValueChanged<String?> onStatusChanged;
+  final ValueChanged<DateTime?> onDateFromChanged;
+  final ValueChanged<DateTime?> onDateToChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final Set<String> contracts = <String>{};
+    final Set<String> replies = <String>{};
+    final Set<String> statuses = <String>{};
+    for (final MailCorrespondenceRow r in rows) {
+      final String c = '${r.contract} / ${r.contractor}'.trim();
+      if (c.isNotEmpty && c != ' / ') {
+        contracts.add(c);
+      }
+      if (r.replyRequired.isNotEmpty) {
+        replies.add(r.replyRequired);
+      }
+      if (r.status.isNotEmpty) {
+        statuses.add(r.status);
+      }
+    }
+    final List<String> sortedContracts = contracts.toList()..sort();
+    final List<String> sortedReplies = replies.toList()..sort();
+    final List<String> sortedStatuses = statuses.toList()..sort();
+
+    return AppFilterSection(
+      activeCount: AppFilterSection.countActive(<String?>[
+        contractFilter.isEmpty ? null : contractFilter,
+        replyFilter.isEmpty ? null : replyFilter,
+        statusFilter.isEmpty ? null : statusFilter,
+        dateFrom == null ? null : 'set',
+        dateTo == null ? null : 'set',
+      ]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          RfiFilterGrid(
+            children: <Widget>[
+              RfiFilterField(
+                label: 'Contract / Contractor',
+                emptyLabel: 'All Contracts / Contractors',
+                value: contractFilter.isEmpty ? null : contractFilter,
+                options: <RfiFilterOption>[
+                  for (final String c in sortedContracts)
+                    RfiFilterOption(id: c, label: c),
+                ],
+                selectedId:
+                    contractFilter.isEmpty ? null : contractFilter,
+                onClear: contractFilter.isEmpty
+                    ? null
+                    : () => onContractChanged(null),
+                onPick: (RfiFilterOption o) => onContractChanged(o.id),
+              ),
+              _DateFilterField(
+                label: 'Date From',
+                value: dateFrom,
+                onChanged: onDateFromChanged,
+              ),
+              _DateFilterField(
+                label: 'Date To',
+                value: dateTo,
+                onChanged: onDateToChanged,
+              ),
+              RfiFilterField(
+                label: 'Reply Required',
+                emptyLabel: 'All',
+                value: replyFilter.isEmpty ? null : replyFilter,
+                options: <RfiFilterOption>[
+                  for (final String r in sortedReplies)
+                    RfiFilterOption(id: r, label: r),
+                ],
+                selectedId: replyFilter.isEmpty ? null : replyFilter,
+                onClear: replyFilter.isEmpty
+                    ? null
+                    : () => onReplyChanged(null),
+                onPick: (RfiFilterOption o) => onReplyChanged(o.id),
+              ),
+              RfiFilterField(
+                label: 'Status',
+                emptyLabel: 'All',
+                value: statusFilter.isEmpty ? null : statusFilter,
+                options: <RfiFilterOption>[
+                  for (final String s in sortedStatuses)
+                    RfiFilterOption(id: s, label: s),
+                ],
+                selectedId: statusFilter.isEmpty ? null : statusFilter,
+                onClear: statusFilter.isEmpty
+                    ? null
+                    : () => onStatusChanged(null),
+                onPick: (RfiFilterOption o) => onStatusChanged(o.id),
+              ),
+              RfiFilterClearButton(
+                label: 'Clear',
+                onPressed: onClear,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateFilterField extends StatelessWidget {
+  const _DateFilterField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final DateTime? value;
+  final ValueChanged<DateTime?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final String text = value == null
+        ? 'dd/mm/yyyy'
+        : DateFormat('dd/MM/yyyy').format(value!);
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+      onTap: () async {
+        final DateTime now = DateTime.now();
+        final DateTime? picked = await showDatePicker(
+          context: context,
+          useRootNavigator: true,
+          initialDate: value ?? now,
+          firstDate: DateTime(now.year - 15),
+          lastDate: DateTime(now.year + 5),
+        );
+        if (picked != null) {
+          onChanged(DateTime(picked.year, picked.month, picked.day));
+        }
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: value == null
+              ? const Icon(Icons.calendar_today_rounded, size: 18)
+              : IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  onPressed: () => onChanged(null),
+                ),
+        ),
+        child: Text(
+          text,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: value == null
+                ? Theme.of(context).colorScheme.onSurfaceVariant
+                : null,
+          ),
+        ),
+      ),
     );
   }
 }

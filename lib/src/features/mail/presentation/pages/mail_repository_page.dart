@@ -450,19 +450,22 @@ class _MailRepositoryPageState extends ConsumerState<MailRepositoryPage> {
                 style: MailTheme.mutedStyle(context),
               ),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
                 children: <Widget>[
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : _createFolder,
-                    icon: const Icon(Icons.create_new_folder_outlined),
-                    label: const Text('New Folder'),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _createFolder,
+                      icon: const Icon(Icons.create_new_folder_outlined),
+                      label: const Text('New Folder'),
+                    ),
                   ),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _upload,
-                    icon: const Icon(Icons.upload_rounded),
-                    label: const Text('Upload Files'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _busy ? null : _upload,
+                      icon: const Icon(Icons.upload_rounded),
+                      label: const Text('Upload Files'),
+                    ),
                   ),
                 ],
               ),

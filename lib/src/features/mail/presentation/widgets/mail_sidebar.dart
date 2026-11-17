@@ -153,7 +153,7 @@ class MailSidebar extends ConsumerWidget {
                             MailModulePage.labelPath(label.name);
                         onNavigate?.call();
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          router.go(path);
+                          router.pushReplacement(path);
                         });
                       },
                     );
@@ -177,7 +177,7 @@ class MailSidebar extends ConsumerWidget {
     final String path = MailModulePage.folderPath(folder);
     onNavigate?.call();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      router.go(path);
+      router.pushReplacement(path);
     });
   }
 
