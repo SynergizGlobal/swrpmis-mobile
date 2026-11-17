@@ -222,9 +222,9 @@ class ApiConstants {
   static const String p6ContractsForProjectPath =
       '/ajax/getContractListInP6New';
 
-  /// Multipart upload used by Baseline (and reused for Revised Baseline / Update
-  /// until distinct endpoints are confirmed).
-  static const String p6UploadNewDataPath = '/upload-p6-new-data';
+  static const String p6UploadBaselinePath = '/upload-p6-new-data';
+  static const String p6UploadRevisedBaselinePath = '/revised-p6-new-activities';
+  static const String p6UploadUpdatePath = '/update-p6-new-activities';
 
   static const String structureTypesInActivitiesPath =
       '/ajax/getStructureTypesInActivitiesUpdate';

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
-import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
@@ -68,17 +67,8 @@ class _P6HistoryListViewState extends ConsumerState<P6HistoryListView> {
     return ref.read(p6HistoryControllerProvider.notifier).load();
   }
 
-  Future<void> _onFileTap(P6HistoryRow row) async {
-    if (!mounted || row.uploadedFile.trim().isEmpty) {
-      return;
-    }
-    await AppDialog.show(
-      context,
-      title: 'Download',
-      message:
-          'File download for "${row.uploadedFile}" is not wired yet — '
-          'no confirmed P6 file URL pattern was found.',
-    );
+  void _onFileTap(P6HistoryRow row) {
+    // TODO: wire file download when backend provides a download URL.
   }
 
   @override

@@ -36,7 +36,9 @@ void main() {
       ApiConstants.p6ContractsForProjectPath,
       '/ajax/getContractListInP6New',
     );
-    expect(ApiConstants.p6UploadNewDataPath, '/upload-p6-new-data');
+    expect(ApiConstants.p6UploadBaselinePath, '/upload-p6-new-data');
+    expect(ApiConstants.p6UploadRevisedBaselinePath, '/revised-p6-new-activities');
+    expect(ApiConstants.p6UploadUpdatePath, '/update-p6-new-activities');
   });
 
   test('parse form master projects and contracts', () {

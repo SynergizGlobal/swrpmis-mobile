@@ -98,30 +98,35 @@ class P6RemoteDataSource {
     );
   }
 
-  /// Uploads a P6 export file.
-  ///
-  /// Documented Baseline fields: project_id_fk, contract_id_fk, data_date
-  /// (YYYY-MM-DD), p6dataFile. Distinct Revised Baseline / Update endpoints
-  /// were not found on QA; those panels reuse this path and also send
-  /// `upload_type` so the backend can discriminate if supported.
   Future<String> uploadP6NewData({
     required String projectId,
     required String contractId,
     required String dataDateIso,
     required String filePath,
-    required String uploadType,
+    required P6UploadKind kind,
   }) async {
     final String name = p.basename(filePath);
-    final FormData form = FormData.fromMap(<String, dynamic>{
+    final Map<String, dynamic> fields = <String, dynamic>{
       'project_id_fk': projectId.trim(),
       'contract_id_fk': contractId.trim(),
       'data_date': dataDateIso.trim(),
-      'upload_type': uploadType.trim(),
       'p6dataFile': await MultipartFile.fromFile(filePath, filename: name),
-    });
+    };
+    if (kind == P6UploadKind.revisedBaseline || kind == P6UploadKind.update) {
+      fields['fob_id_fk'] = '';
+    }
+    final String path;
+    switch (kind) {
+      case P6UploadKind.baseline:
+        path = ApiConstants.p6UploadBaselinePath;
+      case P6UploadKind.revisedBaseline:
+        path = ApiConstants.p6UploadRevisedBaselinePath;
+      case P6UploadKind.update:
+        path = ApiConstants.p6UploadUpdatePath;
+    }
     final Response<dynamic> response = await _dio.post<dynamic>(
-      ApiConstants.p6UploadNewDataPath,
-      data: form,
+      path,
+      data: FormData.fromMap(fields),
       options: Options(contentType: 'multipart/form-data'),
     );
     return parseP6UploadMessage(response.data);

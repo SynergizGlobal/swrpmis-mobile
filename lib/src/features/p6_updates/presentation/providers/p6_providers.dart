@@ -305,7 +305,7 @@ class P6NewDataController extends AutoDisposeNotifier<P6NewDataState> {
       contractId: contractId,
       dataDateIso: dataDateIso,
       filePath: filePath,
-      uploadType: kind.uploadType,
+      kind: kind,
     );
   }
 }

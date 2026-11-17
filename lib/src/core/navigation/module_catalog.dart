@@ -281,7 +281,7 @@ class ModuleCatalog {
     group: ModuleGroup.more,
   );
 
-  static const Set<String> _hiddenMenuIds = <String>{'help'};
+  static const Set<String> _hiddenMenuIds = <String>{'help', 'land'};
 
   static List<AppModule> byGroup(ModuleGroup group) {
     return all
