@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_assets.dart';
 import 'package:swr_pmis_mobile/src/core/constants/app_constants.dart';
@@ -34,11 +35,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _rememberMe = true;
   AppButtonPhase _submitPhase = AppButtonPhase.idle;
   bool _autoLoggingIn = false;
+  String _versionLabel = '';
 
   @override
   void initState() {
     super.initState();
+    _loadVersion();
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapRemembered());
+  }
+
+  Future<void> _loadVersion() async {
+    final PackageInfo info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() => _versionLabel = 'v${info.version}(${info.buildNumber})');
+    }
   }
 
   Future<void> _bootstrapRemembered() async {
@@ -230,6 +240,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         .labelMedium
                                         ?.copyWith(color: palette.mutedText),
                                   ),
+                                  if (_versionLabel.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        _versionLabel,
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: palette.mutedText,
+                                            ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
