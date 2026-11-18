@@ -203,6 +203,14 @@ class _RfiInspectionFlowPageState
     return path;
   }
 
+  bool get _viewOnly => widget.args.viewOnly;
+
+  void _popFlow() {
+    if (context.canPop()) {
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final RfiInspectionFlowState state =
@@ -212,17 +220,17 @@ class _RfiInspectionFlowPageState
     _syncControllers(state);
     // Includes the /inspection-access fallback for unrecognised user types.
     final RfiUserRole role = notifier.role;
-    final String title = state.currentStep == 1
+    final String title = state.currentStep == 1 && !_viewOnly
         ? 'RFI Inspection - Step 1'
         : 'RFI Inspection - Step 2';
 
     return PopScope(
-      canPop: state.currentStep == 1 && !state.busy,
+      canPop: (_viewOnly || state.currentStep == 1) && !state.busy,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop || state.busy) {
           return;
         }
-        if (state.currentStep == 2) {
+        if (!_viewOnly && state.currentStep == 2) {
           notifier.setStep(1);
         }
       },
@@ -234,10 +242,10 @@ class _RfiInspectionFlowPageState
             onPressed: state.busy
                 ? null
                 : () {
-                    if (state.currentStep == 2) {
+                    if (_viewOnly || state.currentStep == 1) {
+                      _popFlow();
+                    } else {
                       notifier.setStep(1);
-                    } else if (context.canPop()) {
-                      context.pop();
                     }
                   },
           ),
@@ -277,7 +285,7 @@ class _RfiInspectionFlowPageState
                     ),
                   ),
                   Expanded(
-                    child: state.currentStep == 1
+                    child: state.currentStep == 1 && !_viewOnly
                         ? _buildStep1(context, state, notifier)
                         : _buildStep2(context, state, notifier, role),
                   ),
@@ -451,6 +459,7 @@ class _RfiInspectionFlowPageState
   ) {
     final RfiInspectionDetails details = state.details!;
     final RfiInspectionDetailRfi rfi = details.rfi;
+    final bool locked = _viewOnly || state.busy;
     return Column(
       children: <Widget>[
         Expanded(
@@ -458,52 +467,66 @@ class _RfiInspectionFlowPageState
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: <Widget>[
               _requiredLabel('Location'),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: TextField(
-                      controller: _location,
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        border: UnderlineInputBorder(),
+              if (_viewOnly)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        state.location.isEmpty ? '—' : state.location,
                       ),
-                      onChanged: notifier.updateLocation,
+                      const Divider(height: 16),
+                    ],
+                  ),
+                )
+              else
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _location,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: UnderlineInputBorder(),
+                        ),
+                        onChanged: notifier.updateLocation,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Refresh location',
-                    onPressed: state.locationLoading
-                        ? null
-                        : () async {
-                            await notifier.fetchLocation();
-                            if (!context.mounted) {
-                              return;
-                            }
-                            final RfiInspectionFlowState latest = ref.read(
-                              rfiInspectionFlowControllerProvider(
-                                widget.args,
-                              ),
-                            );
-                            if (latest.locationPermissionDenied) {
-                              await AppDialog.show(
-                                context,
-                                variant: AppDialogVariant.warning,
-                                title: 'Location permission',
-                                message:
-                                    'Location permission is required to capture the inspection location.',
+                    IconButton(
+                      tooltip: 'Refresh location',
+                      onPressed: state.locationLoading
+                          ? null
+                          : () async {
+                              await notifier.fetchLocation();
+                              if (!context.mounted) {
+                                return;
+                              }
+                              final RfiInspectionFlowState latest = ref.read(
+                                rfiInspectionFlowControllerProvider(
+                                  widget.args,
+                                ),
                               );
-                            }
-                          },
-                    icon: state.locationLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.my_location),
-                  ),
-                ],
-              ),
+                              if (latest.locationPermissionDenied) {
+                                await AppDialog.show(
+                                  context,
+                                  variant: AppDialogVariant.warning,
+                                  title: 'Location permission',
+                                  message:
+                                      'Location permission is required to capture the inspection location.',
+                                );
+                              }
+                            },
+                      icon: state.locationLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 12),
               _readonlyField('Date of Inspection', state.dateOfInspection),
               _readonlyField('Time of Inspection', state.timeOfInspection),
@@ -513,11 +536,15 @@ class _RfiInspectionFlowPageState
               ),
               TextField(
                 controller: _representative,
+                readOnly: _viewOnly,
+                enabled: !_viewOnly,
                 decoration: const InputDecoration(
                   isDense: true,
                   border: UnderlineInputBorder(),
                 ),
-                onChanged: notifier.updateContractorRepresentative,
+                onChanged: _viewOnly
+                    ? null
+                    : notifier.updateContractorRepresentative,
               ),
               const SizedBox(height: 16),
               Text(
@@ -531,7 +558,7 @@ class _RfiInspectionFlowPageState
               Row(
                 children: <Widget>[
                   IconButton.filled(
-                    onPressed: state.busy
+                    onPressed: locked
                         ? null
                         : () => _pickSiteImage(
                               notifier,
@@ -544,7 +571,7 @@ class _RfiInspectionFlowPageState
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
-                    onPressed: state.busy
+                    onPressed: locked
                         ? null
                         : () => _pickSiteImage(
                               notifier,
@@ -564,7 +591,9 @@ class _RfiInspectionFlowPageState
                     _siteImagesRow(
                       'Contractor Site Images',
                       rfi.conSiteImgs,
-                      onDelete: !state.busy && notifier.uploadedBy == 'CON'
+                      onDelete: !_viewOnly &&
+                              !state.busy &&
+                              notifier.uploadedBy == 'CON'
                           ? (String path) => _deleteSiteImage(notifier, path)
                           : null,
                     ),
@@ -572,7 +601,9 @@ class _RfiInspectionFlowPageState
                     _siteImagesRow(
                       'Engineer Site Images',
                       rfi.enggSiteImgs,
-                      onDelete: !state.busy && notifier.uploadedBy != 'CON'
+                      onDelete: !_viewOnly &&
+                              !state.busy &&
+                              notifier.uploadedBy != 'CON'
                           ? (String path) => _deleteSiteImage(notifier, path)
                           : null,
                     ),
@@ -605,7 +636,7 @@ class _RfiInspectionFlowPageState
                 child: Column(
                   children: <Widget>[
                     OutlinedButton.icon(
-                      onPressed: state.busy
+                      onPressed: locked
                           ? null
                           : () async {
                               final String? path = await _pickPdf();
@@ -632,13 +663,19 @@ class _RfiInspectionFlowPageState
                     : 'Description By Contractor',
                 child: TextField(
                   controller: _contractorDescription,
+                  readOnly: _viewOnly,
+                  enabled: !_viewOnly,
                   minLines: 3,
                   maxLines: 5,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter your comments here',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    hintText: notifier.isEngineer
+                        ? 'Enter client comments.'
+                        : 'Enter your comments here',
+                    border: const OutlineInputBorder(),
                   ),
-                  onChanged: notifier.updateContractorDescription,
+                  onChanged: _viewOnly
+                      ? null
+                      : notifier.updateContractorDescription,
                 ),
               ),
               const SizedBox(height: 16),
@@ -654,11 +691,12 @@ class _RfiInspectionFlowPageState
                           _measurementCells(state, notifier, i),
                       ],
                     ),
-                    TextButton.icon(
-                      onPressed: notifier.addMeasurementRow,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add measurement row'),
-                    ),
+                    if (!_viewOnly)
+                      TextButton.icon(
+                        onPressed: notifier.addMeasurementRow,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add measurement row'),
+                      ),
                   ],
                 ),
               ),
@@ -668,32 +706,37 @@ class _RfiInspectionFlowPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    if (notifier.isEngineer) ...<Widget>[
-                      const Text('Inspection Status *'),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        key: ValueKey<String>(
-                          'engg-status-${state.engineerStatus}',
+                    const Text('Tests in Site/Lab'),
+                    const SizedBox(height: 8),
+                    if (_viewOnly)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Chip(
+                          label: Text(state.testInSiteLab),
+                          backgroundColor: const Color(0xFFD1E7DD),
+                          side: const BorderSide(color: Color(0xFF198754)),
+                          labelStyle: const TextStyle(
+                            color: Color(0xFF0F5132),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        initialValue: state.engineerStatus.isEmpty
-                            ? null
-                            : state.engineerStatus,
-                        hint: const Text('Select Inspection Status'),
-                        items: <DropdownMenuItem<String>>[
-                          for (final (String value, String label)
-                              in rfiEngineerStatusOptions(
-                                offline: widget.args.offline,
-                              ))
-                            DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(label),
-                            ),
-                        ],
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        initialValue: state.testInSiteLab,
+                        items: rfiInspectionTestOptions(state.testInSiteLab)
+                            .map(
+                              (String value) => DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
                         onChanged: state.busy
                             ? null
                             : (String? value) {
                                 if (value != null) {
-                                  notifier.updateEngineerStatus(value);
+                                  notifier.updateTestInSiteLab(value);
                                 }
                               },
                         decoration: const InputDecoration(
@@ -701,52 +744,9 @@ class _RfiInspectionFlowPageState
                           isDense: true,
                         ),
                       ),
-                      if (state.engineerStatus.isNotEmpty &&
-                              state.engineerStatus != rfiInspectionAccepted ||
-                          state.engineerRemarks.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: 12),
-                        const Text('Remarks By Client *'),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          initialValue: state.engineerRemarks,
-                          minLines: 3,
-                          maxLines: 5,
-                          maxLength: 1000,
-                          decoration: const InputDecoration(
-                            hintText: 'Enter remarks',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: notifier.updateEngineerRemarks,
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                    ],
-                    const Text('Tests in Site/Lab'),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: state.testInSiteLab,
-                      items: rfiInspectionTestOptions(state.testInSiteLab)
-                          .map(
-                            (String value) => DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: state.busy
-                          ? null
-                          : (String? value) {
-                              if (value != null) {
-                                notifier.updateTestInSiteLab(value);
-                              }
-                            },
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                    if (state.testInSiteLab == 'Lab Test' ||
-                        state.testInSiteLab == 'Site Test') ...<Widget>[
+                    if (!_viewOnly &&
+                        (state.testInSiteLab == 'Lab Test' ||
+                            state.testInSiteLab == 'Site Test')) ...<Widget>[
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: state.busy
@@ -766,6 +766,73 @@ class _RfiInspectionFlowPageState
                         ),
                       ),
                     ],
+                    if (notifier.isEngineer) ...<Widget>[
+                      const SizedBox(height: 12),
+                      const Text('Inspection Status *'),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey<String>(
+                          'engg-status-${state.engineerStatus}',
+                        ),
+                        initialValue: state.engineerStatus.isEmpty
+                            ? null
+                            : state.engineerStatus,
+                        hint: const Text('Select Inspection Status'),
+                        items: <DropdownMenuItem<String>>[
+                          for (final (String value, String label)
+                              in rfiEngineerStatusOptions(
+                                offline: widget.args.offline,
+                              ))
+                            DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(label),
+                            ),
+                          if (state.engineerStatus.isNotEmpty &&
+                              !rfiEngineerStatusOptions(
+                                offline: widget.args.offline,
+                              ).any(
+                                ((String, String) o) =>
+                                    o.$1 == state.engineerStatus,
+                              ))
+                            DropdownMenuItem<String>(
+                              value: state.engineerStatus,
+                              child: Text(state.engineerStatus),
+                            ),
+                        ],
+                        onChanged: locked
+                            ? null
+                            : (String? value) {
+                                if (value != null) {
+                                  notifier.updateEngineerStatus(value);
+                                }
+                              },
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                      if (state.engineerStatus.isNotEmpty &&
+                              state.engineerStatus != rfiInspectionAccepted ||
+                          state.engineerRemarks.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 12),
+                        const Text('Remarks By Client *'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          initialValue: state.engineerRemarks,
+                          enabled: !_viewOnly,
+                          minLines: 3,
+                          maxLines: 5,
+                          maxLength: 1000,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter remarks',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: _viewOnly
+                              ? null
+                              : notifier.updateEngineerRemarks,
+                        ),
+                      ],
+                    ],
                   ],
                 ),
               ),
@@ -776,77 +843,125 @@ class _RfiInspectionFlowPageState
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: FilledButton(
-                    onPressed: state.busy
-                        ? null
-                        : () async {
-                            final bool? confirmed = await AppDialog.show(
-                              context,
-                              variant: AppDialogVariant.confirm,
-                              title: 'Close inspection',
-                              message:
-                                  'Close without submitting? Unsaved changes may be lost.',
-                            );
-                            if (confirmed == true &&
-                                context.mounted &&
-                                context.canPop()) {
-                              context.pop();
-                            }
-                          },
-                    style: FilledButton.styleFrom(backgroundColor: AppTheme.brandPrimary),
-                    child: const Text('Close'),
+            child: _viewOnly
+                ? Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: state.busy ? null : _popFlow,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.brandPrimary,
+                          ),
+                          child: const Text('Back'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.brandPrimary,
+                          ),
+                          child: const Text('Save As Draft'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF198754),
+                          ),
+                          child: const Text('Submit'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: state.busy ? null : _popFlow,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.brandPrimary,
+                          ),
+                          child: const Text('Close'),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: state.busy
+                              ? null
+                              : () async {
+                                  final bool? confirmed = await AppDialog.show(
+                                    context,
+                                    variant: AppDialogVariant.confirm,
+                                    title: 'Close inspection',
+                                    message:
+                                        'Close without submitting? Unsaved changes may be lost.',
+                                  );
+                                  if (confirmed == true &&
+                                      context.mounted &&
+                                      context.canPop()) {
+                                    context.pop();
+                                  }
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.brandPrimary,
+                          ),
+                          child: const Text('Close'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: state.busy
+                              ? null
+                              : () async {
+                                  try {
+                                    await notifier.saveAsDraft();
+                                    if (!context.mounted) {
+                                      return;
+                                    }
+                                    await AppDialog.show(
+                                      context,
+                                      variant: AppDialogVariant.success,
+                                      title: 'Draft saved',
+                                      message: 'Draft saved successfully.',
+                                    );
+                                  } on Object catch (error) {
+                                    if (!context.mounted) {
+                                      return;
+                                    }
+                                    await AppDialog.show(
+                                      context,
+                                      variant: AppDialogVariant.error,
+                                      title: 'Save draft failed',
+                                      message: rfiInspectionErrorMessage(error),
+                                    );
+                                  }
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.brandPrimary,
+                          ),
+                          child: const Text('Save Draft'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: state.busy || !notifier.isStep2Valid()
+                              ? null
+                              : () => _onSubmitPressed(notifier),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF198754),
+                          ),
+                          child: const Text('Submit'),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: state.busy
-                        ? null
-                        : () async {
-                            try {
-                              await notifier.saveAsDraft();
-                              if (!context.mounted) {
-                                return;
-                              }
-                              await AppDialog.show(
-                                context,
-                                variant: AppDialogVariant.success,
-                                title: 'Draft saved',
-                                message: 'Draft saved successfully.',
-                              );
-                            } on Object catch (error) {
-                              if (!context.mounted) {
-                                return;
-                              }
-                              await AppDialog.show(
-                                context,
-                                variant: AppDialogVariant.error,
-                                title: 'Save draft failed',
-                                message: rfiInspectionErrorMessage(error),
-                              );
-                            }
-                          },
-                    style: FilledButton.styleFrom(backgroundColor: AppTheme.brandPrimary),
-                    child: const Text('Save Draft'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: state.busy || !notifier.isStep2Valid()
-                        ? null
-                        : () => _onSubmitPressed(notifier),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF198754),
-                    ),
-                    child: const Text('Submit'),
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ],
@@ -869,96 +984,98 @@ class _RfiInspectionFlowPageState
     RfiUserRole role,
     RfiInspectionEnclosure enclosure,
   ) {
+    final bool locked = _viewOnly || state.busy;
     return <Widget>[
       Text(enclosure.rfiDescription, textAlign: TextAlign.center),
       Text(enclosure.enclosureName, textAlign: TextAlign.center),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            alignment: WrapAlignment.center,
-            children: <Widget>[
-              OutlinedButton(
-                  onPressed: state.busy
-                      ? null
-                      : () => showRfiChecklistDialog(
-                            context: context,
-                            controller: notifier,
-                            enclosure: enclosure,
-                            details: state.details!,
-                            role: role,
-                          ),
-                  child: const Text('Open'),
-                ),
-              OutlinedButton(
-                  onPressed: state.busy
-                      ? null
-                      : () async {
-                          final String? path = await _pickPdf();
-                          if (path == null) {
-                            return;
-                          }
-                          try {
-                            await notifier.uploadEnclosure(
-                              filePath: path,
-                              enclosure: enclosure,
-                            );
-                            if (!context.mounted) {
-                              return;
-                            }
-                            await AppDialog.show(
-                              context,
-                              variant: AppDialogVariant.success,
-                              title: 'Uploaded',
-                              message: 'Enclosure uploaded successfully.',
-                            );
-                          } on Object catch (error) {
-                            if (!context.mounted) {
-                              return;
-                            }
-                            await AppDialog.show(
-                              context,
-                              variant: AppDialogVariant.error,
-                              title: 'Upload failed',
-                              message: rfiInspectionErrorMessage(error),
-                            );
-                          }
-                        },
-                  child: const Text('Upload'),
-                ),
-            ],
-          ),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            alignment: WrapAlignment.center,
-            children: <Widget>[
-              if (enclosure.enclosureUploadedFile.isNotEmpty) ...<Widget>[
-                OutlinedButton(
-                  onPressed: state.busy
-                      ? null
-                      : () => _viewEnclosure(notifier, enclosure),
-                  child: const Text('View'),
-                ),
-                OutlinedButton(
-                  onPressed: state.busy
-                      ? null
-                      : () => _downloadEnclosure(notifier, enclosure),
-                  child: const Text('Download'),
-                ),
-                if (enclosure.enclosureUploadedFileId != null)
-                  FilledButton(
-                    onPressed: state.busy
-                        ? null
-                        : () => _removeEnclosure(notifier, enclosure),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFD9534F),
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        alignment: WrapAlignment.center,
+        children: <Widget>[
+          OutlinedButton(
+            onPressed: state.busy
+                ? null
+                : () => showRfiChecklistDialog(
+                      context: context,
+                      controller: notifier,
+                      enclosure: enclosure,
+                      details: state.details!,
+                      role: role,
+                      viewOnly: _viewOnly,
                     ),
-                    child: const Text('Remove'),
-                  ),
-              ] else
-                const Text('---'),
-            ],
+            child: Text(_viewOnly ? 'View' : 'Open'),
           ),
+          OutlinedButton(
+            onPressed: locked
+                ? null
+                : () async {
+                    final String? path = await _pickPdf();
+                    if (path == null) {
+                      return;
+                    }
+                    try {
+                      await notifier.uploadEnclosure(
+                        filePath: path,
+                        enclosure: enclosure,
+                      );
+                      if (!context.mounted) {
+                        return;
+                      }
+                      await AppDialog.show(
+                        context,
+                        variant: AppDialogVariant.success,
+                        title: 'Uploaded',
+                        message: 'Enclosure uploaded successfully.',
+                      );
+                    } on Object catch (error) {
+                      if (!context.mounted) {
+                        return;
+                      }
+                      await AppDialog.show(
+                        context,
+                        variant: AppDialogVariant.error,
+                        title: 'Upload failed',
+                        message: rfiInspectionErrorMessage(error),
+                      );
+                    }
+                  },
+            child: const Text('Upload'),
+          ),
+        ],
+      ),
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        alignment: WrapAlignment.center,
+        children: <Widget>[
+          if (enclosure.enclosureUploadedFile.isNotEmpty) ...<Widget>[
+            OutlinedButton(
+              onPressed: state.busy
+                  ? null
+                  : () => _viewEnclosure(notifier, enclosure),
+              child: const Text('View'),
+            ),
+            OutlinedButton(
+              onPressed: state.busy
+                  ? null
+                  : () => _downloadEnclosure(notifier, enclosure),
+              child: const Text('Download'),
+            ),
+            if (enclosure.enclosureUploadedFileId != null)
+              FilledButton(
+                onPressed: locked
+                    ? null
+                    : () => _removeEnclosure(notifier, enclosure),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFD9534F),
+                ),
+                child: const Text('Remove'),
+              ),
+          ] else
+            const Text('---'),
+        ],
+      ),
     ];
   }
 
@@ -1260,13 +1377,16 @@ class _RfiInspectionFlowPageState
           Expanded(
             child: TextFormField(
               initialValue: doc.description,
+              enabled: !_viewOnly,
               decoration: const InputDecoration(
                 hintText: 'Enter document description',
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              onChanged: (String value) =>
-                  notifier.updateSupportingDocDescription(index, value),
+              onChanged: _viewOnly
+                  ? null
+                  : (String value) =>
+                      notifier.updateSupportingDocDescription(index, value),
             ),
           ),
           IconButton(
@@ -1285,7 +1405,9 @@ class _RfiInspectionFlowPageState
           ),
           IconButton(
             tooltip: 'Remove',
-            onPressed: () => notifier.removeSupportingDoc(index),
+            onPressed: _viewOnly
+                ? null
+                : () => notifier.removeSupportingDoc(index),
             icon: const Icon(Icons.delete_outline, color: Color(0xFFC1121F)),
           ),
         ],
@@ -1318,18 +1440,25 @@ class _RfiInspectionFlowPageState
     final WorkRfiMeasureFields fields = workRfiFieldsFor(row.type);
     final List<String> units = rfiInspectionUnitOptions(row.type, row.units);
     final bool unitsEditable = workRfiUnitsFor(row.type).length > 1;
+    final bool editable = !_viewOnly && !state.busy;
     void update(RfiInspectionMeasurementRow next) =>
         notifier.updateMeasurement(index, next);
     String qtyText(double v) =>
         v.toStringAsFixed(v == v.roundToDouble() ? 0 : 2);
     return <Widget>[
-      Text(row.component.isEmpty ? '—' : row.component),
-      Text(row.element.isEmpty ? '—' : row.element),
+      Text(
+        row.component.isEmpty
+            ? (_viewOnly ? 'N/A' : '—')
+            : row.component,
+      ),
+      Text(
+        row.element.isEmpty ? (_viewOnly ? 'N/A' : '—') : row.element,
+      ),
       row.activityName.isEmpty
           ? _cellField(
               key: 'activity-$index',
               value: row.activityName,
-              enabled: true,
+              enabled: editable,
               numeric: false,
               onChanged: (String v) => update(row.copyWith(activityName: v)),
             )
@@ -1338,51 +1467,51 @@ class _RfiInspectionFlowPageState
         key: 'type-$index-${row.type}',
         value: row.type,
         items: rfiInspectionTypeOptions(row.type),
-        enabled: !state.busy,
+        enabled: editable,
         onChanged: (String v) => update(row.copyWith(type: v)),
       ),
       _cellDropdown(
         key: 'units-$index-${row.type}-${row.units}',
         value: row.units,
         items: units,
-        enabled: unitsEditable && !state.busy,
+        enabled: unitsEditable && editable,
         onChanged: (String v) => update(row.copyWith(units: v)),
       ),
       _cellField(
         key: 'l-$index-${row.type}',
         value: row.length,
-        enabled: fields.length,
+        enabled: fields.length && editable,
         onChanged: (String v) => update(row.copyWith(length: v)),
       ),
       _cellField(
         key: 'b-$index-${row.type}',
         value: row.breadth,
-        enabled: fields.breadth,
+        enabled: fields.breadth && editable,
         onChanged: (String v) => update(row.copyWith(breadth: v)),
       ),
       _cellField(
         key: 'h-$index-${row.type}',
         value: row.height,
-        enabled: fields.height,
+        enabled: fields.height && editable,
         onChanged: (String v) => update(row.copyWith(height: v)),
       ),
       _cellField(
         key: 'w-$index-${row.type}',
         value: row.weight,
-        enabled: fields.weight,
+        enabled: fields.weight && editable,
         onChanged: (String v) => update(row.copyWith(weight: v)),
       ),
       _cellField(
         key: 'n-$index-${row.type}',
         value: row.no,
-        enabled: fields.no,
+        enabled: fields.no && editable,
         onChanged: (String v) => update(row.copyWith(no: v)),
       ),
       fields.totalQty
           ? _cellField(
               key: 't-$index-${row.type}',
               value: row.totalQty == 0 ? '' : qtyText(row.totalQty),
-              enabled: true,
+              enabled: editable,
               onChanged: (String v) =>
                   update(row.copyWith(totalQty: double.tryParse(v) ?? 0)),
             )

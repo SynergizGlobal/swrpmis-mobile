@@ -21,11 +21,15 @@ class RfiInspectionFlowArgs {
     required this.rfiId,
     required this.rfiCategory,
     required this.offline,
+    this.viewOnly = false,
   });
 
   final int rfiId;
   final String rfiCategory;
   final bool offline;
+
+  /// Read-only Step 2 opened from "View Details" (no draft/submit/uploads).
+  final bool viewOnly;
 
   String get inspectionMode => offline ? 'OFFLINE' : 'ONLINE';
 
@@ -34,11 +38,12 @@ class RfiInspectionFlowArgs {
     return other is RfiInspectionFlowArgs &&
         other.rfiId == rfiId &&
         other.rfiCategory == rfiCategory &&
-        other.offline == offline;
+        other.offline == offline &&
+        other.viewOnly == viewOnly;
   }
 
   @override
-  int get hashCode => Object.hash(rfiId, rfiCategory, offline);
+  int get hashCode => Object.hash(rfiId, rfiCategory, offline, viewOnly);
 }
 
 class RfiInspectionMeasurementRow {
@@ -354,7 +359,11 @@ class RfiInspectionFlowController
                     ),
                   )
                   .toList();
-      final List<RfiLocalSupportingDoc> docs = rfi.conSupDocs
+      final bool engineer = isEngineer;
+      final List<RfiSupportingDocument> serverDocs = engineer
+          ? (rfi.enggSupDocs.isNotEmpty ? rfi.enggSupDocs : rfi.conSupDocs)
+          : rfi.conSupDocs;
+      final List<RfiLocalSupportingDoc> docs = serverDocs
           .map(
             (RfiSupportingDocument d) => RfiLocalSupportingDoc(
               path: d.path,
@@ -363,9 +372,29 @@ class RfiInspectionFlowController
             ),
           )
           .toList();
+      final String descriptionFromServer = engineer
+          ? _firstNonEmpty(<String>[
+              rfi.field('enggDescriptionEnclosure'),
+              rfi.field('descriptionEnclosure'),
+              rfi.field('conDescriptionEnclosure'),
+            ])
+          : _firstNonEmpty(<String>[
+              rfi.field('conDescriptionEnclosure'),
+              rfi.field('descriptionEnclosure'),
+            ]);
+      final String statusFromServer = _normalizeEngineerStatus(
+        rfi.field('inspectionStatus'),
+      );
+      final String remarksFromServer = _firstNonEmpty(<String>[
+        rfi.field('enggRemarks'),
+        rfi.field('engineerRemarks'),
+        rfi.field('remarksByClient'),
+        rfi.field('enggRemark'),
+      ]);
       state = state.copyWith(
         details: details,
         loading: false,
+        currentStep: arg.viewOnly ? 2 : state.currentStep,
         chainage: state.chainage.isEmpty ? rfi.chainage : state.chainage,
         location: state.location.isEmpty ? rfi.location : state.location,
         dateOfInspection: rfi.dateOfInspection.isEmpty
@@ -377,6 +406,9 @@ class RfiInspectionFlowController
         contractorRepresentative: state.contractorRepresentative.isEmpty
             ? rfi.nameOfRepresentative
             : state.contractorRepresentative,
+        contractorDescription: state.contractorDescription.isEmpty
+            ? descriptionFromServer
+            : state.contractorDescription,
         testInSiteLab: rfi.testInSiteOrLab.isEmpty
             ? state.testInSiteLab
             : _displayTestType(rfi.testInSiteOrLab),
@@ -384,6 +416,12 @@ class RfiInspectionFlowController
         measurements: rows,
         supportingDocuments:
             state.supportingDocuments.isEmpty ? docs : state.supportingDocuments,
+        engineerStatus: state.engineerStatus.isEmpty
+            ? statusFromServer
+            : state.engineerStatus,
+        engineerRemarks: state.engineerRemarks.isEmpty
+            ? remarksFromServer
+            : state.engineerRemarks,
       );
     } on Object catch (error) {
       state = state.copyWith(loading: false, error: error);
@@ -393,6 +431,9 @@ class RfiInspectionFlowController
   Future<void> refreshDetails() => load();
 
   void setStep(int step) {
+    if (arg.viewOnly) {
+      return;
+    }
     state = state.copyWith(currentStep: step);
     if (step == 2 && state.location.trim().isEmpty) {
       fetchLocation();
@@ -1228,6 +1269,34 @@ class RfiInspectionFlowController
       'SITE_TEST' || 'SITE TEST' => 'Site Test',
       _ => raw.trim().isEmpty ? 'Visual' : raw.trim(),
     };
+  }
+
+  static String _firstNonEmpty(List<String> values) {
+    for (final String value in values) {
+      if (value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return '';
+  }
+
+  /// Maps server inspectionStatus into the engineer dropdown values.
+  static String _normalizeEngineerStatus(String raw) {
+    final String text = raw.trim();
+    if (text.isEmpty) {
+      return '';
+    }
+    final String upper = text.toUpperCase().replaceAll(' ', '_');
+    if (upper == 'ACCEPTED') {
+      return rfiInspectionAccepted;
+    }
+    if (upper == 'REJECTED') {
+      return rfiInspectionRejected;
+    }
+    if (upper.contains('RECTIF') || upper.contains('RETURN')) {
+      return rfiReturnForRectification;
+    }
+    return text;
   }
 
   static String? _mapTestType(String value) {

@@ -5,6 +5,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_details.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_uploaded_by.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_inspection_flow_provider.dart';
 
 void main() {
   test('inspection-access parses hasAccess and message', () {
@@ -172,5 +173,22 @@ void main() {
       '/api/v1/enclouser/checklist-items',
     );
     expect(ApiConstants.rfiFinalSubmitPath, '/rfi/finalSubmit');
+  });
+
+  test('view-details args differ from editable inspection flow', () {
+    const RfiInspectionFlowArgs edit = RfiInspectionFlowArgs(
+      rfiId: 105,
+      rfiCategory: 'WORK',
+      offline: false,
+    );
+    const RfiInspectionFlowArgs view = RfiInspectionFlowArgs(
+      rfiId: 105,
+      rfiCategory: 'WORK',
+      offline: false,
+      viewOnly: true,
+    );
+    expect(edit.viewOnly, isFalse);
+    expect(view.viewOnly, isTrue);
+    expect(edit, isNot(view));
   });
 }

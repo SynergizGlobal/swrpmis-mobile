@@ -442,6 +442,12 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
           row: row,
           offline: true,
         );
+      case RfiInspectionAction.viewDetails:
+        await openRfiInspectionViewDetails(
+          context: context,
+          ref: ref,
+          row: row,
+        );
       case RfiInspectionAction.submit:
         await startRfiInspectionFlow(
           context: context,

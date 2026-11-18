@@ -14,6 +14,7 @@ Future<void> showRfiChecklistDialog({
   required RfiInspectionEnclosure enclosure,
   required RfiInspectionDetails details,
   required RfiUserRole role,
+  bool viewOnly = false,
 }) {
   return showDialog<void>(
     context: context,
@@ -25,6 +26,7 @@ Future<void> showRfiChecklistDialog({
         enclosure: enclosure,
         details: details,
         role: role,
+        viewOnly: viewOnly,
       );
     },
   );
@@ -36,12 +38,14 @@ class _RfiChecklistDialog extends StatefulWidget {
     required this.enclosure,
     required this.details,
     required this.role,
+    this.viewOnly = false,
   });
 
   final RfiInspectionFlowController controller;
   final RfiInspectionEnclosure enclosure;
   final RfiInspectionDetails details;
   final RfiUserRole role;
+  final bool viewOnly;
 
   @override
   State<_RfiChecklistDialog> createState() => _RfiChecklistDialogState();
@@ -66,6 +70,8 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
   late final TextEditingController _gradeController;
 
   bool get _isContractor => rfiRoleIsContractorSide(widget.role);
+
+  bool get _locked => widget.viewOnly || _saving;
 
   @override
   void initState() {
@@ -253,7 +259,7 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: _gradeController,
-                          enabled: _isContractor && !_saving,
+                          enabled: _isContractor && !_locked,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             isDense: true,
@@ -275,43 +281,47 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: <Widget>[
-                            Text(
-                              _isContractor
-                                  ? 'Contractor Select All:'
-                                  : 'Engineer Select All:',
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                key: ValueKey<String>('all-$_selectAll'),
-                                initialValue: _selectAll,
-                                items: _selectAllOptions
-                                    .map(
-                                      (String option) =>
-                                          DropdownMenuItem<String>(
-                                            value: option,
-                                            child: Text(option),
-                                          ),
-                                    )
-                                    .toList(),
-                                onChanged: _saving ? null : _applySelectAll,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  isDense: true,
+                        if (!widget.viewOnly) ...<Widget>[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: <Widget>[
+                              Text(
+                                _isContractor
+                                    ? 'Contractor Select All:'
+                                    : 'Engineer Select All:',
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  key: ValueKey<String>('all-$_selectAll'),
+                                  initialValue: _selectAll,
+                                  items: _selectAllOptions
+                                      .map(
+                                        (String option) =>
+                                            DropdownMenuItem<String>(
+                                              value: option,
+                                              child: Text(option),
+                                            ),
+                                      )
+                                      .toList(),
+                                  onChanged: _locked ? null : _applySelectAll,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         _ChecklistTable(
                           items: _items,
                           statusOptions: _statusOptions,
-                          contractorEditable: _isContractor && !_saving,
-                          engineerEditable: !_isContractor && !_saving,
+                          contractorEditable:
+                              _isContractor && !_locked && !widget.viewOnly,
+                          engineerEditable:
+                              !_isContractor && !_locked && !widget.viewOnly,
                           onChanged: (int i, RfiChecklistItem item) {
                             setState(() {
                               _items = List<RfiChecklistItem>.from(_items)
@@ -327,23 +337,25 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: <Widget>[
-                  FilledButton(
-                    onPressed: _saving || _loading ? null : _submit,
-                    // The app theme makes filled buttons full width; in this
-                    // Row that is infinite and the dialog fails to lay out.
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.brandPrimary,
-                      minimumSize: const Size(96, 44),
+                  if (!widget.viewOnly) ...<Widget>[
+                    FilledButton(
+                      onPressed: _saving || _loading ? null : _submit,
+                      // The app theme makes filled buttons full width; in this
+                      // Row that is infinite and the dialog fails to lay out.
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.brandPrimary,
+                        minimumSize: const Size(96, 44),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Submit'),
                     ),
-                    child: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Submit'),
-                  ),
-                  const SizedBox(width: 12),
+                    const SizedBox(width: 12),
+                  ],
                   FilledButton(
                     onPressed: _saving
                         ? null
@@ -354,7 +366,7 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
                       backgroundColor: AppTheme.brandPrimary,
                       minimumSize: const Size(96, 44),
                     ),
-                    child: const Text('Cancel'),
+                    child: Text(widget.viewOnly ? 'Close' : 'Cancel'),
                   ),
                 ],
               ),

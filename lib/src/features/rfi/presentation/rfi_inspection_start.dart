@@ -18,25 +18,44 @@ Future<void> startRfiInspectionFlow({
   required RfiInspectionRow row,
   required bool offline,
 }) async {
+  await _openInspectionFlow(
+    context: context,
+    ref: ref,
+    row: row,
+    offline: offline,
+    viewOnly: false,
+  );
+}
+
+/// Opens RFI Inspection Step 2 read-only (web "View Details").
+Future<void> openRfiInspectionViewDetails({
+  required BuildContext context,
+  required WidgetRef ref,
+  required RfiInspectionRow row,
+}) async {
+  await _openInspectionFlow(
+    context: context,
+    ref: ref,
+    row: row,
+    offline: false,
+    viewOnly: true,
+  );
+}
+
+Future<void> _openInspectionFlow({
+  required BuildContext context,
+  required WidgetRef ref,
+  required RfiInspectionRow row,
+  required bool offline,
+  required bool viewOnly,
+}) async {
   final int? rfiId = row.id;
   if (rfiId == null) {
     await AppDialog.show(
       context,
       variant: AppDialogVariant.error,
-      title: 'Unable to start',
+      title: viewOnly ? 'Unable to open' : 'Unable to start',
       message: 'RFI id is missing for this row.',
-    );
-    return;
-  }
-
-  final AuthSession? session = ref.read(authControllerProvider).valueOrNull;
-  final String userId = session?.userId.trim() ?? '';
-  if (userId.isEmpty) {
-    await AppDialog.show(
-      context,
-      variant: AppDialogVariant.error,
-      title: 'Unable to start',
-      message: 'Logged-in user id is missing.',
     );
     return;
   }
@@ -46,7 +65,7 @@ Future<void> startRfiInspectionFlow({
     await AppDialog.show(
       context,
       variant: AppDialogVariant.error,
-      title: 'Unable to start',
+      title: viewOnly ? 'Unable to open' : 'Unable to start',
       message: 'RFI category is missing for this row.',
     );
     return;
@@ -66,26 +85,44 @@ Future<void> startRfiInspectionFlow({
         variant: AppDialogVariant.error,
         title: 'Access denied',
         message: access.message.isEmpty
-            ? 'You do not have access to start this inspection.'
+            ? (viewOnly
+                  ? 'You do not have access to view this inspection.'
+                  : 'You do not have access to start this inspection.')
             : access.message,
       );
       return;
     }
 
-    final RfiUserSignature signature = await source.checkUserSignature(userId);
-    if (!context.mounted) {
-      return;
-    }
-    if (!signature.exists) {
-      await AppDialog.show(
-        context,
-        variant: AppDialogVariant.error,
-        title: 'Signature required',
-        message:
-            'Signature not found. Please upload your e-sign signature from the '
-            'web application, then start the inspection again.',
-      );
-      return;
+    if (!viewOnly) {
+      final AuthSession? session =
+          ref.read(authControllerProvider).valueOrNull;
+      final String userId = session?.userId.trim() ?? '';
+      if (userId.isEmpty) {
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.error,
+          title: 'Unable to start',
+          message: 'Logged-in user id is missing.',
+        );
+        return;
+      }
+
+      final RfiUserSignature signature =
+          await source.checkUserSignature(userId);
+      if (!context.mounted) {
+        return;
+      }
+      if (!signature.exists) {
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.error,
+          title: 'Signature required',
+          message:
+              'Signature not found. Please upload your e-sign signature from the '
+              'web application, then start the inspection again.',
+        );
+        return;
+      }
     }
 
     await source.fetchDetails(rfiId);
@@ -99,6 +136,7 @@ Future<void> startRfiInspectionFlow({
         rfiId: rfiId,
         rfiCategory: category,
         offline: offline,
+        viewOnly: viewOnly,
       ),
     );
   } on Object catch (error) {
@@ -108,7 +146,9 @@ Future<void> startRfiInspectionFlow({
     await AppDialog.show(
       context,
       variant: AppDialogVariant.error,
-      title: 'Unable to start inspection',
+      title: viewOnly
+          ? 'Unable to open inspection'
+          : 'Unable to start inspection',
       message: error is DioException
           ? userFriendlyErrorMessage(error)
           : error.toString(),

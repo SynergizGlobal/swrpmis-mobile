@@ -302,6 +302,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       0,
                   rfiCategory: state.uri.queryParameters['category'] ?? '',
                   offline: state.uri.queryParameters['offline'] == '1',
+                  viewOnly: state.uri.queryParameters['viewOnly'] == '1',
                 );
           return fadeSlidePage(
             key: state.pageKey,
