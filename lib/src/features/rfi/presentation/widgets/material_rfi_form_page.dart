@@ -10,6 +10,7 @@ import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dar
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/material_rfi_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/material_rfi_form.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/work_rfi_form.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 
 class MaterialRfiFormPage extends ConsumerStatefulWidget {
@@ -51,6 +52,9 @@ class _MaterialRfiFormPageState extends ConsumerState<MaterialRfiFormPage> {
   String _contractId = '';
   String _itemId = '';
   String _typeOfRfi = '';
+  // Date of Inspection rule (see workRfiInspectionDateRuleError).
+  String _originalTypeOfRfi = '';
+  String _originalDateOfInspection = '';
   String _representativeId = '';
   DateTime? _submissionDate;
   DateTime? _inspectionDate;
@@ -167,6 +171,8 @@ class _MaterialRfiFormPageState extends ConsumerState<MaterialRfiFormPage> {
       _batchLotNo.text = detail.batchLotNo;
       _location.text = detail.location;
       _typeOfRfi = detail.typeOfRfi;
+      _originalTypeOfRfi = detail.typeOfRfi;
+      _originalDateOfInspection = detail.dateOfInspection;
       _representativeId = detail.representativeId;
       _description.text = detail.description;
       _submissionDate = _parseDate(detail.dateOfSubmission);
@@ -481,16 +487,72 @@ class _MaterialRfiFormPageState extends ConsumerState<MaterialRfiFormPage> {
     _qtyRows = <_QtyRow>[];
   }
 
-  Future<void> _pickDate() async {
+  DateTime _today() {
     final DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  Future<void> _onTypeOfRfiChanged(String picked) async {
+    final DateTime? previousDate = _inspectionDate;
+    final DateTime? keptDate = workRfiInspectionDateAfterTypeChange(
+      newType: picked,
+      current: previousDate,
+      today: _today(),
+    );
+    final bool cleared = previousDate != null && keptDate == null;
+    setState(() {
+      _typeOfRfi = picked;
+      _inspectionDate = keptDate;
+    });
+    if (!cleared || !mounted) {
+      return;
+    }
+    final String rule =
+        workRfiInspectionDateRuleError(
+          typeOfRfi: picked,
+          date: previousDate,
+          today: _today(),
+        ) ??
+        'The chosen Date of Inspection does not fit this Type of RFI.';
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.warning,
+      title: 'Date of Inspection cleared',
+      message: '$rule Please choose the date again.',
+    );
+  }
+
+  Future<void> _pickDate() async {
+    final DateTime today = _today();
+    final DateTime? earliest = workRfiEarliestInspectionDate(
+      typeOfRfi: _typeOfRfi,
+      today: today,
+    );
+    if (earliest == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.warning,
+        title: 'Type of RFI',
+        message: workRfiChooseTypeFirstMessage,
+      );
+      return;
+    }
+    final DateTime? current = _inspectionDate;
+    // An unchanged saved past date on edit may sit before firstDate; open the
+    // picker at the earliest allowed date instead of that stale value.
+    final DateTime initial = current == null || current.isBefore(earliest)
+        ? earliest
+        : current;
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _inspectionDate ?? now,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
+      initialDate: initial,
+      firstDate: earliest,
+      lastDate: DateTime(2100),
     );
     if (picked != null && mounted) {
-      setState(() => _inspectionDate = picked);
+      setState(() {
+        _inspectionDate = DateTime(picked.year, picked.month, picked.day);
+      });
     }
   }
 
@@ -525,6 +587,21 @@ class _MaterialRfiFormPageState extends ConsumerState<MaterialRfiFormPage> {
     }
     if (_inspectionDate == null) {
       return 'Please select Date of Inspection.';
+    }
+    final DateTime? original = _parseDate(_originalDateOfInspection);
+    final bool unchangedSavedDate =
+        original != null &&
+        workRfiDateOnly(original) == workRfiDateOnly(_inspectionDate!) &&
+        _originalTypeOfRfi.trim() == _typeOfRfi.trim();
+    if (!unchangedSavedDate) {
+      final String? dateRule = workRfiInspectionDateRuleError(
+        typeOfRfi: _typeOfRfi,
+        date: _inspectionDate,
+        today: _today(),
+      );
+      if (dateRule != null) {
+        return dateRule;
+      }
     }
     if (_inspectionTime == null) {
       return 'Please select Time of Inspection.';
@@ -743,7 +820,7 @@ class _MaterialRfiFormPageState extends ConsumerState<MaterialRfiFormPage> {
                   ? null
                   : (String? v) {
                       if (v != null) {
-                        setState(() => _typeOfRfi = v);
+                        _onTypeOfRfiChanged(v);
                       }
                     },
             ),

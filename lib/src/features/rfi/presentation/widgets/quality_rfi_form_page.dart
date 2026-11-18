@@ -48,6 +48,9 @@ class _QualityRfiFormPageState extends ConsumerState<QualityRfiFormPage> {
   String _structureId = '';
   String _action = qualityRfiFixedAction;
   String _typeOfRfi = '';
+  // Date of Inspection rule (see workRfiInspectionDateRuleError).
+  String _originalTypeOfRfi = '';
+  String _originalDateOfInspection = '';
   String _representativeId = '';
   DateTime? _submissionDate;
   DateTime? _inspectionDate;
@@ -178,6 +181,8 @@ class _QualityRfiFormPageState extends ConsumerState<QualityRfiFormPage> {
         ? detail.structureId
         : detail.structure;
     _typeOfRfi = detail.typeOfRfi;
+    _originalTypeOfRfi = detail.typeOfRfi;
+    _originalDateOfInspection = detail.dateOfInspection;
     _representativeId = detail.userIdOfRepresentative;
     _description.text = detail.description;
     _submissionDate = parseWorkRfiDate(detail.dateOfSubmission);
@@ -469,16 +474,70 @@ class _QualityRfiFormPageState extends ConsumerState<QualityRfiFormPage> {
     }
   }
 
+  DateTime _today() {
+    final DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  Future<void> _onTypeOfRfiChanged(String picked) async {
+    final DateTime? previousDate = _inspectionDate;
+    final DateTime? keptDate = workRfiInspectionDateAfterTypeChange(
+      newType: picked,
+      current: previousDate,
+      today: _today(),
+    );
+    final bool cleared = previousDate != null && keptDate == null;
+    setState(() {
+      _typeOfRfi = picked;
+      _inspectionDate = keptDate;
+    });
+    if (!cleared || !mounted) {
+      return;
+    }
+    final String rule =
+        workRfiInspectionDateRuleError(
+          typeOfRfi: picked,
+          date: previousDate,
+          today: _today(),
+        ) ??
+        'The chosen Date of Inspection does not fit this Type of RFI.';
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.warning,
+      title: 'Date of Inspection cleared',
+      message: '$rule Please choose the date again.',
+    );
+  }
+
   Future<void> _pickInspectionDate() async {
     if (_scheduleLocked) {
       return;
     }
-    final DateTime now = DateTime.now();
+    final DateTime today = _today();
+    final DateTime? earliest = workRfiEarliestInspectionDate(
+      typeOfRfi: _typeOfRfi,
+      today: today,
+    );
+    if (earliest == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.warning,
+        title: 'Type of RFI',
+        message: workRfiChooseTypeFirstMessage,
+      );
+      return;
+    }
+    final DateTime? current = _inspectionDate;
+    // An unchanged saved past date on edit may sit before firstDate; open the
+    // picker at the earliest allowed date instead of that stale value.
+    final DateTime initial = current == null || current.isBefore(earliest)
+        ? earliest
+        : current;
     final DateTime? picked = await showDatePicker(
       context: context,
       useRootNavigator: true,
-      initialDate: _inspectionDate ?? now,
-      firstDate: DateTime(2000),
+      initialDate: initial,
+      firstDate: earliest,
       lastDate: DateTime(2100),
     );
     if (picked != null && mounted) {
@@ -524,6 +583,9 @@ class _QualityRfiFormPageState extends ConsumerState<QualityRfiFormPage> {
       enclosures: List<String>.from(_selectedEnclosureIds),
       description: _description.text,
       editing: _editing,
+      today: _today(),
+      originalTypeOfRfi: _originalTypeOfRfi,
+      originalDateOfInspection: _originalDateOfInspection,
     );
   }
 
@@ -733,7 +795,7 @@ class _QualityRfiFormPageState extends ConsumerState<QualityRfiFormPage> {
                 ? null
                 : (String? value) {
                     if (value != null) {
-                      setState(() => _typeOfRfi = value);
+                      _onTypeOfRfiChanged(value);
                     }
                   },
           ),

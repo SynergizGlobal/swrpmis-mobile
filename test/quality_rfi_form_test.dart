@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/quality_rfi_form.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/work_rfi_form.dart';
 
 void main() {
   group('parseQualityRfiProjects', () {
@@ -255,6 +256,79 @@ void main() {
           ),
         ),
         'Please select a Project.',
+      );
+    });
+
+    test('Date of Inspection follows Spot/Regular rule like Work RFI', () {
+      final DateTime today = DateTime(2026, 10, 13, 23, 45);
+
+      QualityRfiSubmitDraft draft({
+        required String type,
+        required String date,
+        String originalType = '',
+        String originalDate = '',
+      }) {
+        return QualityRfiSubmitDraft(
+          project: 'P04',
+          contract: 'P04EN01',
+          structureType: 'Minor Bridge',
+          structure: '7370',
+          action: 'Create',
+          typeOfRfi: type,
+          contractorRepresentative: 'PMIS_IT_017',
+          dateOfSubmission: '2026-10-13',
+          dateOfInspection: date,
+          timeOfInspection: '13:30',
+          rfiDescriptions: const <String>['21'],
+          enclosures: const <String>['3'],
+          description: '',
+          editing: false,
+          today: today,
+          originalTypeOfRfi: originalType,
+          originalDateOfInspection: originalDate,
+        );
+      }
+
+      expect(
+        qualityRfiValidationMessage(
+          draft(type: 'Regular RFI', date: '2026-10-13'),
+        ),
+        workRfiRegularDateRule,
+      );
+      expect(
+        qualityRfiValidationMessage(
+          draft(type: 'Regular RFI', date: '2026-10-14'),
+        ),
+        workRfiRegularDateRule,
+      );
+      expect(
+        qualityRfiValidationMessage(
+          draft(type: 'Regular RFI', date: '2026-10-15'),
+        ),
+        isNull,
+      );
+      expect(
+        qualityRfiValidationMessage(
+          draft(type: 'Spot RFI', date: '2026-10-12'),
+        ),
+        workRfiSpotDateRule,
+      );
+      expect(
+        qualityRfiValidationMessage(
+          draft(type: 'Spot RFI', date: '2026-10-13'),
+        ),
+        isNull,
+      );
+      expect(
+        qualityRfiValidationMessage(
+          draft(
+            type: 'Spot RFI',
+            date: '2026-10-01',
+            originalType: 'Spot RFI',
+            originalDate: '2026-10-01',
+          ),
+        ),
+        isNull,
       );
     });
   });

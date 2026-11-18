@@ -75,6 +75,9 @@ class QualityRfiSubmitDraft {
     required this.enclosures,
     required this.description,
     required this.editing,
+    this.today,
+    this.originalTypeOfRfi = '',
+    this.originalDateOfInspection = '',
   });
 
   final String project;
@@ -91,6 +94,16 @@ class QualityRfiSubmitDraft {
   final List<String> enclosures;
   final String description;
   final bool editing;
+
+  /// Local calendar date used for the Date of Inspection rule. Defaults to the
+  /// device clock when null.
+  final DateTime? today;
+
+  /// Saved Type of RFI / Date of Inspection of the RFI being edited (empty on
+  /// create). An unchanged saved pair is exempt from the Date of Inspection
+  /// rule so a past schedule can be kept until the user changes it.
+  final String originalTypeOfRfi;
+  final String originalDateOfInspection;
 }
 
 const String qualityRfiCategory = 'QUALITY_OR_SAFETY';
@@ -331,7 +344,27 @@ String? qualityRfiValidationMessage(QualityRfiSubmitDraft draft) {
   if (workRfiApiTime(draft.timeOfInspection).isEmpty) {
     return 'Please select Time of Inspection.';
   }
-  return null;
+  return _qualityInspectionDateRuleMessage(draft);
+}
+
+String? _qualityInspectionDateRuleMessage(QualityRfiSubmitDraft draft) {
+  final DateTime? date = parseWorkRfiDate(draft.dateOfInspection);
+  if (date == null) {
+    return null;
+  }
+  final DateTime? original = parseWorkRfiDate(draft.originalDateOfInspection);
+  final bool unchangedSavedDate =
+      original != null &&
+      workRfiDateOnly(original) == workRfiDateOnly(date) &&
+      draft.originalTypeOfRfi.trim() == draft.typeOfRfi.trim();
+  if (unchangedSavedDate) {
+    return null;
+  }
+  return workRfiInspectionDateRuleError(
+    typeOfRfi: draft.typeOfRfi,
+    date: date,
+    today: draft.today ?? DateTime.now(),
+  );
 }
 
 Map<String, dynamic> buildQualityRfiPayload(QualityRfiSubmitDraft draft) {
