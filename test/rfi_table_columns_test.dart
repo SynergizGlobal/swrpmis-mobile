@@ -19,6 +19,7 @@ void main() {
         'Scheduled on',
         'Contractor submitted on',
         'Status',
+        'Actions',
       ],
     );
     expect(
@@ -47,7 +48,66 @@ void main() {
         'Raised date',
         'Scheduled on',
         'Status',
+        'Actions',
       ],
+    );
+  });
+
+  test('quality actions follow status and view-only', () {
+    expect(
+      rfiQualityRowActions('CREATED', canModify: true),
+      <RfiQualityRowAction>[
+        RfiQualityRowAction.edit,
+        RfiQualityRowAction.delete,
+      ],
+    );
+    expect(
+      rfiQualityRowActions('REASSIGNED', canModify: true),
+      <RfiQualityRowAction>[
+        RfiQualityRowAction.edit,
+        RfiQualityRowAction.delete,
+      ],
+    );
+    expect(
+      rfiQualityRowActions('UPDATED', canModify: true),
+      <RfiQualityRowAction>[
+        RfiQualityRowAction.edit,
+        RfiQualityRowAction.delete,
+      ],
+    );
+    expect(
+      rfiQualityRowActions('RESCHEDULED', canModify: true),
+      <RfiQualityRowAction>[
+        RfiQualityRowAction.edit,
+        RfiQualityRowAction.delete,
+      ],
+    );
+    expect(
+      rfiQualityRowActions('CON_INSP_ONGOING', canModify: true),
+      <RfiQualityRowAction>[RfiQualityRowAction.view],
+    );
+    expect(
+      rfiQualityRowActions('INSPECTION_DONE', canModify: true),
+      <RfiQualityRowAction>[RfiQualityRowAction.view],
+    );
+    expect(
+      rfiQualityRowActions('CREATED', canModify: false),
+      <RfiQualityRowAction>[RfiQualityRowAction.view],
+    );
+    expect(
+      rfiQualityRowActions('REASSIGNED', canModify: false),
+      <RfiQualityRowAction>[RfiQualityRowAction.view],
+    );
+    expect(
+      rfiQualityRowActions('UNKNOWN_STATUS', canModify: true),
+      <RfiQualityRowAction>[RfiQualityRowAction.view],
+    );
+    expect(
+      rfiTableColumns(
+        RfiListKind.quality,
+        showActions: false,
+      ).map((RfiTableColumn column) => column.label),
+      isNot(contains('Actions')),
     );
   });
 
@@ -73,7 +133,9 @@ void main() {
       contractorSubmittedOn: '',
       rfiStatus: 'AE_INSP_ONGOING',
     );
-    final RfiTableColumn status = rfiTableColumns(RfiListKind.material).last;
+    final RfiTableColumn status = rfiTableColumns(
+      RfiListKind.material,
+    ).firstWhere((RfiTableColumn column) => column.status);
     expect(status.status, isTrue);
     expect(status.read(item), 'AE INSP ONGOING');
     expect(rfiTableColumns(RfiListKind.material).first.read(item), isEmpty);

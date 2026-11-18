@@ -19,6 +19,8 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_permissions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_providers.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/material_rfi_form_page.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/quality_rfi_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_delete_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/work_rfi_form_page.dart';
@@ -54,11 +56,16 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
   }
 
   Future<void> _onAdd() async {
-    if (!_canAdd(ref.read(rfiCategoryAccessProvider(widget.kind))) ||
-        widget.kind != RfiListKind.work) {
+    if (!_canAdd(ref.read(rfiCategoryAccessProvider(widget.kind)))) {
       return;
     }
-    await _openWorkForm(null);
+    if (widget.kind == RfiListKind.quality) {
+      await _openQualityForm(null);
+    } else if (widget.kind == RfiListKind.work) {
+      await _openWorkForm(null);
+    } else if (widget.kind == RfiListKind.material) {
+      await _openMaterialForm(null);
+    }
   }
 
   /// Add follows the server's `can-create` / `category-view-only` answers,
@@ -119,12 +126,50 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
       );
       return;
     }
+    if (widget.kind == RfiListKind.quality) {
+      await Navigator.of(context, rootNavigator: true).push<void>(
+        MaterialPageRoute<void>(
+          builder: (BuildContext context) => QualityRfiFormPage(
+            rfiId: id,
+            rfiCode: item.rfiId,
+            readOnly: true,
+          ),
+        ),
+      );
+      return;
+    }
+    if (widget.kind == RfiListKind.material) {
+      await Navigator.of(context, rootNavigator: true).push<void>(
+        MaterialPageRoute<void>(
+          builder: (BuildContext context) => MaterialRfiFormPage(
+            rfiId: id,
+            rfiCode: item.rfiId,
+            readOnly: true,
+          ),
+        ),
+      );
+      return;
+    }
     await Navigator.of(context, rootNavigator: true).push<void>(
       MaterialPageRoute<void>(
         builder: (BuildContext context) =>
             WorkRfiFormPage(rfiId: id, rfiCode: item.rfiId, readOnly: true),
       ),
     );
+  }
+
+  Future<void> _onEditQuality(RfiListItem item) async {
+    final int? id = item.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Edit',
+        message: 'This RFI cannot be edited.',
+      );
+      return;
+    }
+    await _openQualityForm(id, rfiCode: item.rfiId);
   }
 
   Future<void> _openWorkForm(int? id, {String rfiCode = ''}) async {
@@ -148,6 +193,54 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
       return;
     }
     ref.invalidate(rfiListProvider(RfiListKind.work));
+  }
+
+  Future<void> _openMaterialForm(int? id, {String rfiCode = ''}) async {
+    final bool? saved = await Navigator.of(context, rootNavigator: true)
+        .push<bool>(
+          MaterialPageRoute<bool>(
+            builder: (BuildContext context) =>
+                MaterialRfiFormPage(rfiId: id, rfiCode: rfiCode),
+          ),
+        );
+    if (saved != true || !mounted) {
+      return;
+    }
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.success,
+      title: 'Created',
+      message: 'Material RFI created.',
+    );
+    if (!mounted) {
+      return;
+    }
+    ref.invalidate(rfiListProvider(RfiListKind.material));
+  }
+
+  Future<void> _openQualityForm(int? id, {String rfiCode = ''}) async {
+    final bool? saved = await Navigator.of(context, rootNavigator: true)
+        .push<bool>(
+          MaterialPageRoute<bool>(
+            builder: (BuildContext context) =>
+                QualityRfiFormPage(rfiId: id, rfiCode: rfiCode),
+          ),
+        );
+    if (saved != true || !mounted) {
+      return;
+    }
+    await AppDialog.show(
+      context,
+      variant: AppDialogVariant.success,
+      title: id == null ? 'Created' : 'Updated',
+      message: id == null
+          ? 'Quality/Safety RFI created.'
+          : 'Quality/Safety RFI updated.',
+    );
+    if (!mounted) {
+      return;
+    }
+    ref.invalidate(rfiListProvider(RfiListKind.quality));
   }
 
   Future<void> _onExport(BuildContext origin) async {
@@ -362,10 +455,14 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
           return RfiTable(
             columns: rfiTableColumns(
               widget.kind,
-              onEdit: widget.kind == RfiListKind.work ? _onEdit : null,
-              onView: widget.kind == RfiListKind.work ? _onView : null,
-              onDelete: widget.kind == RfiListKind.work ? _onDelete : null,
-              showActions: canModify,
+              onEdit: switch (widget.kind) {
+                RfiListKind.work => canModify ? _onEdit : null,
+                RfiListKind.quality => canModify ? _onEditQuality : null,
+                RfiListKind.material => null,
+              },
+              onView: _onView,
+              onDelete: canModify ? _onDelete : null,
+              showActions: widget.kind == RfiListKind.quality || canModify,
             ),
             items: tablePage.items,
           );

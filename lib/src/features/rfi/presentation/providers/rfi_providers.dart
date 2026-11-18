@@ -11,12 +11,17 @@ final rfiListProvider = FutureProvider.family<List<RfiListItem>, RfiListKind>((
   return ref.watch(rfiRemoteDataSourceProvider).fetchList(kind);
 });
 
-/// Server access for a list kind. Only Work RFI is checked against the
-/// server today (the web calls these APIs with `rfiCategory=WORK`).
 final rfiCategoryAccessProvider = FutureProvider.autoDispose
     .family<RfiCategoryAccess?, RfiListKind>((ref, RfiListKind kind) {
-      if (kind != RfiListKind.work) {
+      final String? category = switch (kind) {
+        RfiListKind.work => 'WORK',
+        RfiListKind.material => null,
+        RfiListKind.quality => 'QUALITY_OR_SAFETY',
+      };
+      if (category == null) {
         return Future<RfiCategoryAccess?>.value();
       }
-      return ref.watch(rfiRemoteDataSourceProvider).fetchCategoryAccess('WORK');
+      return ref
+          .watch(rfiRemoteDataSourceProvider)
+          .fetchCategoryAccess(category);
     });

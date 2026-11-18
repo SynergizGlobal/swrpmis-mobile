@@ -61,10 +61,11 @@ void main() {
   });
 
   group('work row actions', () {
-    test('Edit only while CREATED or RESCHEDULED, like the web', () {
+    test('Edit only while CREATED/UPDATED/RESCHEDULED/REASSIGNED, like web', () {
       expect(rfiWorkRowEditable('CREATED'), isTrue);
       expect(rfiWorkRowEditable('RESCHEDULED'), isTrue);
       expect(rfiWorkRowEditable('UPDATED'), isTrue);
+      expect(rfiWorkRowEditable('REASSIGNED'), isTrue);
       expect(rfiWorkRowEditable('CON_INSP_ONGOING'), isFalse);
       expect(rfiWorkRowEditable('INSPECTION_DONE'), isFalse);
       expect(rfiWorkRowEditable('AE_INSP_PENDING'), isFalse);

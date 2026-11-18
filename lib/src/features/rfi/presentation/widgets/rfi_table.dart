@@ -76,6 +76,18 @@ List<RfiTableColumn> rfiTableColumns(
         read: _submitted,
       ),
       status,
+      if (showActions)
+        RfiTableColumn(
+          label: 'Actions',
+          minWidth: 160,
+          read: _blank,
+          buildCell: (BuildContext context, RfiListItem item) {
+            return _MaterialRowActions(
+              onView: onView == null ? null : () => onView(item),
+              onDelete: onDelete == null ? null : () => onDelete(item),
+            );
+          },
+        ),
     ],
     RfiListKind.work => <RfiTableColumn>[
       rfiId,
@@ -117,7 +129,14 @@ List<RfiTableColumn> rfiTableColumns(
     ],
     RfiListKind.quality => <RfiTableColumn>[
       rfiId,
-      const RfiTableColumn(label: 'Category', minWidth: 120, read: _category),
+      RfiTableColumn(
+        label: 'Category',
+        minWidth: 176,
+        read: _category,
+        buildCell: (BuildContext context, RfiListItem item) {
+          return _CategoryChip(label: item.rfiCategory);
+        },
+      ),
       project,
       const RfiTableColumn(
         label: 'Structure type',
@@ -127,6 +146,20 @@ List<RfiTableColumn> rfiTableColumns(
       raised,
       scheduled,
       status,
+      if (showActions)
+        RfiTableColumn(
+          label: 'Actions',
+          minWidth: 176,
+          read: _blank,
+          buildCell: (BuildContext context, RfiListItem item) {
+            return _QualityRowActions(
+              status: item.rfiStatus,
+              onEdit: onEdit == null ? null : () => onEdit(item),
+              onView: onView == null ? null : () => onView(item),
+              onDelete: onDelete == null ? null : () => onDelete(item),
+            );
+          },
+        ),
     ],
   };
 }
@@ -519,10 +552,31 @@ const Set<String> rfiWorkEditableStatuses = <String>{
   'CREATED',
   'UPDATED',
   'RESCHEDULED',
+  'REASSIGNED',
 };
 
 bool rfiWorkRowEditable(String status) {
   return rfiWorkEditableStatuses.contains(status.trim().toUpperCase());
+}
+
+/// Buttons on a Quality/Safety row.
+///
+/// CREATED, UPDATED, RESCHEDULED, and REASSIGNED offer Edit and Delete while
+/// the user may modify the category. Inspection and any unknown status offer
+/// View.
+enum RfiQualityRowAction { view, edit, delete }
+
+List<RfiQualityRowAction> rfiQualityRowActions(
+  String status, {
+  required bool canModify,
+}) {
+  if (canModify && rfiWorkRowEditable(status)) {
+    return const <RfiQualityRowAction>[
+      RfiQualityRowAction.edit,
+      RfiQualityRowAction.delete,
+    ];
+  }
+  return const <RfiQualityRowAction>[RfiQualityRowAction.view];
 }
 
 class _WorkRowActions extends StatelessWidget {
@@ -560,6 +614,150 @@ class _WorkRowActions extends StatelessWidget {
           foreground: green,
           background: greenFill,
           onPressed: editable ? onEdit : onView,
+        ),
+        _ActionChipButton(
+          label: 'Delete',
+          foreground: red,
+          background: redFill,
+          onPressed: onDelete,
+        ),
+      ],
+    );
+  }
+}
+
+class _QualityRowActions extends StatelessWidget {
+  const _QualityRowActions({
+    required this.status,
+    required this.onEdit,
+    required this.onView,
+    required this.onDelete,
+  });
+
+  final String status;
+  final VoidCallback? onEdit;
+  final VoidCallback? onView;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color green = dark
+        ? const Color(0xFF34D399)
+        : const Color(0xFF15803D);
+    final Color greenFill = dark
+        ? const Color(0x3310B981)
+        : const Color(0xFFEAF8EF);
+    final Color red = dark ? const Color(0xFFFF8A93) : const Color(0xFFDC2626);
+    final Color redFill = dark
+        ? const Color(0x33EF4444)
+        : const Color(0xFFFDECEC);
+    final List<RfiQualityRowAction> actions = rfiQualityRowActions(
+      status,
+      canModify: onEdit != null || onDelete != null,
+    );
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        for (final RfiQualityRowAction action in actions)
+          _ActionChipButton(
+            label: switch (action) {
+              RfiQualityRowAction.view => 'View',
+              RfiQualityRowAction.edit => 'Edit',
+              RfiQualityRowAction.delete => 'Delete',
+            },
+            foreground: action == RfiQualityRowAction.delete ? red : green,
+            background: action == RfiQualityRowAction.delete
+                ? redFill
+                : greenFill,
+            onPressed: switch (action) {
+              RfiQualityRowAction.view => onView,
+              RfiQualityRowAction.edit => onEdit,
+              RfiQualityRowAction.delete => onDelete,
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final String text = label.trim();
+    final TextStyle fallback =
+        Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          height: 1.3,
+        ) ??
+        const TextStyle(fontSize: 12, height: 1.3);
+    if (text.isEmpty) {
+      return Text('—', style: fallback);
+    }
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color foreground = dark
+        ? const Color(0xFFFF8A93)
+        : const Color(0xFFDC2626);
+    final Color background = dark
+        ? const Color(0x33EF4444)
+        : const Color(0xFFFEE2E2);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MaterialRowActions extends StatelessWidget {
+  const _MaterialRowActions({required this.onView, required this.onDelete});
+
+  final VoidCallback? onView;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color green = dark
+        ? const Color(0xFF34D399)
+        : const Color(0xFF15803D);
+    final Color greenFill = dark
+        ? const Color(0x3310B981)
+        : const Color(0xFFEAF8EF);
+    final Color red = dark ? const Color(0xFFFF8A93) : const Color(0xFFDC2626);
+    final Color redFill = dark
+        ? const Color(0x33EF4444)
+        : const Color(0xFFFDECEC);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        _ActionChipButton(
+          label: 'View',
+          foreground: green,
+          background: greenFill,
+          onPressed: onView,
         ),
         _ActionChipButton(
           label: 'Delete',

@@ -206,7 +206,26 @@ class ApiConstants {
   /// the server replies "RFI marked as deleted successfully!".
   static const String rfiDeletePath = '/rfi/delete';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';
-  static const String qualityRfiListPath = '/rfi/api/qualityRfi/list';
+  static const String materialRfiCreatePath = '/rfi/api/materialRfi/create';
+  static const String materialRfiProjectsPath = '/rfi/api/projects';
+  static const String materialRfiContractsPath = '/rfi/api/contracts';
+  static const String materialRfiInspectionItemsPath =
+      '/rfi/api/inspectionItems';
+  static const String materialRfiInspectionTypesPath =
+      '/rfi/api/inspectionTypes';
+  static const String materialRfiMaterialsByItemPath =
+      '/rfi/api/materialsByItem';
+  static const String materialRfiRepresentativesPath =
+      '/rfi/api/material-representatives';
+  static const String materialRfiDescriptionsPath =
+      '/rfi/api/rfi-descriptions-by-category';
+  static const String materialRfiEnclosuresPath = '/rfi/api/enclosures';
+  static String materialRfiPath(int id) => '/rfi/api/materialRfi/$id';
+  static const String qualityRfiListPath = '/rfi/api/quality-safety/list';
+  static const String qualityRfiCreatePath = '/rfi/api/qualityRfi/create';
+  static String qualityRfiPath(int id) => '/rfi/api/qualityRfi/$id';
+  static const String qualitySafetyRepresentativesPath =
+      '/rfi/api/quality-safety-representatives';
   static const String newActivitiesUpdatePath = '/newActivitiesUpdate';
   static const String contractListForProjectPath = '/getContractListForProject';
 
