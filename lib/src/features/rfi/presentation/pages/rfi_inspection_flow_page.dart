@@ -962,9 +962,27 @@ class _RfiInspectionFlowPageState
     ];
   }
 
-  /// Web checks before submitting: engineer status/remarks, the checklist
-  /// YES/NO auto-reject, and the rectification confirmation.
+  /// Web checks before submitting: checklist completion, engineer
+  /// status/remarks, the checklist YES/NO auto-reject, and the rectification
+  /// confirmation.
   Future<void> _onSubmitPressed(RfiInspectionFlowController notifier) async {
+    final String? incomplete = await notifier.checklistIncomplete();
+    if (incomplete != null) {
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.warning,
+        title: 'Checklist incomplete',
+        message:
+            'Please update all checklist items for "$incomplete" before submitting.',
+      );
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
     if (notifier.isEngineer) {
       final String? problem = rfiEngineerSubmitError(
         ref.read(rfiInspectionFlowControllerProvider(widget.args)),

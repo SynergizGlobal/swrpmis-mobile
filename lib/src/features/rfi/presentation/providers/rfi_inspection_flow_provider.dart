@@ -428,6 +428,36 @@ class RfiInspectionFlowController
     engineerRemarks: value.length > 1000 ? value.substring(0, 1000) : value,
   );
 
+  /// Returns the enclosure name whose checklist has unfilled status items,
+  /// or null if all checklists are complete (or there are no enclosures).
+  Future<String?> checklistIncomplete() async {
+    final RfiInspectionDetails? details = state.details;
+    if (details == null) {
+      return null;
+    }
+    final bool contractor = rfiRoleIsContractorSide(role);
+    for (final RfiInspectionEnclosure e in details.enclosures) {
+      try {
+        final List<RfiChecklistItem> items = await loadChecklist(e);
+        if (items.isEmpty) {
+          continue;
+        }
+        final bool hasEmpty = items.any((RfiChecklistItem i) {
+          final String status = contractor
+              ? i.contractorStatus.trim()
+              : i.engineerStatus.trim();
+          return status.isEmpty;
+        });
+        if (hasEmpty) {
+          return e.enclosureName;
+        }
+      } on Object {
+        return e.enclosureName;
+      }
+    }
+    return null;
+  }
+
   /// Web rule: a checklist row the contractor marked YES and the engineer
   /// marked NO forces the inspection to Rejected.
   Future<bool> checklistConflict() async {
