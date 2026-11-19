@@ -926,12 +926,16 @@ class RfiInspectionFlowController
       contractor: rfi.field('contractorName'),
       contractorRep: state.contractorRepresentative,
       location: state.location,
-      // Web: the submitter's side gets "now"; for an engineer the contractor
-      // date is printed only when the RFI is not required.
-      conSubmittedOn: isEngineer
-          ? (isRfiNotRequired ? rfi.field('contractorSubmittedOn') : '')
-          : rfiPdfTimestamp(DateTime.now()),
-      enggSubmittedOn: isEngineer ? rfiPdfTimestamp(DateTime.now()) : '',
+      // Part-I labels use RFI form dates, not the PDF upload timestamp.
+      conSubmittedOn: rfiPdfServerDate(rfi.field('dateOfSubmission')),
+      enggSubmittedOn: isEngineer
+          ? rfiPdfInspectionSubmittedOn(
+              state.dateOfInspection.trim().isNotEmpty
+                  ? state.dateOfInspection
+                  : rfi.dateOfInspection,
+              rfi.timeOfInspection,
+            )
+          : '',
       rfiNotRequired: isRfiNotRequired,
       inspectionStatus: isEngineer ? state.engineerStatus : '',
       engineerRemarks: isEngineer ? state.engineerRemarks : '',
@@ -1485,6 +1489,19 @@ String rfiPdfServerDate(String raw) {
     return raw.trim();
   }
   return '${m[1]}/${m[2]}/${m[3]}${m[4]}';
+}
+
+/// Engineer Submitted On: date of inspection (+ time when present).
+String rfiPdfInspectionSubmittedOn(String date, String time) {
+  final String formatted = rfiPdfServerDate(date);
+  if (formatted.isEmpty) {
+    return '';
+  }
+  final String clock = time.trim();
+  if (clock.isEmpty) {
+    return formatted;
+  }
+  return '$formatted $clock';
 }
 
 String rfiPdfQuantity(double value) {

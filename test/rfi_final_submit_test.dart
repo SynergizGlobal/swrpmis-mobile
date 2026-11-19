@@ -123,6 +123,16 @@ void main() {
     expect(rfiPdfQuantity(2.5), '2.5');
   });
 
+  test('PDF submitted-on fields use submission and inspection dates', () {
+    expect(rfiPdfServerDate('31-10-2026'), '31/10/2026');
+    expect(
+      rfiPdfInspectionSubmittedOn('02-11-2026', '14:29'),
+      '02/11/2026 14:29',
+    );
+    expect(rfiPdfInspectionSubmittedOn('02-11-2026', ''), '02/11/2026');
+    expect(rfiPdfInspectionSubmittedOn('', '14:29'), '');
+  });
+
   test('step failure messages name the step', () {
     expect(
       rfiSubmitStepMessage(
