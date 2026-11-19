@@ -7,6 +7,7 @@ class RfiInspectionRow {
     required this.rfiCategory,
     required this.projectName,
     required this.contractName,
+    this.contractId = '',
     required this.structure,
     required this.structureType,
     required this.element,
@@ -29,6 +30,7 @@ class RfiInspectionRow {
   final String rfiCategory;
   final String projectName;
   final String contractName;
+  final String contractId;
   final String structure;
   final String structureType;
   final String element;
@@ -104,6 +106,7 @@ class RfiInspectionRow {
       rfiCategory: _text(json['rfiCategory']),
       projectName: _text(json['projectName']),
       contractName: _text(json['contractName']),
+      contractId: _text(json['contractId'] ?? json['contract_id_fk']),
       structure: _text(json['structure']),
       structureType: _text(json['structureType']),
       element: _text(json['element']),

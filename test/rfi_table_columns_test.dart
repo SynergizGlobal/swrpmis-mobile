@@ -62,6 +62,13 @@ void main() {
       ],
     );
     expect(
+      rfiQualityRowActions('OPEN', canModify: true),
+      <RfiQualityRowAction>[
+        RfiQualityRowAction.edit,
+        RfiQualityRowAction.delete,
+      ],
+    );
+    expect(
       rfiQualityRowActions('REASSIGNED', canModify: true),
       <RfiQualityRowAction>[
         RfiQualityRowAction.edit,

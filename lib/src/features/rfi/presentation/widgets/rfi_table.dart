@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_actions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 
 class RfiTableColumn {
   const RfiTableColumn({
@@ -27,6 +29,9 @@ List<RfiTableColumn> rfiTableColumns(
   void Function(RfiListItem item)? onEdit,
   void Function(RfiListItem item)? onView,
   void Function(RfiListItem item)? onDelete,
+  void Function(RfiListItem item, RfiListRowAction action)? onAction,
+  RfiUserRole role = RfiUserRole.unknown,
+  bool canModify = true,
   bool showActions = true,
 }) {
   const RfiTableColumn rfiId = RfiTableColumn(
@@ -79,12 +84,17 @@ List<RfiTableColumn> rfiTableColumns(
       if (showActions)
         RfiTableColumn(
           label: 'Actions',
-          minWidth: 160,
+          minWidth: 120,
           read: _blank,
           buildCell: (BuildContext context, RfiListItem item) {
-            return _MaterialRowActions(
-              onView: onView == null ? null : () => onView(item),
-              onDelete: onDelete == null ? null : () => onDelete(item),
+            return _ListRowActions(
+              item: item,
+              role: role,
+              canModify: canModify,
+              onAction: onAction,
+              onEdit: onEdit,
+              onView: onView,
+              onDelete: onDelete,
             );
           },
         ),
@@ -115,14 +125,17 @@ List<RfiTableColumn> rfiTableColumns(
       if (showActions)
         RfiTableColumn(
           label: 'Actions',
-          minWidth: 176,
+          minWidth: 120,
           read: _blank,
           buildCell: (BuildContext context, RfiListItem item) {
-            return _WorkRowActions(
-              editable: rfiWorkRowEditable(item.rfiStatus),
-              onEdit: onEdit == null ? null : () => onEdit(item),
-              onView: onView == null ? null : () => onView(item),
-              onDelete: onDelete == null ? null : () => onDelete(item),
+            return _ListRowActions(
+              item: item,
+              role: role,
+              canModify: canModify,
+              onAction: onAction,
+              onEdit: onEdit,
+              onView: onView,
+              onDelete: onDelete,
             );
           },
         ),
@@ -149,14 +162,17 @@ List<RfiTableColumn> rfiTableColumns(
       if (showActions)
         RfiTableColumn(
           label: 'Actions',
-          minWidth: 176,
+          minWidth: 120,
           read: _blank,
           buildCell: (BuildContext context, RfiListItem item) {
-            return _QualityRowActions(
-              status: item.rfiStatus,
-              onEdit: onEdit == null ? null : () => onEdit(item),
-              onView: onView == null ? null : () => onView(item),
-              onDelete: onDelete == null ? null : () => onDelete(item),
+            return _ListRowActions(
+              item: item,
+              role: role,
+              canModify: canModify,
+              onAction: onAction,
+              onEdit: onEdit,
+              onView: onView,
+              onDelete: onDelete,
             );
           },
         ),
@@ -545,11 +561,10 @@ RfiStatusTone rfiStatusTone(String code) {
   };
 }
 
-/// Statuses the web list still offers Edit for. Once the contractor
-/// inspection starts (CON_INSP_ONGOING, AE_INSP_PENDING, INSPECTION_DONE...)
-/// the row only gets View.
+/// Statuses the web / WCR still offer Edit for (contractor early workflow).
 const Set<String> rfiWorkEditableStatuses = <String>{
   'CREATED',
+  'OPEN',
   'UPDATED',
   'RESCHEDULED',
   'REASSIGNED',
@@ -559,18 +574,20 @@ bool rfiWorkRowEditable(String status) {
   return rfiWorkEditableStatuses.contains(status.trim().toUpperCase());
 }
 
-/// Buttons on a Quality/Safety row.
-///
-/// CREATED, UPDATED, RESCHEDULED, and REASSIGNED offer Edit and Delete while
-/// the user may modify the category. Inspection and any unknown status offer
-/// View.
+/// Legacy Quality chip mapping — prefer [rfiListRowActions] for new callers.
 enum RfiQualityRowAction { view, edit, delete }
 
 List<RfiQualityRowAction> rfiQualityRowActions(
   String status, {
   required bool canModify,
 }) {
-  if (canModify && rfiWorkRowEditable(status)) {
+  final List<RfiListRowAction> actions = rfiListRowActions(
+    role: canModify ? RfiUserRole.contractor : RfiUserRole.engineer,
+    status: status,
+    canModify: canModify,
+  );
+  if (actions.contains(RfiListRowAction.editRfi) ||
+      actions.contains(RfiListRowAction.deleteRfi)) {
     return const <RfiQualityRowAction>[
       RfiQualityRowAction.edit,
       RfiQualityRowAction.delete,
@@ -579,107 +596,109 @@ List<RfiQualityRowAction> rfiQualityRowActions(
   return const <RfiQualityRowAction>[RfiQualityRowAction.view];
 }
 
-class _WorkRowActions extends StatelessWidget {
-  const _WorkRowActions({
-    required this.editable,
+class _ListRowActions extends StatelessWidget {
+  const _ListRowActions({
+    required this.item,
+    required this.role,
+    required this.canModify,
+    required this.onAction,
     required this.onEdit,
     required this.onView,
     required this.onDelete,
   });
 
-  final bool editable;
-  final VoidCallback? onEdit;
-  final VoidCallback? onView;
-  final VoidCallback? onDelete;
+  final RfiListItem item;
+  final RfiUserRole role;
+  final bool canModify;
+  final void Function(RfiListItem item, RfiListRowAction action)? onAction;
+  final void Function(RfiListItem item)? onEdit;
+  final void Function(RfiListItem item)? onView;
+  final void Function(RfiListItem item)? onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    final Color green = dark
-        ? const Color(0xFF34D399)
-        : const Color(0xFF15803D);
-    final Color greenFill = dark
-        ? const Color(0x3310B981)
-        : const Color(0xFFEAF8EF);
-    final Color red = dark ? const Color(0xFFFF8A93) : const Color(0xFFDC2626);
-    final Color redFill = dark
-        ? const Color(0x33EF4444)
-        : const Color(0xFFFDECEC);
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: <Widget>[
-        _ActionChipButton(
-          label: editable ? 'Edit' : 'View',
-          foreground: green,
-          background: greenFill,
-          onPressed: editable ? onEdit : onView,
-        ),
-        _ActionChipButton(
-          label: 'Delete',
-          foreground: red,
-          background: redFill,
-          onPressed: onDelete,
-        ),
-      ],
+    final List<RfiListRowAction> actions = rfiListRowActions(
+      role: role,
+      status: item.rfiStatus,
+      canModify: canModify,
     );
+    if (actions.isEmpty) {
+      return Text(
+        '—',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: IconButton(
+        tooltip: 'Actions',
+        visualDensity: VisualDensity.compact,
+        onPressed: () => _openMenu(context, actions),
+        icon: const Icon(Icons.more_horiz_rounded),
+      ),
+    );
+  }
+
+  Future<void> _openMenu(
+    BuildContext context,
+    List<RfiListRowAction> actions,
+  ) async {
+    final RfiListRowAction? picked =
+        await showModalBottomSheet<RfiListRowAction>(
+          context: context,
+          showDragHandle: true,
+          builder: (BuildContext sheetContext) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  for (final RfiListRowAction action in actions)
+                    ListTile(
+                      leading: Icon(_listActionIcon(action)),
+                      title: Text(action.menuLabel),
+                      onTap: () => Navigator.pop(sheetContext, action),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+    if (picked == null || !context.mounted) {
+      return;
+    }
+    if (onAction != null) {
+      onAction!(item, picked);
+      return;
+    }
+    // Legacy chip callbacks (tests / older callers).
+    switch (picked) {
+      case RfiListRowAction.viewDetails:
+        onView?.call(item);
+      case RfiListRowAction.editRfi:
+        onEdit?.call(item);
+      case RfiListRowAction.deleteRfi:
+        onDelete?.call(item);
+      default:
+        break;
+    }
   }
 }
 
-class _QualityRowActions extends StatelessWidget {
-  const _QualityRowActions({
-    required this.status,
-    required this.onEdit,
-    required this.onView,
-    required this.onDelete,
-  });
-
-  final String status;
-  final VoidCallback? onEdit;
-  final VoidCallback? onView;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    final Color green = dark
-        ? const Color(0xFF34D399)
-        : const Color(0xFF15803D);
-    final Color greenFill = dark
-        ? const Color(0x3310B981)
-        : const Color(0xFFEAF8EF);
-    final Color red = dark ? const Color(0xFFFF8A93) : const Color(0xFFDC2626);
-    final Color redFill = dark
-        ? const Color(0x33EF4444)
-        : const Color(0xFFFDECEC);
-    final List<RfiQualityRowAction> actions = rfiQualityRowActions(
-      status,
-      canModify: onEdit != null || onDelete != null,
-    );
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: <Widget>[
-        for (final RfiQualityRowAction action in actions)
-          _ActionChipButton(
-            label: switch (action) {
-              RfiQualityRowAction.view => 'View',
-              RfiQualityRowAction.edit => 'Edit',
-              RfiQualityRowAction.delete => 'Delete',
-            },
-            foreground: action == RfiQualityRowAction.delete ? red : green,
-            background: action == RfiQualityRowAction.delete
-                ? redFill
-                : greenFill,
-            onPressed: switch (action) {
-              RfiQualityRowAction.view => onView,
-              RfiQualityRowAction.edit => onEdit,
-              RfiQualityRowAction.delete => onDelete,
-            },
-          ),
-      ],
-    );
-  }
+IconData _listActionIcon(RfiListRowAction action) {
+  return switch (action) {
+    RfiListRowAction.viewDetails => Icons.visibility_outlined,
+    RfiListRowAction.editRfi => Icons.edit_outlined,
+    RfiListRowAction.uploadAttachments => Icons.attach_file_rounded,
+    RfiListRowAction.uploadTestResults => Icons.biotech_rounded,
+    RfiListRowAction.startOnline => Icons.online_prediction,
+    RfiListRowAction.startOffline => Icons.offline_pin_outlined,
+    RfiListRowAction.submit => Icons.check_circle_outline_rounded,
+    RfiListRowAction.closeRfi => Icons.lock_outline_rounded,
+    RfiListRowAction.deleteRfi => Icons.delete_outline,
+    RfiListRowAction.changeExecutive => Icons.person_search_outlined,
+  };
 }
 
 class _CategoryChip extends StatelessWidget {
@@ -730,85 +749,3 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-class _MaterialRowActions extends StatelessWidget {
-  const _MaterialRowActions({required this.onView, required this.onDelete});
-
-  final VoidCallback? onView;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    final Color green = dark
-        ? const Color(0xFF34D399)
-        : const Color(0xFF15803D);
-    final Color greenFill = dark
-        ? const Color(0x3310B981)
-        : const Color(0xFFEAF8EF);
-    final Color red = dark ? const Color(0xFFFF8A93) : const Color(0xFFDC2626);
-    final Color redFill = dark
-        ? const Color(0x33EF4444)
-        : const Color(0xFFFDECEC);
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: <Widget>[
-        _ActionChipButton(
-          label: 'View',
-          foreground: green,
-          background: greenFill,
-          onPressed: onView,
-        ),
-        _ActionChipButton(
-          label: 'Delete',
-          foreground: red,
-          background: redFill,
-          onPressed: onDelete,
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionChipButton extends StatelessWidget {
-  const _ActionChipButton({
-    required this.label,
-    required this.foreground,
-    required this.background,
-    required this.onPressed,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const WidgetStatePropertyAll<Size>(Size(64, 32)),
-        padding: const WidgetStatePropertyAll<EdgeInsets>(
-          EdgeInsets.symmetric(horizontal: 12),
-        ),
-        foregroundColor: WidgetStatePropertyAll<Color>(foreground),
-        backgroundColor: WidgetStatePropertyAll<Color>(background),
-        side: WidgetStatePropertyAll<BorderSide>(
-          BorderSide(color: foreground.withValues(alpha: 0.35)),
-        ),
-        shape: const WidgetStatePropertyAll<OutlinedBorder>(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(6)),
-          ),
-        ),
-        textStyle: const WidgetStatePropertyAll<TextStyle>(
-          TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-        ),
-      ),
-      onPressed: onPressed,
-      child: Text(label),
-    );
-  }
-}

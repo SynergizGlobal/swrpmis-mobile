@@ -9,6 +9,9 @@ class RfiValidationRow {
     required this.status,
     required this.remarks,
     required this.comment,
+    required this.valdationAuth,
+    required this.projectName,
+    required this.contractName,
   });
 
   final String? rfiCategory;
@@ -19,6 +22,11 @@ class RfiValidationRow {
   final String? remarks;
   final String? comment;
 
+  /// API typo: `valdationAuth` (kept as returned by QA).
+  final String? valdationAuth;
+  final String? projectName;
+  final String? contractName;
+
   factory RfiValidationRow.fromJson(Map<String, dynamic> json) {
     return RfiValidationRow(
       rfiCategory: _text(json['rfiCategory']),
@@ -28,6 +36,9 @@ class RfiValidationRow {
       status: _text(json['status']),
       remarks: _text(json['remarks']),
       comment: _text(json['comment']),
+      valdationAuth: _text(json['valdationAuth']),
+      projectName: _text(json['projectName']),
+      contractName: _text(json['contractName']),
     );
   }
 
@@ -36,7 +47,7 @@ class RfiValidationRow {
       id: longRfiValidateId,
       rfiId: stringRfiId ?? '',
       rfiCategory: rfiCategory ?? '',
-      projectName: '',
+      projectName: projectName ?? '',
       item: '',
       material: '',
       location: '',
@@ -46,7 +57,7 @@ class RfiValidationRow {
       element: '',
       nameOfRepresentative: '',
       assignedPersonClient: '',
-      contractName: '',
+      contractName: contractName ?? '',
       dateOfSubmission: '',
       dateOfInspection: '',
       timeOfInspection: '',

@@ -6,6 +6,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_opti
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_catalog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_filter.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_inspection_row.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_validator_option.dart';
 
 final rfiInspectionRemoteDataSourceProvider =
     Provider<RfiInspectionRemoteDataSource>((ref) {
@@ -194,6 +195,91 @@ class RfiInspectionRemoteDataSource {
       submittedRfiNumbers: <String>[],
       failedRfiNumbers: <String>[],
     );
+  }
+
+  Future<String> uploadAttachment({
+    required int rfiId,
+    required String description,
+    required String filePath,
+    required String fileName,
+  }) async {
+    final FormData form = FormData.fromMap(<String, dynamic>{
+      'rfiId': rfiId.toString(),
+      'description': description,
+      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.rfiUploadAttachmentPath,
+      data: form,
+    );
+    return _message(
+      response.data,
+      fallback: 'Attachment uploaded successfully.',
+    );
+  }
+
+  Future<List<RfiValidatorOption>> fetchValidators({
+    required String contractId,
+    required String rfiCategory,
+    required int rfiId,
+  }) async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.rfiValidatorsListPath,
+      queryParameters: <String, dynamic>{
+        'contractId': contractId,
+        'rfiCategory': rfiCategory,
+        'rfiId': rfiId,
+      },
+    );
+    return _unwrap(response.data)
+        .whereType<Map>()
+        .map(
+          (Map item) =>
+              RfiValidatorOption.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .where((RfiValidatorOption option) => option.userId.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<String> sendForValidation({
+    required int rfiId,
+    required String sentToUserId,
+    required String sentToUserName,
+    required String validationType,
+  }) async {
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.rfiSendForValidationPath(rfiId),
+      queryParameters: <String, dynamic>{
+        'sentToUserId': sentToUserId,
+        'sentToUserName': sentToUserName,
+        'validationType': validationType,
+      },
+    );
+    return _message(
+      response.data,
+      fallback: 'RFI sent for validation successfully.',
+    );
+  }
+
+  String _message(dynamic data, {required String fallback}) {
+    if (data is String && data.trim().isNotEmpty) {
+      return data.trim();
+    }
+    if (data is Map) {
+      final Map<String, dynamic> map = Map<String, dynamic>.from(data);
+      for (final String key in const <String>[
+        'message',
+        'msg',
+        'status',
+        'result',
+      ]) {
+        final Object? value = map[key];
+        if (value is String && value.trim().isNotEmpty) {
+          return value.trim();
+        }
+      }
+    }
+    return fallback;
   }
 
   Future<dynamic> _post(String path, Map<String, dynamic> body) async {

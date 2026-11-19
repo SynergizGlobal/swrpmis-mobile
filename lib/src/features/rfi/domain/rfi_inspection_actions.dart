@@ -26,23 +26,26 @@ List<RfiInspectionAction> rfiInspectionActions({
   DateTime? now,
 }) {
   final String status = row.status;
+  final String normalized = status.trim().toUpperCase();
   final DateTime clock = now ?? DateTime.now();
   final List<RfiInspectionAction> actions = <RfiInspectionAction>[];
   final bool engineerSide = rfiRoleIsEngineerSide(role);
-  if (role.canStartInspection(status) &&
+  final bool alreadyInspectedByAe = normalized == 'INSPECTED_BY_AE';
+  // Web still lists Start after AE inspect, but rejects it. Mobile omits it.
+  final bool allowStart = !alreadyInspectedByAe;
+  if (allowStart &&
+      role.canStartInspection(status) &&
       (!engineerSide ||
-          rfiEngineerInspectionStatuses.contains(status.toUpperCase())) &&
+          rfiEngineerInspectionStatuses.contains(normalized)) &&
       inspectionStartEnabled(role: role, row: row, now: clock)) {
     actions
       ..add(RfiInspectionAction.startOnline)
       ..add(RfiInspectionAction.startOffline);
-  } else if (rfiEngineerCanStartOnline(role: role, row: row, now: clock)) {
-    // Engineer side: the list rows carry no measurement/qty, which used to
-    // hide Start entirely. Offer the online inspection like the web.
+  } else if (allowStart &&
+      rfiEngineerCanStartOnline(role: role, row: row, now: clock)) {
+    // Engineer side: list rows may lack measurement/qty; still offer Start
+    // once the contractor has inspected (web parity for INSPECTED_BY_CON).
     actions.add(RfiInspectionAction.startOnline);
-  }
-  if (role.canViewRfi(status)) {
-    actions.add(RfiInspectionAction.viewDetails);
   }
   if (role.canUploadAttachments(status)) {
     actions.add(RfiInspectionAction.uploadAttachments);
@@ -50,11 +53,11 @@ List<RfiInspectionAction> rfiInspectionActions({
   if (role.canUploadTestResults(status)) {
     actions.add(RfiInspectionAction.uploadTestResults);
   }
-  if (role.canSubmitInspection(status)) {
-    actions.add(RfiInspectionAction.submit);
-  }
+  // After AE inspection, "Send for Validation" is the next step — not Submit.
   if (role.canSendForValidation(status)) {
     actions.add(RfiInspectionAction.sendForValidation);
+  } else if (role.canSubmitInspection(status)) {
+    actions.add(RfiInspectionAction.submit);
   }
   if (role.canRejectOrClose(status)) {
     actions.add(RfiInspectionAction.closeRfi);
@@ -65,20 +68,11 @@ List<RfiInspectionAction> rfiInspectionActions({
   if (role.canChangeExecutive(status)) {
     actions.add(RfiInspectionAction.changeExecutive);
   }
-  if (engineerSide) {
-    // Engineer side gets only what the web offers: start online and view.
-    return actions
-        .where(rfiEngineerMenuActions.contains)
-        .toList(growable: false);
+  if (role.canViewRfi(status)) {
+    actions.add(RfiInspectionAction.viewDetails);
   }
   return actions;
 }
-
-/// The only actions an engineer-side user sees in the inspection list.
-const Set<RfiInspectionAction> rfiEngineerMenuActions = <RfiInspectionAction>{
-  RfiInspectionAction.startOnline,
-  RfiInspectionAction.viewDetails,
-};
 
 /// The engineer may start an inspection only after the contractor has
 /// finished theirs.

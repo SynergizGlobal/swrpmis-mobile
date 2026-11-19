@@ -91,6 +91,14 @@ extension RfiUserRolePermissions on RfiUserRole {
 
   bool get canViewInspectionReferenceForm => this == RfiUserRole.itAdmin;
 
+  /// Contractor may edit RFIs only in early workflow statuses (WCR matrix).
+  bool canEditRfi(String status) {
+    if (this != RfiUserRole.contractor) {
+      return false;
+    }
+    return _contractorEditableStatuses.contains(status.trim().toUpperCase());
+  }
+
   bool canDeleteRfi(String status) {
     if (this == RfiUserRole.itAdmin) {
       return true;
@@ -98,12 +106,7 @@ extension RfiUserRolePermissions on RfiUserRole {
     if (this != RfiUserRole.contractor) {
       return false;
     }
-    final String s = status.trim().toUpperCase();
-    return s == 'CREATED' ||
-        s == 'OPEN' ||
-        s == 'UPDATED' ||
-        s == 'RESCHEDULED' ||
-        s == 'REASSIGNED';
+    return _contractorEditableStatuses.contains(status.trim().toUpperCase());
   }
 
   bool canStartInspection(String status) {
@@ -244,6 +247,14 @@ extension RfiUserRolePermissions on RfiUserRole {
 /// The role used for inspection actions. Roles mobile cannot work out from
 /// the user type fall back to the server's `/inspection-access` answer
 /// (ENGINEER or CONTRACTOR), which is what the web relies on.
+const Set<String> _contractorEditableStatuses = <String>{
+  'CREATED',
+  'OPEN',
+  'UPDATED',
+  'RESCHEDULED',
+  'REASSIGNED',
+};
+
 RfiUserRole rfiInspectionRole(RfiUserRole sessionRole, String accessType) {
   final bool known = sessionRole != RfiUserRole.unknown &&
       sessionRole != RfiUserRole.superUser &&

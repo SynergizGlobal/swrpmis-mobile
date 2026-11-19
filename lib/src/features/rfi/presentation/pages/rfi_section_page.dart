@@ -29,7 +29,7 @@ class RfiSectionPage extends StatelessWidget {
     }
     if (item?.id == RfiMenuId.validation) {
       return AppListScaffold(
-        appBar: AppBar(title: const Text('Validation')),
+        appBar: AppBar(title: const Text('RFI VALIDATION')),
         body: const RfiValidationView(showTitle: false),
       );
     }

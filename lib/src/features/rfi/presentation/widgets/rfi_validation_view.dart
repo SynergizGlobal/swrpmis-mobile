@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:swr_pmis_mobile/src/app/config/app_config_controller.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/core/paging/table_page.dart';
@@ -10,6 +11,9 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_filter_section.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/paged_table_column.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/table_pagination_footer.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_log_remote_data_source.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_validation_remote_data_source.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/data/rfi_validation_report_download.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_validation_filter.dart';
@@ -20,6 +24,7 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_conten
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_validation_preview_page.dart';
 
 class RfiValidationView extends ConsumerStatefulWidget {
   const RfiValidationView({super.key, this.showTitle = true});
@@ -37,6 +42,7 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
   int _draftGeneration = -1;
   bool _busy = false;
   String? _busyAction;
+  String? _downloadingRfiId;
   int _pageSize = TablePage.compactDefaultPageSize;
   int _page = 1;
 
@@ -65,7 +71,67 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
     return ref.read(rfiValidationControllerProvider.notifier).load();
   }
 
-  Future<void> _reportLater() async {}
+  Future<void> _preview(RfiValidationRow row) async {
+    final String? longRfiId = row.longRfiId?.trim();
+    if (longRfiId == null || longRfiId.isEmpty) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.info,
+        title: 'Preview',
+        message: 'This RFI does not have a report id yet.',
+      );
+      return;
+    }
+    await RfiValidationPreviewPage.open(
+      context,
+      longRfiId: longRfiId,
+      stringRfiId: row.stringRfiId,
+    );
+  }
+
+  Future<void> _download(RfiValidationRow row) async {
+    final String? longRfiId = row.longRfiId?.trim();
+    if (longRfiId == null || longRfiId.isEmpty || _downloadingRfiId != null) {
+      if (longRfiId == null || longRfiId.isEmpty) {
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.info,
+          title: 'Download',
+          message: 'This RFI does not have a report id yet.',
+        );
+      }
+      return;
+    }
+    setState(() => _downloadingRfiId = longRfiId);
+    try {
+      final Size size = MediaQuery.sizeOf(context);
+      await downloadRfiValidationReportPdf(
+        validationSource: ref.read(rfiValidationRemoteDataSourceProvider),
+        logSource: ref.read(rfiLogRemoteDataSourceProvider),
+        baseUrl: ref.read(appConfigProvider).baseUrl,
+        longRfiId: longRfiId,
+        sharePositionOrigin: Rect.fromCenter(
+          center: Offset(size.width / 2, size.height / 2),
+          width: 2,
+          height: 2,
+        ),
+      );
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Download failed',
+        message: validationFailureMessage(error),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _downloadingRfiId = null);
+      }
+    }
+  }
 
   Future<void> _decide(
     RfiValidationRow row,
@@ -73,6 +139,13 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
     RfiValidationDecision decision,
   ) async {
     if (_busy) {
+      return;
+    }
+    final bool canDecide = rfiValidationCanDecide(
+      isValidator: ref.read(rfiValidationControllerProvider).catalog.isValidator,
+      status: row.status,
+    );
+    if (!canDecide) {
       return;
     }
     final String remarks =
@@ -201,7 +274,7 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
               children: <Widget>[
                 if (widget.showTitle)
                   Text(
-                    'Validation',
+                    'RFI VALIDATION',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -323,7 +396,11 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
       for (final _VisibleRow entry in visible) entry.item: entry,
     };
     return RfiTable(
-      columns: _columns(validation.generation, lookup),
+      columns: _columns(
+        validation.generation,
+        validation.catalog.isValidator,
+        lookup,
+      ),
       items: visible
           .map((_VisibleRow entry) => entry.item)
           .toList(growable: false),
@@ -349,11 +426,12 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
 
   List<RfiTableColumn> _columns(
     int generation,
+    bool isValidator,
     Map<RfiListItem, _VisibleRow> lookup,
   ) {
     return <RfiTableColumn>[
       const RfiTableColumn(
-        label: 'RFI Category',
+        label: 'Rfi Category',
         minWidth: 120,
         read: _category,
       ),
@@ -363,11 +441,17 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
         minWidth: 76,
         read: _blank,
         buildCell: (BuildContext context, RfiListItem item) {
+          final _VisibleRow? entry = lookup[item];
+          if (entry == null) {
+            return const Text('—');
+          }
+          final bool enabled =
+              (entry.row.longRfiId?.trim().isNotEmpty ?? false) && !_busy;
           return _iconButton(
             tooltip: 'Preview',
             icon: Icons.visibility_outlined,
             color: const Color(0xFF2563EB),
-            onPressed: _reportLater,
+            onPressed: enabled ? () => _preview(entry.row) : null,
           );
         },
       ),
@@ -376,11 +460,34 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
         minWidth: 88,
         read: _blank,
         buildCell: (BuildContext context, RfiListItem item) {
+          final _VisibleRow? entry = lookup[item];
+          if (entry == null) {
+            return const Text('—');
+          }
+          final String? longRfiId = entry.row.longRfiId?.trim();
+          final bool downloading = longRfiId != null &&
+              longRfiId.isNotEmpty &&
+              _downloadingRfiId == longRfiId;
+          final bool enabled =
+              longRfiId != null &&
+              longRfiId.isNotEmpty &&
+              _downloadingRfiId == null &&
+              !_busy;
+          if (downloading) {
+            return const SizedBox(
+              width: 36,
+              height: 36,
+              child: Padding(
+                padding: EdgeInsets.all(8),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
           return _iconButton(
             tooltip: 'Download',
             icon: Icons.download_rounded,
             color: const Color(0xFF14B8A6),
-            onPressed: _reportLater,
+            onPressed: enabled ? () => _download(entry.row) : null,
           );
         },
       ),
@@ -392,6 +499,16 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
           final _VisibleRow? entry = lookup[item];
           if (entry == null) {
             return const Text('—');
+          }
+          final bool canDecide = rfiValidationCanDecide(
+            isValidator: isValidator,
+            status: entry.row.status,
+          );
+          if (!canDecide) {
+            return _PendingOrValueText(
+              value: entry.row.remarks,
+              pendingStyle: true,
+            );
           }
           final String selected =
               _remarks[entry.rowKey] ?? rfiValidationRemarkPlaceholder;
@@ -449,6 +566,16 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
           if (entry == null) {
             return const Text('—');
           }
+          final bool canDecide = rfiValidationCanDecide(
+            isValidator: isValidator,
+            status: entry.row.status,
+          );
+          if (!canDecide) {
+            return _PendingOrValueText(
+              value: entry.row.comment,
+              pendingStyle: true,
+            );
+          }
           return _CommentBox(
             fieldKey: '$generation|${entry.rowKey}',
             initial: _comments[entry.rowKey] ?? '',
@@ -478,6 +605,16 @@ class _RfiValidationViewState extends ConsumerState<RfiValidationView> {
                 fontSize: 12,
                 height: 1.25,
               ),
+            );
+          }
+          final bool canDecide = rfiValidationCanDecide(
+            isValidator: isValidator,
+            status: entry.row.status,
+          );
+          if (!canDecide) {
+            return const _PendingOrValueText(
+              value: null,
+              pendingStyle: true,
             );
           }
           final bool enabled = !_busy;
@@ -531,6 +668,36 @@ class _VisibleRow {
   final RfiValidationRow row;
   final String rowKey;
   final RfiListItem item;
+}
+
+class _PendingOrValueText extends StatelessWidget {
+  const _PendingOrValueText({
+    required this.value,
+    required this.pendingStyle,
+  });
+
+  final String? value;
+  final bool pendingStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final String text = rfiValidationPendingOrValue(value);
+    final bool pending = text == rfiValidationPendingLabel;
+    final Color color = pending && pendingStyle
+        ? AppPalette.of(context).mutedText
+        : (Theme.of(context).textTheme.bodyMedium?.color ??
+              AppPalette.of(context).mutedText);
+    return Text(
+      text,
+      style: TextStyle(
+        color: color,
+        fontSize: 12,
+        fontWeight: pending ? FontWeight.w500 : FontWeight.w600,
+        fontStyle: pending ? FontStyle.italic : FontStyle.normal,
+        height: 1.25,
+      ),
+    );
+  }
 }
 
 class _CommentBox extends StatefulWidget {
@@ -740,7 +907,7 @@ Widget _iconButton({
   required String tooltip,
   required IconData icon,
   required Color color,
-  required VoidCallback onPressed,
+  required VoidCallback? onPressed,
 }) {
   return Align(
     alignment: Alignment.centerLeft,
@@ -750,7 +917,11 @@ Widget _iconButton({
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 36, height: 36),
       onPressed: onPressed,
-      icon: Icon(icon, color: color, size: 22),
+      icon: Icon(
+        icon,
+        color: onPressed == null ? color.withValues(alpha: 0.35) : color,
+        size: 22,
+      ),
     ),
   );
 }

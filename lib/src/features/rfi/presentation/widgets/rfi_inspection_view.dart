@@ -27,7 +27,9 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_conten
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_delete_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_clear_button.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_filter_field.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_send_for_validation_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_table.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_upload_attachment_dialog.dart';
 
 class RfiInspectionView extends ConsumerStatefulWidget {
   const RfiInspectionView({super.key, this.showTitle = true});
@@ -457,6 +459,10 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
         );
       case RfiInspectionAction.deleteRfi:
         await _deleteRfi(context, row);
+      case RfiInspectionAction.uploadAttachments:
+        await _uploadAttachment(context, row);
+      case RfiInspectionAction.sendForValidation:
+        await _sendForValidation(context, row);
       default:
         await AppDialog.show(
           context,
@@ -465,6 +471,81 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
           message: '${picked.dialogTitle} will open here.',
         );
     }
+  }
+
+  Future<void> _uploadAttachment(
+    BuildContext context,
+    RfiInspectionRow row,
+  ) async {
+    final int? id = row.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Upload Attachment',
+        message: 'This RFI cannot be updated.',
+      );
+      return;
+    }
+    final bool uploaded = await showRfiUploadAttachmentDialog(
+      context,
+      rfiId: id,
+    );
+    if (!uploaded || !context.mounted) {
+      return;
+    }
+    unawaited(
+      ref.read(rfiInspectionControllerProvider.notifier).refreshDetails(),
+    );
+  }
+
+  Future<void> _sendForValidation(
+    BuildContext context,
+    RfiInspectionRow row,
+  ) async {
+    final int? id = row.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Send for Validation',
+        message: 'This RFI cannot be sent for validation.',
+      );
+      return;
+    }
+    final String contractId = row.contractId.trim().isNotEmpty
+        ? row.contractId.trim()
+        : (ref
+                  .read(rfiInspectionControllerProvider)
+                  .filter
+                  .contractId
+                  ?.trim() ??
+              '');
+    if (contractId.isEmpty) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Send for Validation',
+        message:
+            'Select a Contract filter first so validators can be loaded.',
+      );
+      return;
+    }
+    final String category = row.rfiCategory.trim().isEmpty
+        ? 'WORK'
+        : row.rfiCategory.trim();
+    final bool sent = await showRfiSendForValidationDialog(
+      context,
+      rfiId: id,
+      contractId: contractId,
+      rfiCategory: category,
+    );
+    if (!sent || !context.mounted) {
+      return;
+    }
+    unawaited(
+      ref.read(rfiInspectionControllerProvider.notifier).refreshDetails(),
+    );
   }
 
   /// Same reason dialog and `DELETE /rfi/delete` call as the Work RFI list.

@@ -15,9 +15,12 @@ import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_remote_dat
 import 'package:swr_pmis_mobile/src/features/rfi/data/work_rfi_export_file.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_category_access.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_list_item.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_actions.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_permissions.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_providers.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/presentation/rfi_inspection_start.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_content_loader.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/material_rfi_form_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/quality_rfi_form_page.dart';
@@ -112,7 +115,80 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
       );
       return;
     }
-    await _openWorkForm(id, rfiCode: item.rfiId);
+    switch (widget.kind) {
+      case RfiListKind.work:
+        await _openWorkForm(id, rfiCode: item.rfiId);
+      case RfiListKind.material:
+        await _openMaterialForm(id, rfiCode: item.rfiId);
+      case RfiListKind.quality:
+        await _openQualityForm(id, rfiCode: item.rfiId);
+    }
+  }
+
+  Future<void> _onListAction(RfiListItem item, RfiListRowAction action) async {
+    switch (action) {
+      case RfiListRowAction.viewDetails:
+        await _onView(item);
+      case RfiListRowAction.editRfi:
+        await _onEdit(item);
+      case RfiListRowAction.deleteRfi:
+        await _onDelete(item);
+      case RfiListRowAction.startOnline:
+        await _startInspection(item, offline: false);
+      case RfiListRowAction.startOffline:
+        await _startInspection(item, offline: true);
+      case RfiListRowAction.submit:
+        await _startInspection(item, offline: false);
+      case RfiListRowAction.uploadAttachments:
+      case RfiListRowAction.uploadTestResults:
+      case RfiListRowAction.closeRfi:
+      case RfiListRowAction.changeExecutive:
+        await AppDialog.show(
+          context,
+          variant: AppDialogVariant.info,
+          title: action.menuLabel,
+          message: '${action.menuLabel} will open here.',
+        );
+    }
+  }
+
+  Future<void> _startInspection(RfiListItem item, {required bool offline}) async {
+    final RfiListItem withCategory = item.rfiCategory.trim().isEmpty
+        ? RfiListItem(
+            id: item.id,
+            rfiId: item.rfiId,
+            rfiCategory: switch (widget.kind) {
+              RfiListKind.work => 'WORK',
+              RfiListKind.material => 'MATERIAL',
+              RfiListKind.quality => 'QUALITY_OR_SAFETY',
+            },
+            projectName: item.projectName,
+            item: item.item,
+            material: item.material,
+            location: item.location,
+            batchLotNo: item.batchLotNo,
+            structure: item.structure,
+            structureType: item.structureType,
+            element: item.element,
+            nameOfRepresentative: item.nameOfRepresentative,
+            assignedPersonClient: item.assignedPersonClient,
+            contractName: item.contractName,
+            dateOfSubmission: item.dateOfSubmission,
+            dateOfInspection: item.dateOfInspection,
+            timeOfInspection: item.timeOfInspection,
+            contractorSubmittedOn: item.contractorSubmittedOn,
+            rfiStatus: item.rfiStatus,
+            rfiDescription: item.rfiDescription,
+            measurementType: item.measurementType,
+            inspectionQty: item.inspectionQty,
+          )
+        : item;
+    await startRfiInspectionFlow(
+      context: context,
+      ref: ref,
+      row: rfiListItemToInspectionRow(withCategory),
+      offline: offline,
+    );
   }
 
   Future<void> _onView(RfiListItem item) async {
@@ -158,20 +234,6 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     );
   }
 
-  Future<void> _onEditQuality(RfiListItem item) async {
-    final int? id = item.id;
-    if (id == null) {
-      await AppDialog.show(
-        context,
-        variant: AppDialogVariant.error,
-        title: 'Edit',
-        message: 'This RFI cannot be edited.',
-      );
-      return;
-    }
-    await _openQualityForm(id, rfiCode: item.rfiId);
-  }
-
   Future<void> _openWorkForm(int? id, {String rfiCode = ''}) async {
     final bool? saved = await Navigator.of(context, rootNavigator: true)
         .push<bool>(
@@ -209,8 +271,8 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     await AppDialog.show(
       context,
       variant: AppDialogVariant.success,
-      title: 'Created',
-      message: 'Material RFI created.',
+      title: id == null ? 'Created' : 'Updated',
+      message: id == null ? 'Material RFI created.' : 'Material RFI updated.',
     );
     if (!mounted) {
       return;
@@ -330,6 +392,9 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     );
     final bool canCreate = _canAdd(access);
     final bool canModify = _canModify(access);
+    final RfiUserRole role = RfiUserRoleResolver.fromSession(
+      ref.read(authControllerProvider).valueOrNull,
+    );
     final List<RfiListItem>? loaded = asyncList.hasValue && !asyncList.hasError
         ? asyncList.requireValue
         : null;
@@ -455,14 +520,10 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
           return RfiTable(
             columns: rfiTableColumns(
               widget.kind,
-              onEdit: switch (widget.kind) {
-                RfiListKind.work => canModify ? _onEdit : null,
-                RfiListKind.quality => canModify ? _onEditQuality : null,
-                RfiListKind.material => null,
-              },
-              onView: _onView,
-              onDelete: canModify ? _onDelete : null,
-              showActions: widget.kind == RfiListKind.quality || canModify,
+              role: role,
+              canModify: canModify,
+              onAction: _onListAction,
+              showActions: true,
             ),
             items: tablePage.items,
           );

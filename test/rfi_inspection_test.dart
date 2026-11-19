@@ -119,15 +119,34 @@ void main() {
       );
 
       expect(engineer, contains(RfiInspectionAction.startOnline));
-      expect(engineer, <RfiInspectionAction>[
-        RfiInspectionAction.startOnline,
-        RfiInspectionAction.viewDetails,
-      ]);
+      expect(engineer, contains(RfiInspectionAction.viewDetails));
       expect(engineer, isNot(contains(RfiInspectionAction.sendForValidation)));
       expect(contractor, isNot(contains(RfiInspectionAction.startOnline)));
       expect(contractor, isNot(contains(RfiInspectionAction.startOffline)));
       expect(contractor, contains(RfiInspectionAction.viewDetails));
       expect(contractor, isNot(contains(RfiInspectionAction.submit)));
+    },
+  );
+
+  test(
+    'INSPECTED_BY_AE engineer menu matches web: upload, send, close, view',
+    () {
+      final RfiInspectionRow row = RfiInspectionRow.fromJson(<String, dynamic>{
+        ...sample,
+        'status': 'INSPECTED_BY_AE',
+      });
+      final List<RfiInspectionAction> actions = rfiInspectionActions(
+        role: RfiUserRole.engineer,
+        row: row,
+        now: DateTime(2026, 11, 18),
+      );
+      expect(actions, isNot(contains(RfiInspectionAction.startOnline)));
+      expect(actions, isNot(contains(RfiInspectionAction.startOffline)));
+      expect(actions, isNot(contains(RfiInspectionAction.submit)));
+      expect(actions, contains(RfiInspectionAction.uploadAttachments));
+      expect(actions, contains(RfiInspectionAction.sendForValidation));
+      expect(actions, contains(RfiInspectionAction.closeRfi));
+      expect(actions, contains(RfiInspectionAction.viewDetails));
     },
   );
 

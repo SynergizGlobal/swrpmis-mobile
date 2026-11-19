@@ -4,6 +4,8 @@ const int rfiValidationCommentMaxLength = 500;
 
 const String rfiValidationRemarkPlaceholder = '-- Select --';
 
+const String rfiValidationPendingLabel = 'Validation Pending';
+
 const List<String> rfiValidationRemarkOptions = <String>[
   rfiValidationRemarkPlaceholder,
   'NONO',
@@ -11,6 +13,55 @@ const List<String> rfiValidationRemarkOptions = <String>[
   'NOR',
   'OTHERS',
 ];
+
+bool parseRfiValidationAccess(dynamic data) {
+  if (data is Map) {
+    final Map<String, dynamic> map = Map<String, dynamic>.from(data);
+    for (final String key in const <String>[
+      'validator',
+      'isValidator',
+      'hasAccess',
+    ]) {
+      final Object? value = map[key];
+      if (value is bool) {
+        return value;
+      }
+      if (value is num) {
+        return value != 0;
+      }
+      if (value is String) {
+        final String text = value.trim().toLowerCase();
+        if (text == 'true' || text == '1' || text == 'yes') {
+          return true;
+        }
+        if (text == 'false' || text == '0' || text == 'no') {
+          return false;
+        }
+      }
+    }
+    final Object? nested = map['data'] ?? map['result'];
+    if (nested != null && !identical(nested, data)) {
+      return parseRfiValidationAccess(nested);
+    }
+  }
+  return false;
+}
+
+bool rfiValidationCanDecide({
+  required bool isValidator,
+  required String? status,
+}) {
+  return isValidator &&
+      rfiValidationOutcome(status) == RfiValidationOutcome.open;
+}
+
+String rfiValidationPendingOrValue(String? value) {
+  final String text = value?.trim() ?? '';
+  if (text.isEmpty) {
+    return rfiValidationPendingLabel;
+  }
+  return text;
+}
 
 enum RfiValidationDecision {
   approve('Approve', 'APPROVED'),

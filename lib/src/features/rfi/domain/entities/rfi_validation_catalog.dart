@@ -1,5 +1,6 @@
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_filter_option.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_validation_row.dart';
+import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_validation_actions.dart';
 
 class RfiValidationCatalog {
   const RfiValidationCatalog({
@@ -7,12 +8,14 @@ class RfiValidationCatalog {
     this.projects = const <RfiFilterOption>[],
     this.contracts = const <RfiFilterOption>[],
     this.rows = const <RfiValidationRow>[],
+    this.isValidator = false,
   });
 
   final List<RfiFilterOption> categories;
   final List<RfiFilterOption> projects;
   final List<RfiFilterOption> contracts;
   final List<RfiValidationRow> rows;
+  final bool isValidator;
 
   factory RfiValidationCatalog.fromResponses({
     required dynamic categories,
@@ -20,6 +23,7 @@ class RfiValidationCatalog {
     required dynamic contracts,
     required dynamic projectList,
     required dynamic validations,
+    dynamic access,
   }) {
     final List<RfiValidationRow> rows = parseRfiValidationRows(validations);
     final List<RfiFilterOption> categoryOptions = parseRfiValidationOptions(
@@ -80,6 +84,7 @@ class RfiValidationCatalog {
         ],
       ),
       rows: rows,
+      isValidator: parseRfiValidationAccess(access),
     );
   }
 }

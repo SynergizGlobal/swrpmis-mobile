@@ -11,6 +11,7 @@ class RfiValidationFilter {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
+      'rfiId': null,
       'projectId': projectId,
       'contractId': contractId,
       'rfiCategory': rfiCategory,

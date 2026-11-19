@@ -286,6 +286,17 @@ class ApiConstants {
   static const String rfiDeleteSiteImagePath = '/rfi/delete-site-img';
   static const String rfiDeleteEnclosurePath = '/rfi/enclosure/files';
 
+  /// POST multipart: rfiId, description, file.
+  static const String rfiUploadAttachmentPath = '/rfi/upload-attachment';
+
+  /// GET `?contractId=&rfiCategory=&rfiId=` → validators for Send for Validation.
+  static const String rfiValidatorsListPath =
+      '/api/validation/get-validators-list';
+
+  /// POST `/api/validation/send-for-validation/{id}?sentToUserId=&sentToUserName=&validationType=`
+  static String rfiSendForValidationPath(int id) =>
+      '/api/validation/send-for-validation/$id';
+
   /// GET `?filepath=<server path>` → file bytes (enclosure View/Download).
   static const String rfiDownloadPrevPath = '/rfi/DownloadPrev';
 
@@ -307,6 +318,9 @@ class ApiConstants {
   static const String rfiLogReportPath = '/api/rfiLog/getRfiReportDetails';
   static const String rfiLogPreviewFilesPath = '/api/rfiLog/previewFiles';
   static const String rfiLogPdfDownloadPath = '/api/rfiLog/pdf/download';
+  /// GET → `{ "validator": true|false }` — gates Approve/Reject/Rectify.
+  static const String validationAccessPath =
+      '/api/validation/getValidationAccess';
   static const String validationFilterCategoryPath =
       '/api/validation/filter-rfi-category';
   static const String validationFilterProjectPath =
@@ -316,6 +330,17 @@ class ApiConstants {
   static const String validationListPath = '/api/validation/getRfiValidations';
   static const String validationValidatePath = '/api/validation/validate';
   static const String getRfiReportDetail = '/api/validation/getRfiReportDetail';
+
+  /// GET `/api/validation/getRfiReportDetail/{longRfiId}` — validation preview + PDF.
+  static String getRfiReportDetailPath(String longRfiId) {
+    final String id = longRfiId.trim();
+    return '$getRfiReportDetail/${Uri.encodeComponent(id)}';
+  }
+
+  /// GET `?fileName=&dir=attachment` — attached documents for RFI report preview.
+  static const String rfiLogAttachmentFilePath =
+      '/api/rfiLog/previewFiles/file';
+
   static const String rfiInspectionCountPath = '/rfi/inspection-count';
   static const String rfiStatusCountsPath = '/rfi/status-counts';
   static const String rfiProjectNamesPath = '/rfi/projectNames';
