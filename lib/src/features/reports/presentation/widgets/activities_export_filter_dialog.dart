@@ -5,6 +5,7 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/features/reports/data/datasources/activities_export_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/activities_export_option.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/widgets/report_generating_dialog.dart';
 
 /// Guided Project → Contract filter before generating the Excel report.
 ///
@@ -84,6 +85,11 @@ class _ActivitiesExportFilterDialogState
       _loadingContracts = true;
       _error = null;
     });
+    showReportBusyDialog(
+      context,
+      title: 'Loading contracts',
+      message: 'Fetching contracts for the selected project…',
+    );
     try {
       final List<ActivitiesExportContract> contracts = await ref
           .read(activitiesExportRemoteDataSourceProvider)
@@ -111,6 +117,10 @@ class _ActivitiesExportFilterDialogState
         _loadingContracts = false;
         _error = error;
       });
+    } finally {
+      if (mounted) {
+        hideReportBusyDialog(context);
+      }
     }
   }
 
@@ -304,17 +314,11 @@ class _ActivitiesExportFilterDialogState
               )
             else
               _DialogPicker(
-                label: _loadingContracts
-                    ? 'Contract (loading...)'
-                    : 'Contract (${_contracts.length} available)',
+                label: 'Contract (${_contracts.length} available)',
                 value: _selectedContract?.label,
                 enabled: !_loadingContracts && _contracts.isNotEmpty,
                 onTap: _pickContract,
               ),
-            if (_loadingContracts) ...<Widget>[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(minHeight: 2),
-            ],
             if (errorText != null) ...<Widget>[
               const SizedBox(height: 12),
               Text(

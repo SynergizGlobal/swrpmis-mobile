@@ -174,6 +174,7 @@ class ActivitiesExportController extends StateNotifier<ActivitiesExportState> {
   }
 
   /// Applies guided Project → Contract picks from the filter dialog.
+  /// Does not toggle [loadingFilters] — generate owns the busy dialog.
   Future<void> applyFilters({
     required String projectId,
     required String contractId,
@@ -183,7 +184,6 @@ class ActivitiesExportController extends StateNotifier<ActivitiesExportState> {
     state = state.copyWith(
       projectId: nextProject,
       contractId: nextContract,
-      loadingFilters: true,
       clearError: true,
     );
     try {
@@ -200,10 +200,9 @@ class ActivitiesExportController extends StateNotifier<ActivitiesExportState> {
       state = state.copyWith(
         contracts: contracts,
         contractId: resolvedContract,
-        loadingFilters: false,
       );
     } on Object catch (error) {
-      state = state.copyWith(loadingFilters: false, error: error);
+      state = state.copyWith(error: error);
       rethrow;
     }
   }

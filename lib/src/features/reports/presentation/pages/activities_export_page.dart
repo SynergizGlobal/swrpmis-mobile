@@ -11,6 +11,7 @@ import 'package:swr_pmis_mobile/src/features/reports/data/activities_export_file
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/activities_export_option.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/providers/activities_export_provider.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/widgets/activities_export_filter_dialog.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/widgets/report_generating_dialog.dart';
 
 class ActivitiesExportPage extends ConsumerWidget {
   const ActivitiesExportPage({super.key, this.title = 'Activities Export Report'});
@@ -28,6 +29,38 @@ class ActivitiesExportPage extends ConsumerWidget {
     final ActivitiesExportController controller = ref.read(
       activitiesExportControllerProvider.notifier,
     );
+    ref.listen<ActivitiesExportState>(
+      activitiesExportControllerProvider,
+      (ActivitiesExportState? previous, ActivitiesExportState next) {
+        if (next.generating || (previous?.generating ?? false)) {
+          return;
+        }
+        syncReportBusyDialog(
+          context: context,
+          busy: next.loadingFilters,
+          wasBusy: previous?.loadingFilters ?? false,
+          title: 'Loading filters',
+          message: 'Fetching project and contract options…',
+        );
+      },
+    );
+    if (state.loadingFilters && !state.generating) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) {
+          return;
+        }
+        final ActivitiesExportState latest = ref.read(
+          activitiesExportControllerProvider,
+        );
+        if (latest.loadingFilters && !latest.generating) {
+          showReportBusyDialog(
+            context,
+            title: 'Loading filters',
+            message: 'Fetching project and contract options…',
+          );
+        }
+      });
+    }
     final AppPalette palette = AppPalette.of(context);
     final ColorScheme colors = Theme.of(context).colorScheme;
     final String heading = title.trim().isEmpty
@@ -56,10 +89,6 @@ class ActivitiesExportPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: <Widget>[
-          if (state.generating) ...<Widget>[
-            _GeneratingBanner(),
-            const SizedBox(height: 12),
-          ],
           Material(
             color: palette.cardSurface,
             elevation: 0,
@@ -96,8 +125,7 @@ class ActivitiesExportPage extends ConsumerWidget {
                           label:
                               'Project (${state.projects.length} available)',
                           value: state.selectedProject?.label,
-                          enabled: !state.generating,
-                          loading: state.loadingFilters,
+                          enabled: !state.generating && !state.loadingFilters,
                           onTap: () => _pickProject(context, ref),
                           onClear: state.projectId.isEmpty
                               ? null
@@ -107,8 +135,7 @@ class ActivitiesExportPage extends ConsumerWidget {
                           label:
                               'Contract (${state.contracts.length} available)',
                           value: state.selectedContract?.label,
-                          enabled: !state.generating,
-                          loading: state.loadingFilters,
+                          enabled: !state.generating && !state.loadingFilters,
                           onTap: () => _pickContract(context, ref),
                           onClear: state.contractId.isEmpty
                               ? null
@@ -151,15 +178,7 @@ class ActivitiesExportPage extends ConsumerWidget {
                           onPressed: state.generating
                               ? null
                               : () => _generate(context, ref),
-                          child: state.generating
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Generate Report'),
+                          child: const Text('Generate Report'),
                         ),
                       ],
                     ),
@@ -251,8 +270,14 @@ class ActivitiesExportPage extends ConsumerWidget {
       if (!context.mounted) {
         return;
       }
-      final ({Uint8List bytes, String fileName}) file = await controller
-          .generate();
+      final ({Uint8List bytes, String fileName}) file =
+          await runWithReportGeneratingDialog(
+            context: context,
+            title: 'Generating activities report',
+            message:
+                'Please wait while the Excel file is being prepared.',
+            action: controller.generate,
+          );
       if (!context.mounted) {
         return;
       }
@@ -350,60 +375,11 @@ Future<String?> _showOptionSheet(
   );
 }
 
-class _GeneratingBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.primaryContainer.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Row(
-          children: <Widget>[
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: colors.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Generating activities report...',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Please wait while the Excel file is being prepared. Do not close this page.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _PickerField extends StatelessWidget {
   const _PickerField({
     required this.label,
     required this.value,
     required this.enabled,
-    required this.loading,
     required this.onTap,
     required this.onClear,
   });
@@ -411,7 +387,6 @@ class _PickerField extends StatelessWidget {
   final String label;
   final String? value;
   final bool enabled;
-  final bool loading;
   final VoidCallback onTap;
   final VoidCallback? onClear;
 
@@ -433,7 +408,7 @@ class _PickerField extends StatelessWidget {
           color: palette.fieldFill,
           borderRadius: BorderRadius.circular(AppTheme.cardRadius),
           child: InkWell(
-            onTap: enabled && !loading ? onTap : null,
+            onTap: enabled ? onTap : null,
             borderRadius: BorderRadius.circular(AppTheme.cardRadius),
             child: Container(
               constraints: const BoxConstraints(minHeight: AppTheme.fieldHeight),
@@ -456,13 +431,7 @@ class _PickerField extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (loading)
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else if (hasValue && onClear != null)
+                  if (hasValue && onClear != null)
                     IconButton(
                       tooltip: 'Clear',
                       visualDensity: VisualDensity.compact,

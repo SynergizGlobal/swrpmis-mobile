@@ -10,6 +10,7 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/reports/data/contract_detail_report_file.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/contract_detail_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/providers/contract_detail_report_provider.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/widgets/report_generating_dialog.dart';
 
 class ContractDetailReportPage extends ConsumerWidget {
   const ContractDetailReportPage({
@@ -30,6 +31,42 @@ class ContractDetailReportPage extends ConsumerWidget {
     final ContractDetailReportController controller = ref.read(
       contractDetailReportControllerProvider.notifier,
     );
+    ref.listen<ContractDetailReportState>(
+      contractDetailReportControllerProvider,
+      (ContractDetailReportState? previous, ContractDetailReportState next) {
+        // Skip while generate dialog owns the busy UI.
+        if (next.generating || (previous?.generating ?? false)) {
+          return;
+        }
+        syncReportBusyDialog(
+          context: context,
+          busy: next.loading,
+          wasBusy: previous?.loading ?? false,
+          title: 'Loading filters',
+          message: 'Fetching project, contract and status options…',
+        );
+      },
+    );
+    // If filters are already loading when this page opens, show the dialog
+    // once (listen alone misses the already-true → false case safely, but
+    // would also miss showing the spinner for a slow first load).
+    if (state.loading && !state.generating) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) {
+          return;
+        }
+        final ContractDetailReportState latest = ref.read(
+          contractDetailReportControllerProvider,
+        );
+        if (latest.loading && !latest.generating) {
+          showReportBusyDialog(
+            context,
+            title: 'Loading filters',
+            message: 'Fetching project, contract and status options…',
+          );
+        }
+      });
+    }
     final AppPalette palette = AppPalette.of(context);
     final ColorScheme colors = Theme.of(context).colorScheme;
     final String heading = title.trim().isEmpty
@@ -58,13 +95,6 @@ class ContractDetailReportPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: <Widget>[
-          if (state.generating) ...<Widget>[
-            _BusyBanner(
-              title: 'Generating contract detail report...',
-              subtitle: 'Please wait while the file is prepared.',
-            ),
-            const SizedBox(height: 12),
-          ],
           Material(
             color: palette.cardSurface,
             shape: RoundedRectangleBorder(
@@ -91,11 +121,6 @@ class ContractDetailReportPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (state.loading)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: LinearProgressIndicator(minHeight: 2),
-                    ),
                   if (errorText != null && !state.generating) ...<Widget>[
                     Text(
                       errorText,
@@ -114,7 +139,7 @@ class ContractDetailReportPage extends ConsumerWidget {
                               label: 'Project',
                               requiredField: false,
                               value: state.selectedProject?.label,
-                              enabled: !state.generating,
+                              enabled: !state.generating && !state.loading,
                               onTap: () => _pick(
                                 context,
                                 title: 'Select Project',
@@ -130,7 +155,7 @@ class ContractDetailReportPage extends ConsumerWidget {
                               label: 'Contractor',
                               requiredField: false,
                               value: state.selectedContractor?.label,
-                              enabled: !state.generating,
+                              enabled: !state.generating && !state.loading,
                               onTap: () => _pick(
                                 context,
                                 title: 'Select Contractor',
@@ -146,7 +171,7 @@ class ContractDetailReportPage extends ConsumerWidget {
                               label: 'HOD',
                               requiredField: false,
                               value: state.selectedHod?.label,
-                              enabled: !state.generating,
+                              enabled: !state.generating && !state.loading,
                               onTap: () => _pick(
                                 context,
                                 title: 'Select HOD(s)',
@@ -164,7 +189,7 @@ class ContractDetailReportPage extends ConsumerWidget {
                               label: 'Contract',
                               requiredField: true,
                               value: state.selectedContract?.label,
-                              enabled: !state.generating,
+                              enabled: !state.generating && !state.loading,
                               onTap: () => _pick(
                                 context,
                                 title: 'Select Contract',
@@ -180,7 +205,7 @@ class ContractDetailReportPage extends ConsumerWidget {
                               label: 'Status of Work',
                               requiredField: false,
                               value: state.selectedStatus?.label,
-                              enabled: !state.generating,
+                              enabled: !state.generating && !state.loading,
                               onTap: () => _pick(
                                 context,
                                 title: 'Select Status of Work',
@@ -247,15 +272,7 @@ class ContractDetailReportPage extends ConsumerWidget {
                           onPressed: state.generating
                               ? null
                               : () => _generate(context, ref),
-                          child: state.generating
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Generate Report'),
+                          child: const Text('Generate Report'),
                         ),
                         OutlinedButton(
                           onPressed: state.generating || state.loading
@@ -353,8 +370,13 @@ class ContractDetailReportPage extends ConsumerWidget {
       contractDetailReportControllerProvider.notifier,
     );
     try {
-      final ({Uint8List bytes, String fileName}) file = await controller
-          .generate();
+      final ({Uint8List bytes, String fileName}) file =
+          await runWithReportGeneratingDialog(
+            context: context,
+            title: 'Generating contract detail report',
+            message: 'Please wait while the file is being prepared.',
+            action: controller.generate,
+          );
       if (!context.mounted) {
         return;
       }
@@ -389,59 +411,6 @@ class ContractDetailReportPage extends ConsumerWidget {
             : error.toString(),
       );
     }
-  }
-}
-
-class _BusyBanner extends StatelessWidget {
-  const _BusyBanner({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.primaryContainer.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Row(
-          children: <Widget>[
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: colors.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
