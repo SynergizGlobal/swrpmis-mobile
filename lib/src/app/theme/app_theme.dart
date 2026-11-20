@@ -303,7 +303,16 @@ class AppTheme {
           TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
         },
       ),
-      splashFactory: InkRipple.splashFactory,
+      // Soft press highlight instead of a bright expanding ripple/hover flash.
+      splashFactory: NoSplash.splashFactory,
+      splashColor: Colors.transparent,
+      highlightColor: colorScheme.onSurface.withValues(
+        alpha: isDark ? 0.10 : 0.06,
+      ),
+      hoverColor: colorScheme.onSurface.withValues(
+        alpha: isDark ? 0.06 : 0.04,
+      ),
+      focusColor: colorScheme.primary.withValues(alpha: 0.12),
       visualDensity: VisualDensity.standard,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -390,6 +399,7 @@ class AppTheme {
           disabledForegroundColor: colorScheme.onSurface.withValues(
             alpha: 0.38,
           ),
+          overlayColor: Colors.white.withValues(alpha: 0.12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(cardRadius),
           ),
@@ -406,6 +416,7 @@ class AppTheme {
           disabledForegroundColor: colorScheme.onSurface.withValues(
             alpha: 0.38,
           ),
+          overlayColor: colorScheme.onSurface.withValues(alpha: 0.08),
           side: BorderSide(color: colorScheme.outline),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(cardRadius),
@@ -413,7 +424,15 @@ class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: colorScheme.primary),
+        style: TextButton.styleFrom(
+          foregroundColor: colorScheme.primary,
+          overlayColor: colorScheme.primary.withValues(alpha: 0.10),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          overlayColor: colorScheme.onSurface.withValues(alpha: 0.10),
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
