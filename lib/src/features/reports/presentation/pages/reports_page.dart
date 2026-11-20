@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/activities_export_option.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/reports_tree.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/activities_export_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/providers/reports_providers.dart';
 
@@ -108,6 +110,17 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   }
 
   void _open(BuildContext context, ReportFormNode node) {
+    if (isActivitiesExportReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        ActivitiesExportPage.routeName,
+        queryParameters: <String, String>{'name': node.formName},
+      );
+      return;
+    }
     context.pushNamed(
       ReportPlaceholderPage.routeName,
       pathParameters: <String, String>{

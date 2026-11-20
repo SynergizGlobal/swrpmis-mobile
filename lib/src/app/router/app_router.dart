@@ -52,6 +52,7 @@ import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_drawin
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_library_page.dart';
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_revision_monitor_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/activities_export_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_inspection_flow_page.dart';
@@ -240,6 +241,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             child: Scaffold(
               appBar: AppBar(title: const Text('Reports')),
               body: const ReportsPage(),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: ActivitiesExportPage.routePath,
+        name: ActivitiesExportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ActivitiesExportPage(
+              title: name.isEmpty ? 'Activities Export Report' : name,
             ),
           );
         },
@@ -654,6 +668,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? const RdsoRevisionMonitorPage()
                 : module.routeName == RdsoLibraryPage.routeName
                 ? const RdsoLibraryPage()
+                : module.routeName == 'reports-activities'
+                ? const ActivitiesExportPage(
+                    title: 'Contract-wise Activities',
+                  )
                 : ModulePlaceholderPage(module: module);
             return fadeSlidePage(key: state.pageKey, child: page);
           },

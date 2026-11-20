@@ -39,6 +39,12 @@ class ApiConstants {
   static const String executionProgressPath = '/execution/progress';
   static const String reportFormsPath = '/forms/api/getReportForms';
   static const String updateFormsPath = '/forms/api/getUpdateForms';
+  static const String activitiesExportProjectsPath =
+      '/api/activities-export/projects';
+  static const String activitiesExportContractsPath =
+      '/api/activities-export/contracts';
+  static const String activitiesExportGeneratePath =
+      '/api/activities-export/generate';
   static const String issueContractsFilterPath =
       '/issue/ajax/getContractsListFilterInIssue';
   static const String issueHodFilterPath =
