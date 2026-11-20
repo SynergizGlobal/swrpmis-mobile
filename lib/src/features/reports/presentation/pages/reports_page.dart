@@ -8,8 +8,10 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/activities_export_option.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/contract_detail_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/reports_tree.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/activities_export_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_detail_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/providers/reports_providers.dart';
 
@@ -121,6 +123,17 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       );
       return;
     }
+    if (isContractDetailReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        ContractDetailReportPage.routeName,
+        queryParameters: <String, String>{'name': 'Contract Detail Report'},
+      );
+      return;
+    }
     context.pushNamed(
       ReportPlaceholderPage.routeName,
       pathParameters: <String, String>{
@@ -221,6 +234,11 @@ class _SectionCard extends StatelessWidget {
                             ),
                             onToggle: () => onToggleChild(child),
                             onOpen: onOpen,
+                            openParent: isContractDetailReport(
+                              formId: child.formId,
+                              formName: child.formName,
+                              webFormUrl: child.webFormUrl,
+                            ),
                           )
                         : _ChildRow(node: child, onTap: () => onOpen(child)),
                   ),
@@ -238,12 +256,14 @@ class _NestedSection extends StatelessWidget {
     required this.expanded,
     required this.onToggle,
     required this.onOpen,
+    this.openParent = false,
   });
 
   final ReportFormNode node;
   final bool expanded;
   final VoidCallback onToggle;
   final ValueChanged<ReportFormNode> onOpen;
+  final bool openParent;
 
   @override
   Widget build(BuildContext context) {
@@ -260,45 +280,61 @@ class _NestedSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            InkWell(
-              onTap: onToggle,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: <Widget>[
-                    Icon(
-                      _iconForReport(node.formName),
-                      color: colors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        node.formName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colors.onSurface,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: <Widget>[
+                  Icon(
+                    _iconForReport(node.formName),
+                    color: colors.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      onTap: openParent ? () => onOpen(node) : onToggle,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          node.formName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colors.onSurface,
+                              ),
                         ),
                       ),
                     ),
-                    Text(
-                      '${node.children.length}',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: palette.mutedText,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  ),
+                  if (openParent)
+                    IconButton(
+                      tooltip: 'Open report',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => onOpen(node),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 18),
                     ),
-                    Icon(
+                  Text(
+                    '${node.children.length}',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: palette.mutedText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: expanded ? 'Collapse' : 'Expand',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onToggle,
+                    icon: Icon(
                       expanded
                           ? Icons.expand_less_rounded
                           : Icons.expand_more_rounded,
                       color: palette.mutedText,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             if (expanded)

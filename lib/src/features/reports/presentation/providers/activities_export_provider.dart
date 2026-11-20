@@ -173,6 +173,41 @@ class ActivitiesExportController extends StateNotifier<ActivitiesExportState> {
     await load();
   }
 
+  /// Applies guided Project → Contract picks from the filter dialog.
+  Future<void> applyFilters({
+    required String projectId,
+    required String contractId,
+  }) async {
+    final String nextProject = projectId.trim();
+    final String nextContract = contractId.trim();
+    state = state.copyWith(
+      projectId: nextProject,
+      contractId: nextContract,
+      loadingFilters: true,
+      clearError: true,
+    );
+    try {
+      final List<ActivitiesExportContract> contracts = await _source
+          .fetchContracts(projectId: nextProject.isEmpty ? null : nextProject);
+      String resolvedContract = nextContract;
+      if (resolvedContract.isNotEmpty &&
+          !contracts.any(
+            (ActivitiesExportContract item) =>
+                item.contractId == resolvedContract,
+          )) {
+        resolvedContract = '';
+      }
+      state = state.copyWith(
+        contracts: contracts,
+        contractId: resolvedContract,
+        loadingFilters: false,
+      );
+    } on Object catch (error) {
+      state = state.copyWith(loadingFilters: false, error: error);
+      rethrow;
+    }
+  }
+
   Future<({Uint8List bytes, String fileName})> generate() async {
     state = state.copyWith(generating: true, clearError: true);
     try {

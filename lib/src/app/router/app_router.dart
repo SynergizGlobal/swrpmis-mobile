@@ -53,6 +53,7 @@ import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_librar
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_revision_monitor_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/activities_export_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_detail_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_inspection_flow_page.dart';
@@ -254,6 +255,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             key: state.pageKey,
             child: ActivitiesExportPage(
               title: name.isEmpty ? 'Activities Export Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: ContractDetailReportPage.routePath,
+        name: ContractDetailReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ContractDetailReportPage(
+              title: name.isEmpty ? 'Contract Detail Report' : name,
             ),
           );
         },

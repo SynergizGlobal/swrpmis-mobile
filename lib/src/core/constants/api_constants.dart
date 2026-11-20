@@ -45,6 +45,22 @@ class ApiConstants {
       '/api/activities-export/contracts';
   static const String activitiesExportGeneratePath =
       '/api/activities-export/generate';
+
+  /// Reports → Contracts → Contract Detail.
+  static const String contractDetailProjectsPath =
+      '/contract-report/ajax/getProjectListInContractReport';
+  static const String contractDetailContractsPath =
+      '/contract-report/ajax/getContractListInContractReport';
+  static const String contractDetailContractorsPath =
+      '/contract-report/ajax/getContractorsListInContractReport';
+  static const String contractDetailHodsPath =
+      '/contract-report/ajax/getHODListInContractReport';
+  static const String contractDetailWorkStatusPath =
+      '/contract-report/ajax/getStatsuListInContractReport';
+  static const String contractDetailContractStatusPath =
+      '/contract-report/ajax/getContractStatusListInContractReport';
+  static String contractDetailGeneratePath(String contractId) =>
+      '/contract-report/generate-contract-detail-report/$contractId';
   static const String issueContractsFilterPath =
       '/issue/ajax/getContractsListFilterInIssue';
   static const String issueHodFilterPath =

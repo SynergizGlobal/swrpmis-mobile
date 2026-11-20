@@ -10,6 +10,7 @@ import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/reports/data/activities_export_file.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/activities_export_option.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/providers/activities_export_provider.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/widgets/activities_export_filter_dialog.dart';
 
 class ActivitiesExportPage extends ConsumerWidget {
   const ActivitiesExportPage({super.key, this.title = 'Activities Export Report'});
@@ -72,7 +73,7 @@ class ActivitiesExportPage extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   Text(
-                    'Select a project and contract to filter the activities, or leave both blank to download all activities.',
+                    'Use Generate Report to choose Project, then Contract. Filters are applied step by step before download.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: palette.mutedText,
                     ),
@@ -215,10 +216,41 @@ class ActivitiesExportPage extends ConsumerWidget {
   }
 
   Future<void> _generate(BuildContext context, WidgetRef ref) async {
+    final ActivitiesExportState state = ref.read(
+      activitiesExportControllerProvider,
+    );
+    if (state.projects.isEmpty) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.warning,
+        title: 'No projects',
+        message: 'Projects are still loading or unavailable. Please try again.',
+      );
+      return;
+    }
+
+    final ({String projectId, String contractId})? filters =
+        await showActivitiesExportFilterDialog(
+          context,
+          projects: state.projects,
+          initialProjectId: state.projectId,
+          initialContractId: state.contractId,
+        );
+    if (filters == null || !context.mounted) {
+      return;
+    }
+
     final ActivitiesExportController controller = ref.read(
       activitiesExportControllerProvider.notifier,
     );
     try {
+      await controller.applyFilters(
+        projectId: filters.projectId,
+        contractId: filters.contractId,
+      );
+      if (!context.mounted) {
+        return;
+      }
       final ({Uint8List bytes, String fileName}) file = await controller
           .generate();
       if (!context.mounted) {
