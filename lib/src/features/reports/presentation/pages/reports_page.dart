@@ -1,19 +1,42 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
+import 'package:swr_pmis_mobile/src/features/reports/data/contract_detail_report_file.dart';
+import 'package:swr_pmis_mobile/src/features/reports/data/datasources/activities_export_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/activities_export_option.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/bg_contractual_letters.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/bg_insurance_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/contract_completion_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/contract_detail_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/doc_contractual_letters.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/insurance_contractual_letters.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/list_of_contracts_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/quality_control_summary_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/reports_tree.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/rfi_summary_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/station_improvements_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/tpc_status_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/activities_export_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/bg_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/bg_insurance_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_completion_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_detail_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/doc_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/insurance_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/list_of_contracts_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/quality_control_summary_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/rfi_summary_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/providers/reports_providers.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/widgets/report_generating_dialog.dart';
 
 class ReportsPage extends ConsumerStatefulWidget {
   const ReportsPage({super.key});
@@ -111,7 +134,38 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     );
   }
 
-  void _open(BuildContext context, ReportFormNode node) {
+  Future<void> _open(BuildContext context, ReportFormNode node) async {
+    // Progress Report direct downloads before Activities Export (shared API prefix).
+    if (isTpcStatusReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      await _confirmAndDownloadReport(
+        context,
+        label: node.formName.trim().isEmpty
+            ? 'TPC Status Report'
+            : node.formName.trim(),
+        download: (ActivitiesExportRemoteDataSource source) =>
+            source.downloadTpcStatusReport(),
+      );
+      return;
+    }
+    if (isStationImprovementsReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      await _confirmAndDownloadReport(
+        context,
+        label: node.formName.trim().isEmpty
+            ? 'Station Improvement Progress Report'
+            : node.formName.trim(),
+        download: (ActivitiesExportRemoteDataSource source) =>
+            source.downloadStationImprovementsReport(),
+      );
+      return;
+    }
     if (isActivitiesExportReport(
       formId: node.formId,
       formName: node.formName,
@@ -134,6 +188,108 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       );
       return;
     }
+    if (isListOfContractsReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        ListOfContractsReportPage.routeName,
+        queryParameters: <String, String>{'name': 'List of Contracts Report'},
+      );
+      return;
+    }
+    if (isBgInsuranceReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        BgInsuranceReportPage.routeName,
+        queryParameters: <String, String>{'name': 'BG/Insurance Report'},
+      );
+      return;
+    }
+    if (isContractCompletionReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        ContractCompletionReportPage.routeName,
+        queryParameters: <String, String>{
+          'name': 'Contract Completion Report',
+        },
+      );
+      return;
+    }
+    if (isBgContractualLettersReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        BgContractualLettersPage.routeName,
+        queryParameters: <String, String>{
+          'name': 'List of Contracts Closer to BG Expiry Date',
+        },
+      );
+      return;
+    }
+    if (isInsuranceContractualLettersReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        InsuranceContractualLettersPage.routeName,
+        queryParameters: <String, String>{
+          'name': 'List of Contracts Closer to Insurance Expiry Date',
+        },
+      );
+      return;
+    }
+    if (isDocContractualLettersReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        DocContractualLettersPage.routeName,
+        queryParameters: <String, String>{
+          'name': 'List of Contracts Closer to DOC Expiry Date',
+        },
+      );
+      return;
+    }
+    if (isQualityControlSummaryReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        QualityControlSummaryReportPage.routeName,
+        queryParameters: <String, String>{
+          'name': 'Quality Control Summary Tests Report',
+        },
+      );
+      return;
+    }
+    if (isRfiSummaryReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        RfiSummaryReportPage.routeName,
+        queryParameters: <String, String>{
+          'name': node.formName.trim().isEmpty
+              ? 'RFI Summary Report'
+              : node.formName.trim(),
+        },
+      );
+      return;
+    }
     context.pushNamed(
       ReportPlaceholderPage.routeName,
       pathParameters: <String, String>{
@@ -144,6 +300,71 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
         'url': node.webFormUrl,
       },
     );
+  }
+
+  Future<void> _confirmAndDownloadReport(
+    BuildContext context, {
+    required String label,
+    required Future<({Uint8List bytes, String fileName})> Function(
+      ActivitiesExportRemoteDataSource source,
+    )
+    download,
+  }) async {
+    final bool confirmed = await AppDialog.confirm(
+      context,
+      title: 'Download report',
+      message: 'Download "$label" report now?',
+      primaryLabel: 'Download',
+      secondaryLabel: 'Cancel',
+    );
+    if (!confirmed || !context.mounted) {
+      return;
+    }
+    try {
+      final ActivitiesExportRemoteDataSource source = ref.read(
+        activitiesExportRemoteDataSourceProvider,
+      );
+      final ({Uint8List bytes, String fileName}) file =
+          await runWithReportGeneratingDialog(
+            context: context,
+            title: 'Downloading report',
+            message: 'Please wait while the file is being prepared.',
+            action: () => download(source),
+          );
+      if (!context.mounted) {
+        return;
+      }
+      final RenderBox? box = context.findRenderObject() as RenderBox?;
+      final Rect? origin = box == null
+          ? null
+          : box.localToGlobal(Offset.zero) & box.size;
+      await shareContractDetailReportFile(
+        bytes: file.bytes,
+        fileName: file.fileName,
+        sharePositionOrigin: origin,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.success,
+        title: 'Report ready',
+        message: '"$label" downloaded successfully.',
+      );
+    } on Object catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Download failed',
+        message: error is DioException
+            ? userFriendlyErrorMessage(error)
+            : error.toString(),
+      );
+    }
   }
 }
 
@@ -631,6 +852,9 @@ IconData _iconForReport(String name) {
   }
   if (normalized.contains('letter')) {
     return Icons.mail_outline_rounded;
+  }
+  if (normalized.contains('quality')) {
+    return Icons.verified_outlined;
   }
   return Icons.description_outlined;
 }

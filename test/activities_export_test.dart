@@ -19,6 +19,22 @@ void main() {
       ),
       isFalse,
     );
+    expect(
+      isActivitiesExportReport(
+        formId: '',
+        formName: 'TPC',
+        webFormUrl: '/api/activities-export/tpc-status-report',
+      ),
+      isFalse,
+    );
+    expect(
+      isActivitiesExportReport(
+        formId: '',
+        formName: 'Station Improvement Progress Report',
+        webFormUrl: '/api/activities-export/station-improvements-report',
+      ),
+      isFalse,
+    );
   });
 
   test('parses projects and contracts from sample API rows', () {
