@@ -69,6 +69,11 @@ bool isActivitiesExportReport({
   required String webFormUrl,
 }) {
   final String url = webFormUrl.trim().toLowerCase();
+  // Exclude sibling Progress Report downloads that share the activities-export
+  // API prefix (TPC / Station Improvements).
+  if (url.contains('tpc-status') || url.contains('station-improvement')) {
+    return false;
+  }
   if (url.contains('activities-export')) {
     return true;
   }

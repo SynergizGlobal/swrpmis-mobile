@@ -53,8 +53,16 @@ import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_librar
 import 'package:swr_pmis_mobile/src/features/rdso/presentation/pages/rdso_revision_monitor_page.dart';
 import 'package:swr_pmis_mobile/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/activities_export_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/bg_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/bg_insurance_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_completion_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_detail_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/doc_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/insurance_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/list_of_contracts_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/quality_control_summary_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/rfi_summary_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_inspection_flow_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_page.dart';
@@ -268,6 +276,118 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             key: state.pageKey,
             child: ContractDetailReportPage(
               title: name.isEmpty ? 'Contract Detail Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: ListOfContractsReportPage.routePath,
+        name: ListOfContractsReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ListOfContractsReportPage(
+              title: name.isEmpty ? 'List of Contracts Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: BgInsuranceReportPage.routePath,
+        name: BgInsuranceReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: BgInsuranceReportPage(
+              title: name.isEmpty ? 'BG/Insurance Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: ContractCompletionReportPage.routePath,
+        name: ContractCompletionReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ContractCompletionReportPage(
+              title: name.isEmpty ? 'Contract Completion Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: BgContractualLettersPage.routePath,
+        name: BgContractualLettersPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: BgContractualLettersPage(
+              title: name.isEmpty
+                  ? 'List of Contracts Closer to BG Expiry Date'
+                  : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: InsuranceContractualLettersPage.routePath,
+        name: InsuranceContractualLettersPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: InsuranceContractualLettersPage(
+              title: name.isEmpty
+                  ? 'List of Contracts Closer to Insurance Expiry Date'
+                  : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: DocContractualLettersPage.routePath,
+        name: DocContractualLettersPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: DocContractualLettersPage(
+              title: name.isEmpty
+                  ? 'List of Contracts Closer to DOC Expiry Date'
+                  : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: QualityControlSummaryReportPage.routePath,
+        name: QualityControlSummaryReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: QualityControlSummaryReportPage(
+              title: name.isEmpty
+                  ? 'Quality Control Summary Tests Report'
+                  : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: RfiSummaryReportPage.routePath,
+        name: RfiSummaryReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: RfiSummaryReportPage(
+              title: name.isEmpty ? 'RFI Summary Report' : name,
             ),
           );
         },

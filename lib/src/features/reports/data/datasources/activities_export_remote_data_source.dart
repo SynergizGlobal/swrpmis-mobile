@@ -72,6 +72,51 @@ class ActivitiesExportRemoteDataSource {
     );
   }
 
+  /// POST `/api/activities-export/tpc-status-report` with `{}` → file bytes.
+  Future<({Uint8List bytes, String fileName})> downloadTpcStatusReport() async {
+    return _downloadEmptyJsonReport(
+      path: ApiConstants.tpcStatusReportPath,
+      emptyError: 'TPC Status Report returned an empty file.',
+      fallbackFileName: 'TPC_Status_Report.xlsx',
+    );
+  }
+
+  /// POST `/api/activities-export/station-improvements-report` with `{}`.
+  Future<({Uint8List bytes, String fileName})>
+  downloadStationImprovementsReport() async {
+    return _downloadEmptyJsonReport(
+      path: ApiConstants.stationImprovementsReportPath,
+      emptyError: 'Station Improvement Progress Report returned an empty file.',
+      fallbackFileName: 'Station_Improvements_Report.xlsx',
+    );
+  }
+
+  Future<({Uint8List bytes, String fileName})> _downloadEmptyJsonReport({
+    required String path,
+    required String emptyError,
+    required String fallbackFileName,
+  }) async {
+    final Response<List<int>> response = await _dio.post<List<int>>(
+      path,
+      data: const <String, dynamic>{},
+      options: Options(
+        responseType: ResponseType.bytes,
+        receiveTimeout: const Duration(minutes: 3),
+      ),
+    );
+    final List<int>? data = response.data;
+    if (response.statusCode != 200 || data == null || data.isEmpty) {
+      throw StateError(emptyError);
+    }
+    return (
+      bytes: Uint8List.fromList(data),
+      fileName: _fileNameFromResponse(
+        response,
+        fallback: fallbackFileName,
+      ),
+    );
+  }
+
   String _fileNameFromResponse(
     Response<List<int>> response, {
     required String fallback,

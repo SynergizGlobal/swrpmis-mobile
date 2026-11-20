@@ -46,6 +46,16 @@ class ApiConstants {
   static const String activitiesExportGeneratePath =
       '/api/activities-export/generate';
 
+  /// Reports → Progress Report → TPC Status Report.
+  /// POST body `{}` → downloadable report file.
+  static const String tpcStatusReportPath =
+      '/api/activities-export/tpc-status-report';
+
+  /// Reports → Progress Report → Station Improvement Progress Report.
+  /// POST body `{}` → downloadable report file.
+  static const String stationImprovementsReportPath =
+      '/api/activities-export/station-improvements-report';
+
   /// Reports → Contracts → Contract Detail.
   static const String contractDetailProjectsPath =
       '/contract-report/ajax/getProjectListInContractReport';
@@ -61,6 +71,31 @@ class ApiConstants {
       '/contract-report/ajax/getContractStatusListInContractReport';
   static String contractDetailGeneratePath(String contractId) =>
       '/contract-report/generate-contract-detail-report/$contractId';
+
+  /// Reports → Contracts → List of Contracts (report_no=7).
+  static const String listOfContractsGeneratePath =
+      '/contract-report/generate-list-of-contracts-report';
+
+  /// Reports → Contracts → BG/Insurance Report (contract-report/8).
+  static const String bgInsuranceProjectListPath =
+      '/contract-report/api/getProjectList';
+  static const String bgInsuranceGeneratePath =
+      '/contract-report/generate-bg-insurance-report';
+
+  /// Reports → Contracts → Date of Completion / Contract Completion Report
+  /// (contract-report/9, report_no=9).
+  static const String contractCompletionGeneratePath =
+      '/contract-report/generate-contract-completion-report';
+
+  /// Reports → Contracts → BG Contractual Letters (formId 1369).
+  /// Note: path is under `/ajax/...`, not `/contract-report/...`.
+  static const String bgContractualLettersPath =
+      '/ajax/generate-bg-contractual-letters';
+
+  /// Reports → Contracts → List of Contractors (separate menu item).
+  /// POST body `{}` → downloadable report file.
+  static const String contractorsListReportPath =
+      '/contract-report/contractorslist';
   static const String issueContractsFilterPath =
       '/issue/ajax/getContractsListFilterInIssue';
   static const String issueHodFilterPath =
@@ -206,6 +241,22 @@ class ApiConstants {
   /// Rich obligation payload used by NCR reference panel.
   static String qualityTestObligationDetailViewPath(int id) =>
       '/api/quality/test-obligations/$id/detail';
+
+  /// Quality Control Summary Tests Report — contracts for a project.
+  static const String qualityTestObligationContractsPath =
+      '/api/quality/test-obligations/contracts';
+
+  /// Quality Control Summary Tests Report payload.
+  static const String qualitySummaryReportPath =
+      '/api/quality/summary-report';
+
+  /// Reports → Quality → RFI Summary Report.
+  static const String rfiSummaryProjectsPath = '/api/rfi-summary/projects';
+  static const String rfiSummaryContractsPath = '/api/rfi-summary/contracts';
+  static const String rfiSummaryCategoriesPath = '/api/rfi-summary/categories';
+  static const String rfiSummaryDateRangePath = '/api/rfi-summary/date-range';
+  static const String rfiSummaryReportExcelPath =
+      '/api/rfi-summary/report/excel';
 
   static const String ncrObservationsPath = '/api/quality/ncr-observations';
 
