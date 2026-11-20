@@ -24,21 +24,31 @@ class WorkRfiRemoteDataSource {
 
   final Dio _dio;
 
-  Future<List<WorkRfiOption>> fetchProjectNames() async {
+  Future<List<WorkRfiOption>> fetchProjects() async {
     final Response<dynamic> response = await _dio.get<dynamic>(
-      ApiConstants.rfiProjectNamesPath,
+      ApiConstants.materialRfiProjectsPath,
+      queryParameters: <String, dynamic>{'category': 'WORK'},
     );
     return parseWorkRfiProjectNames(response.data);
   }
 
-  Future<List<WorkRfiContractOption>> fetchContractNames(
-    String projectId,
-  ) async {
+  /// Legacy create bootstrap used by older builds / tests.
+  Future<List<WorkRfiOption>> fetchProjectNames() => fetchProjects();
+
+  Future<List<WorkRfiContractOption>> fetchContracts(String projectId) async {
     final Response<dynamic> response = await _dio.get<dynamic>(
-      ApiConstants.rfiContractNamesPath,
-      queryParameters: <String, dynamic>{'projectId': projectId},
+      ApiConstants.materialRfiContractsPath,
+      queryParameters: <String, dynamic>{
+        'category': 'WORK',
+        'projectId': projectId,
+      },
     );
-    return parseWorkRfiContractNames(response.data, projectId: projectId);
+    return parseWorkRfiContracts(response.data, projectId: projectId);
+  }
+
+  /// Legacy create bootstrap used by older builds / tests.
+  Future<List<WorkRfiContractOption>> fetchContractNames(String projectId) {
+    return fetchContracts(projectId);
   }
 
   Future<WorkRfiLayerRange?> fetchLayerRange(String structureType) async {
@@ -57,7 +67,9 @@ class WorkRfiRemoteDataSource {
     return parseWorkRfiProjectCatalog(response.data);
   }
 
-  Future<List<WorkRfiContractOption>> fetchContracts(String projectId) async {
+  Future<List<WorkRfiContractOption>> fetchContractsLegacy(
+    String projectId,
+  ) async {
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.contractListForProjectPath,
       data: <String, dynamic>{'project_id_fk': projectId},
@@ -92,72 +104,134 @@ class WorkRfiRemoteDataSource {
     required String structureId,
     required String structureType,
   }) async {
-    final Response<dynamic> response = await _dio.post<dynamic>(
-      ApiConstants.activitiesUpdateComponentsPath,
-      data: <String, dynamic>{
-        'contract_id_fk': contractId,
-        'strip_chart_structure_id_fk': structureId,
-        'structure_type_fk': structureType,
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.workRfiComponentsListPath,
+      queryParameters: <String, dynamic>{
+        'contractId': contractId,
+        'structureTypeId': structureType,
+        'structureId': structureId,
       },
     );
     return parseWorkRfiComponents(response.data);
   }
 
-  Future<List<WorkRfiOption>> fetchElements({
+  /// Elements adapter (option B).
+  ///
+  /// TODO(work-rfi): replace temporary ComponentIdsList calls with the
+  /// confirmed web Elements list URL when the user provides it.
+  Future<List<WorkRfiElementOption>> fetchElements({
     required String contractId,
     required String structureId,
-    required String component,
     required String structureType,
+    required List<WorkRfiOption> components,
+  }) async {
+    if (components.isEmpty) {
+      return const <WorkRfiElementOption>[];
+    }
+    final List<List<WorkRfiElementOption>> batches = await Future.wait(
+      <Future<List<WorkRfiElementOption>>>[
+        for (final WorkRfiOption component in components)
+          _fetchElementsForComponent(
+            contractId: contractId,
+            structureId: structureId,
+            structureType: structureType,
+            component: component,
+          ),
+      ],
+    );
+    final List<WorkRfiElementOption> merged = <WorkRfiElementOption>[];
+    final Set<String> seen = <String>{};
+    for (final List<WorkRfiElementOption> batch in batches) {
+      for (final WorkRfiElementOption option in batch) {
+        final String key = '${option.componentName}::${option.id}';
+        if (option.id.isEmpty || !seen.add(key)) {
+          continue;
+        }
+        merged.add(option);
+      }
+    }
+    return merged;
+  }
+
+  Future<List<WorkRfiElementOption>> _fetchElementsForComponent({
+    required String contractId,
+    required String structureId,
+    required String structureType,
+    required WorkRfiOption component,
   }) async {
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.activitiesUpdateComponentIdsPath,
       data: <String, dynamic>{
         'contract_id_fk': contractId,
         'strip_chart_structure_id_fk': structureId,
-        'strip_chart_component': component,
+        'strip_chart_component': component.label,
         'structure_type_fk': structureType,
       },
     );
-    return parseWorkRfiElements(response.data);
+    return parseWorkRfiElements(
+      response.data,
+      componentName: component.label,
+      componentId: component.id,
+    );
   }
 
-  Future<List<WorkRfiOption>> fetchActivities({
+  Future<List<WorkRfiActivityOption>> fetchActivities({
     required String contractId,
     required String structureId,
     required String structureType,
-    required String component,
-    required String element,
+    required List<WorkRfiComponentElementSelection> selections,
   }) async {
+    final int? structureIdNum = int.tryParse(structureId.trim());
     final Response<dynamic> response = await _dio.post<dynamic>(
-      ApiConstants.activitiesUpdateActivitiesPath,
+      ApiConstants.workRfiActivitiesListsPath,
       data: <String, dynamic>{
-        'contract_id_fk': contractId,
-        'strip_chart_structure_id_fk': structureId,
-        'structure_type_fk': structureType,
-        'strip_chart_component': component,
-        'strip_chart_component_id': element,
+        'contractId': contractId,
+        'structureId': structureIdNum ?? structureId,
+        'structureTypeId': structureType,
+        'componentElementSelections': <Map<String, dynamic>>[
+          for (final WorkRfiComponentElementSelection row in selections)
+            row.toJson(),
+        ],
       },
     );
-    return parseWorkRfiActivities(response.data);
+    return parseWorkRfiActivityOptions(response.data);
   }
 
-  Future<List<WorkRfiOption>> fetchDescriptions(String activityName) async {
+  Future<List<WorkRfiOption>> fetchDescriptions(
+    List<String> activityNames,
+  ) async {
+    final List<String> names = <String>[
+      for (final String name in activityNames)
+        if (name.trim().isNotEmpty) name.trim(),
+    ];
+    if (names.isEmpty) {
+      return const <WorkRfiOption>[];
+    }
     final Response<dynamic> response = await _dio.get<dynamic>(
       ApiConstants.rfiTypeDescriptionsPath,
       queryParameters: <String, dynamic>{
-        'activity': activityName,
+        'activity': names,
         'rfitype': 'WORK',
       },
     );
     return parseWorkRfiDescriptions(response.data);
   }
 
-  Future<List<WorkRfiOption>> fetchEnclosures(String description) async {
+  Future<List<WorkRfiOption>> fetchEnclosures(
+    List<String> rfiDescriptionLabels,
+  ) async {
+    final List<String> labels = <String>[
+      for (final String label in rfiDescriptionLabels)
+        if (label.trim().isNotEmpty) label.trim(),
+    ];
+    if (labels.isEmpty) {
+      return const <WorkRfiOption>[];
+    }
     final Response<dynamic> response = await _dio.get<dynamic>(
       ApiConstants.workRfiEnclosuresPath,
       queryParameters: <String, dynamic>{
         'rfiCategory': 'WORK',
-        'rfiDescription': description,
+        'rfiDescription': labels,
       },
     );
     return parseWorkRfiEnclosures(response.data);

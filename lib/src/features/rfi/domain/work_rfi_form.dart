@@ -5,6 +5,57 @@ class WorkRfiOption {
   final String label;
 }
 
+/// Element option tagged with its parent component for pairing.
+class WorkRfiElementOption {
+  const WorkRfiElementOption({
+    required this.id,
+    required this.label,
+    required this.componentName,
+    this.componentId = '',
+  });
+
+  final String id;
+  final String label;
+  final String componentName;
+  final String componentId;
+
+  WorkRfiOption toOption() => WorkRfiOption(id: id, label: label);
+}
+
+/// Activity row from `/getNewActivitiesUpdateActivitiesLists`.
+class WorkRfiActivityOption {
+  const WorkRfiActivityOption({
+    required this.id,
+    required this.label,
+    this.component = '',
+    this.element = '',
+  });
+
+  final String id;
+  final String label;
+  final String component;
+  final String element;
+
+  WorkRfiOption toOption() => WorkRfiOption(id: id, label: label);
+
+  String get pairKey => '$id|$component|$element';
+}
+
+class WorkRfiComponentElementSelection {
+  const WorkRfiComponentElementSelection({
+    required this.componentName,
+    this.elementName,
+  });
+
+  final String componentName;
+  final String? elementName;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'componentName': componentName,
+    'elementName': elementName,
+  };
+}
+
 class WorkRfiContractOption {
   const WorkRfiContractOption({
     required this.id,
@@ -60,6 +111,10 @@ class WorkRfiMeasurementDraft {
   const WorkRfiMeasurementDraft({
     required this.activityId,
     required this.activityName,
+    this.key = '',
+    this.component = '',
+    this.element = '',
+    this.description = '',
     this.measurementType = '',
     this.units = '',
     this.length = '',
@@ -72,6 +127,14 @@ class WorkRfiMeasurementDraft {
 
   final String activityId;
   final String activityName;
+
+  /// Wire key: activityId, or `activityId__n1` for extra rows from "+".
+  final String key;
+  final String component;
+  final String element;
+
+  /// Per-row measurement description (mandatory on create).
+  final String description;
   final String measurementType;
   final String units;
   final String length;
@@ -82,6 +145,10 @@ class WorkRfiMeasurementDraft {
 
   /// Typed Total Qty; only used when the type has `totalQty` (Percent).
   final String totalQty;
+
+  String get rowKey => key.trim().isEmpty ? activityId : key.trim();
+
+  String get groupKey => '$activityId|$component|$element';
 }
 
 class WorkRfiSubmitDraft {
@@ -103,6 +170,9 @@ class WorkRfiSubmitDraft {
     required this.dateOfInspection,
     required this.enclosureIds,
     required this.description,
+    this.structureName = '',
+    this.componentIds = const <String>[],
+    this.elementIds = const <String>[],
     this.chainageFrom = '',
     this.chainageTo = '',
     this.layer = '',
@@ -117,8 +187,15 @@ class WorkRfiSubmitDraft {
   final String contract;
   final String structureType;
   final String structure;
+  final String structureName;
+
+  /// Comma-joined component ids (create posts this as `component`).
   final String component;
+
+  /// Comma-joined element ids (create posts this as `element`).
   final String element;
+  final List<String> componentIds;
+  final List<String> elementIds;
   final List<WorkRfiMeasurementDraft> activities;
   final List<String> descriptionIds;
   final String rfiRequired;
@@ -453,6 +530,7 @@ WorkRfiMeasureFields workRfiFieldsFor(String type) {
       no: true,
     ),
     'Number' => const WorkRfiMeasureFields(no: true),
+    // Weight + No. stay editable; Total Qty uses Weight only (web create).
     'Weight' => const WorkRfiMeasureFields(weight: true, no: true),
     // Like the web: L/B/H/Weight/No. stay disabled and Total Qty is typed.
     'Percent' => const WorkRfiMeasureFields(totalQty: true),
@@ -462,11 +540,11 @@ WorkRfiMeasureFields workRfiFieldsFor(String type) {
 
 List<String> workRfiUnitsFor(String type) {
   return switch (type) {
-    'Area' => const <String>['cm²', 'm²'],
-    'Length' => const <String>['cm', 'm'],
-    'Volume' => const <String>['cm³', 'm³'],
+    'Area' => const <String>['cm²', 'm²', 'km²', 'ft²'],
+    'Length' => const <String>['mm', 'cm', 'm', 'km', 'in', 'ft'],
+    'Volume' => const <String>['cm³', 'm³', 'km³', 'ft³'],
     'Number' => const <String>['Nos'],
-    'Weight' => const <String>['kg', 'MT'],
+    'Weight' => const <String>['kg', 'g', 'ton'],
     'Percent' => const <String>['%'],
     _ => const <String>[],
   };
@@ -481,11 +559,16 @@ num? workRfiTotalQty({
   required String no,
   String totalQty = '',
 }) {
-  final WorkRfiMeasureFields fields = workRfiFieldsFor(measurementType);
-  if (fields.totalQty) {
+  final String type = measurementType.trim();
+  if (type == 'Percent') {
     final num? typed = num.tryParse(totalQty.trim());
     return typed == null ? null : _whole(typed);
   }
+  if (type == 'Weight') {
+    final num? parsed = num.tryParse(weight.trim());
+    return parsed == null ? null : _whole(parsed);
+  }
+  final WorkRfiMeasureFields fields = workRfiFieldsFor(type);
   final List<(bool, String)> factors = <(bool, String)>[
     (fields.length, length),
     (fields.breadth, breadth),
@@ -516,6 +599,117 @@ num? workRfiTotalQty({
   return _whole(product);
 }
 
+/// Builds component/element pairs for the activities Lists API.
+List<WorkRfiComponentElementSelection> workRfiComponentElementSelections({
+  required List<WorkRfiOption> components,
+  required List<WorkRfiElementOption> selectedElements,
+}) {
+  final List<WorkRfiComponentElementSelection> rows =
+      <WorkRfiComponentElementSelection>[];
+  for (final WorkRfiOption component in components) {
+    final String name = component.label.trim().isEmpty
+        ? component.id.trim()
+        : component.label.trim();
+    if (name.isEmpty) {
+      continue;
+    }
+    final List<WorkRfiElementOption> matched = <WorkRfiElementOption>[
+      for (final WorkRfiElementOption element in selectedElements)
+        if (element.componentName.trim() == name ||
+            (element.componentId.isNotEmpty &&
+                element.componentId == component.id))
+          element,
+    ];
+    if (matched.isEmpty) {
+      rows.add(WorkRfiComponentElementSelection(componentName: name));
+      continue;
+    }
+    for (final WorkRfiElementOption element in matched) {
+      final String elementName = element.label.trim().isEmpty
+          ? element.id.trim()
+          : element.label.trim();
+      rows.add(
+        WorkRfiComponentElementSelection(
+          componentName: name,
+          elementName: elementName.isEmpty ? null : elementName,
+        ),
+      );
+    }
+  }
+  return rows;
+}
+
+/// Unique activity names for the Activity multi-select.
+List<WorkRfiOption> workRfiUniqueActivityNames(
+  List<WorkRfiActivityOption> activities,
+) {
+  final Set<String> seen = <String>{};
+  return <WorkRfiOption>[
+    for (final WorkRfiActivityOption option in activities)
+      if (option.label.trim().isNotEmpty && seen.add(option.label.trim()))
+        WorkRfiOption(id: option.label.trim(), label: option.label.trim()),
+  ];
+}
+
+/// Measurement rows for the selected activity names.
+List<WorkRfiMeasurementDraft> workRfiRowsForSelectedActivityNames({
+  required List<WorkRfiActivityOption> catalog,
+  required List<String> selectedNames,
+  required List<WorkRfiMeasurementDraft> existing,
+}) {
+  final Set<String> names = <String>{
+    for (final String name in selectedNames)
+      if (name.trim().isNotEmpty) name.trim(),
+  };
+  final Map<String, List<WorkRfiMeasurementDraft>> byGroup =
+      <String, List<WorkRfiMeasurementDraft>>{};
+  for (final WorkRfiMeasurementDraft row in existing) {
+    byGroup.putIfAbsent(row.groupKey, () => <WorkRfiMeasurementDraft>[]).add(row);
+  }
+  final List<WorkRfiMeasurementDraft> next = <WorkRfiMeasurementDraft>[];
+  for (final WorkRfiActivityOption option in catalog) {
+    if (!names.contains(option.label.trim())) {
+      continue;
+    }
+    final String group = option.pairKey;
+    final List<WorkRfiMeasurementDraft>? kept = byGroup.remove(group);
+    if (kept != null && kept.isNotEmpty) {
+      next.addAll(kept);
+      continue;
+    }
+    next.add(
+      WorkRfiMeasurementDraft(
+        activityId: option.id,
+        activityName: option.label,
+        key: option.id,
+        component: option.component,
+        element: option.element,
+      ),
+    );
+  }
+  return next;
+}
+
+String workRfiNextMeasurementKey({
+  required String activityId,
+  required List<WorkRfiMeasurementDraft> siblings,
+}) {
+  final String base = activityId.trim();
+  if (base.isEmpty) {
+    return 'row_${siblings.length + 1}';
+  }
+  if (!siblings.any((WorkRfiMeasurementDraft row) => row.rowKey == base)) {
+    return base;
+  }
+  var index = 1;
+  while (siblings.any(
+    (WorkRfiMeasurementDraft row) => row.rowKey == '${base}__n$index',
+  )) {
+    index++;
+  }
+  return '${base}__n$index';
+}
+
 String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
   final List<String> missing = <String>[];
   final List<String> invalidActivities = <String>[];
@@ -529,8 +723,16 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
   requireText(draft.contract, 'Contract');
   requireText(draft.structureType, 'Structure Type');
   requireText(draft.structure, 'Structure');
-  requireText(draft.component, 'Component');
-  requireText(draft.element, 'Element');
+  if (draft.componentIds
+          .where((String id) => id.trim().isNotEmpty)
+          .isEmpty &&
+      draft.component.trim().isEmpty) {
+    missing.add('Component');
+  }
+  if (draft.elementIds.where((String id) => id.trim().isNotEmpty).isEmpty &&
+      draft.element.trim().isEmpty) {
+    missing.add('Element');
+  }
   if (draft.activities.isEmpty) {
     missing.add('Activity');
   }
@@ -550,6 +752,9 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
     );
     if (!_isNumericId(wireId)) {
       invalidActivities.add(name);
+    }
+    if (row.description.trim().isEmpty) {
+      missing.add('Description for $name');
     }
     if (!workRfiMeasurementTypes.contains(row.measurementType)) {
       missing.add('Type of Measurement for $name');
@@ -574,7 +779,10 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
     requireNumber(fields.breadth, row.breadth, 'Breadth');
     requireNumber(fields.height, row.height, 'Height');
     requireNumber(fields.weight, row.weight, 'Weight');
-    requireNumber(fields.no, row.no, 'No.');
+    // Weight Total Qty uses Weight only; No. is optional on the wire.
+    if (row.measurementType != 'Weight') {
+      requireNumber(fields.no, row.no, 'No.');
+    }
     requireNumber(fields.totalQty, row.totalQty, 'Total Qty');
   }
   if (draft.rfiRequired == 'Yes') {
@@ -636,14 +844,20 @@ String? _inspectionDateRuleMessage(WorkRfiSubmitDraft draft) {
 Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
   final bool yes = draft.rfiRequired == 'Yes';
   final bool no = draft.rfiRequired == 'No';
-  final List<String> activityIds = <String>[
-    for (final WorkRfiMeasurementDraft row in draft.activities)
-      if (row.activityId.trim().isNotEmpty)
-        workRfiPostedActivityId(
-          structureType: draft.structureType,
-          activityId: row.activityId,
-        ),
-  ];
+  final List<String> activityIds = <String>[];
+  final Set<String> seenActivity = <String>{};
+  for (final WorkRfiMeasurementDraft row in draft.activities) {
+    if (row.activityId.trim().isEmpty) {
+      continue;
+    }
+    final String wireId = workRfiPostedActivityId(
+      structureType: draft.structureType,
+      activityId: row.activityId,
+    );
+    if (seenActivity.add(wireId)) {
+      activityIds.add(wireId);
+    }
+  }
   final List<String> descriptionIds = <String>[
     for (final String id in draft.descriptionIds)
       if (id.trim().isNotEmpty) id.trim(),
@@ -654,13 +868,39 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
             if (id.trim().isNotEmpty) id.trim(),
         ]
       : <String>[];
+  final List<String> componentIds = <String>[
+    for (final String id in draft.componentIds)
+      if (id.trim().isNotEmpty) id.trim(),
+  ];
+  if (componentIds.isEmpty) {
+    for (final String part in draft.component.split(',')) {
+      final String id = part.trim();
+      if (id.isNotEmpty) {
+        componentIds.add(id);
+      }
+    }
+  }
+  final List<String> elementIds = <String>[
+    for (final String id in draft.elementIds)
+      if (id.trim().isNotEmpty) id.trim(),
+  ];
+  if (elementIds.isEmpty) {
+    for (final String part in draft.element.split(',')) {
+      final String id = part.trim();
+      if (id.isNotEmpty) {
+        elementIds.add(id);
+      }
+    }
+  }
+  final String componentJoined = componentIds.join(',');
+  final String elementJoined = elementIds.join(',');
   return <String, dynamic>{
     'project': draft.project,
     'contract': draft.contract,
     'structureType': draft.structureType,
     'structure': draft.structure,
-    'component': draft.component,
-    'element': draft.element,
+    'component': componentJoined,
+    'element': elementJoined,
     'chainageFrom': workRfiPostedChainage(draft.chainageFrom),
     'chainageTo': workRfiPostedChainage(draft.chainageTo),
     'layer': workRfiPostedLayer(draft.layer),
@@ -680,6 +920,8 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
     'boqItem': '',
     'selectedEnclosures': enclosureIds,
     'description': draft.description,
+    'componentIds': componentIds,
+    'elementIds': elementIds,
     'activities': <Map<String, dynamic>>[
       for (final WorkRfiMeasurementDraft row in draft.activities)
         _activityPayload(
@@ -692,6 +934,7 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
     'enclosures': enclosureIds,
     'projectId': draft.project,
     'structureId': draft.structure,
+    'structureName': draft.structureName,
   };
 }
 
@@ -857,42 +1100,71 @@ List<WorkRfiOption> parseWorkRfiComponents(dynamic data) {
     for (final Map<String, dynamic> row in _rows(
       data,
       isRecord: (Map<String, dynamic> row) =>
-          row.containsKey('strip_chart_component'),
+          row.containsKey('strip_chart_component') ||
+          row.containsKey('component') ||
+          row.containsKey('componentName'),
     ))
-      if (_sameOption(row['strip_chart_component'])
-          case final WorkRfiOption option)
-        option,
+      if (_componentOption(row) case final WorkRfiOption option) option,
   ]);
 }
 
-List<WorkRfiOption> parseWorkRfiElements(dynamic data) {
-  return _dedupeOptions(<WorkRfiOption>[
-    for (final Map<String, dynamic> row in _rows(
-      data,
-      isRecord: (Map<String, dynamic> row) =>
-          row.containsKey('strip_chart_component_id'),
-    ))
-      if (_sameOption(row['strip_chart_component_id'])
-          case final WorkRfiOption option)
-        option,
-  ]);
+List<WorkRfiElementOption> parseWorkRfiElements(
+  dynamic data, {
+  String componentName = '',
+  String componentId = '',
+}) {
+  final List<WorkRfiElementOption> options = <WorkRfiElementOption>[];
+  final Set<String> seen = <String>{};
+  for (final Map<String, dynamic> row in _rows(
+    data,
+    isRecord: (Map<String, dynamic> row) =>
+        row.containsKey('strip_chart_component_id') ||
+        row.containsKey('element') ||
+        row.containsKey('elementName') ||
+        row.containsKey('id'),
+  )) {
+    final WorkRfiElementOption? option = _elementOption(
+      row,
+      fallbackComponentName: componentName,
+      fallbackComponentId: componentId,
+    );
+    if (option == null) {
+      continue;
+    }
+    final String key = '${option.componentName}::${option.id}';
+    if (!seen.add(key)) {
+      continue;
+    }
+    options.add(option);
+  }
+  return options;
 }
 
 List<WorkRfiOption> parseWorkRfiActivities(dynamic data) {
-  return _dedupeOptions(<WorkRfiOption>[
-    for (final Map<String, dynamic> row in _rows(
-      data,
-      isRecord: (Map<String, dynamic> row) =>
-          row.containsKey('strip_chart_activity_id') ||
-          row.containsKey('strip_chart_activity_name'),
-    ))
-      if (_labeledOption(
-            row['strip_chart_activity_id'],
-            row['strip_chart_activity_name'],
-          )
-          case final WorkRfiOption option)
-        option,
-  ]);
+  return <WorkRfiOption>[
+    for (final WorkRfiActivityOption option in parseWorkRfiActivityOptions(data))
+      option.toOption(),
+  ];
+}
+
+List<WorkRfiActivityOption> parseWorkRfiActivityOptions(dynamic data) {
+  final List<WorkRfiActivityOption> options = <WorkRfiActivityOption>[];
+  final Set<String> seen = <String>{};
+  for (final Map<String, dynamic> row in _rows(
+    data,
+    isRecord: (Map<String, dynamic> row) =>
+        row.containsKey('strip_chart_activity_id') ||
+        row.containsKey('strip_chart_activity_name') ||
+        row.containsKey('activityId') ||
+        row.containsKey('activityName'),
+  )) {
+    final WorkRfiActivityOption? option = _activityOption(row);
+    if (option == null || !seen.add(option.pairKey)) {
+      continue;
+    }
+    options.add(option);
+  }
+  return options;
 }
 
 List<WorkRfiOption> parseWorkRfiDescriptions(dynamic data) {
@@ -1201,11 +1473,16 @@ Map<String, dynamic> _activityPayload(
     no: row.no,
     totalQty: row.totalQty,
   );
+  final String key = row.rowKey.isEmpty ? wireId : row.rowKey;
   return <String, dynamic>{
+    'key': key,
     'id': wireId,
     'activityId': wireId,
     'activity': wireId,
     'activityName': row.activityName,
+    'component': row.component,
+    'element': row.element,
+    'description': row.description,
     'measurementType': row.measurementType,
     'units': row.units,
     'length': _measureValue(
@@ -1281,6 +1558,10 @@ WorkRfiMeasurementDraft _draftForOption(
   return WorkRfiMeasurementDraft(
     activityId: option.id,
     activityName: option.label,
+    key: saved.key.isEmpty ? option.id : saved.key,
+    component: saved.component,
+    element: saved.element,
+    description: saved.description,
     measurementType: type,
     units: units.contains(saved.units)
         ? saved.units
@@ -1317,6 +1598,10 @@ List<WorkRfiMeasurementDraft> _measurements(Object? value) {
           'activity',
         ]),
         activityName: _text(row['activityName']),
+        key: _text(row['key']),
+        component: _text(row['component']),
+        element: _text(row['element']),
+        description: _text(row['description']),
         measurementType: _text(row['measurementType']),
         units: _text(row['units']),
         length: workRfiNumberText(row['length']),
@@ -1327,6 +1612,90 @@ List<WorkRfiMeasurementDraft> _measurements(Object? value) {
         totalQty: workRfiNumberText(row['totalQty'] ?? row['totalQuantity']),
       ),
   ];
+}
+
+WorkRfiOption? _componentOption(Map<String, dynamic> row) {
+  final String label = _firstText(row, const <String>[
+    'component',
+    'componentName',
+    'strip_chart_component',
+    'name',
+  ]);
+  final String id = _firstText(row, const <String>[
+    'id',
+    'componentId',
+    'strip_chart_component_id_fk',
+  ]);
+  if (id.isNotEmpty) {
+    return WorkRfiOption(id: id, label: label.isEmpty ? id : label);
+  }
+  if (label.isEmpty) {
+    return null;
+  }
+  return WorkRfiOption(id: label, label: label);
+}
+
+WorkRfiElementOption? _elementOption(
+  Map<String, dynamic> row, {
+  required String fallbackComponentName,
+  required String fallbackComponentId,
+}) {
+  final String label = _firstText(row, const <String>[
+    'element',
+    'elementName',
+    'strip_chart_component_id',
+    'name',
+  ]);
+  final String id = _firstText(row, const <String>[
+    'id',
+    'elementId',
+    'strip_chart_component_id_fk',
+  ]);
+  final String resolvedId = id.isEmpty ? label : id;
+  if (resolvedId.isEmpty) {
+    return null;
+  }
+  final String componentName = _firstText(row, const <String>[
+    'component',
+    'componentName',
+    'strip_chart_component',
+  ]);
+  final String componentId = _firstText(row, const <String>[
+    'componentId',
+    'strip_chart_component_id_fk',
+  ]);
+  return WorkRfiElementOption(
+    id: resolvedId,
+    label: label.isEmpty ? resolvedId : label,
+    componentName: componentName.isEmpty
+        ? fallbackComponentName
+        : componentName,
+    componentId: componentId.isEmpty ? fallbackComponentId : componentId,
+  );
+}
+
+WorkRfiActivityOption? _activityOption(Map<String, dynamic> row) {
+  final String id = _firstText(row, const <String>[
+    'activityId',
+    'strip_chart_activity_id',
+    'id',
+  ]);
+  final String label = _firstText(row, const <String>[
+    'activityName',
+    'strip_chart_activity_name',
+    'name',
+  ]);
+  if (id.isEmpty && label.isEmpty) {
+    return null;
+  }
+  final String resolvedId = id.isEmpty ? label : id;
+  final String resolvedLabel = label.isEmpty ? resolvedId : label;
+  return WorkRfiActivityOption(
+    id: resolvedId,
+    label: resolvedLabel,
+    component: _text(row['component']),
+    element: _text(row['element']),
+  );
 }
 
 Map<String, dynamic>? _detailMap(dynamic data) {

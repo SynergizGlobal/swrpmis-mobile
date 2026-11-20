@@ -3,6 +3,139 @@ import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/work_rfi_form.dart';
 
 void main() {
+  test('componentElementSelections: null, multi-element, and mixed pairs', () {
+    const List<WorkRfiOption> components = <WorkRfiOption>[
+      WorkRfiOption(id: '1', label: 'Bottom Slab'),
+      WorkRfiOption(id: '2', label: 'Toe Wall'),
+      WorkRfiOption(id: '3', label: 'Finishes'),
+      WorkRfiOption(id: '4', label: 'Retaining Wall'),
+      WorkRfiOption(id: '5', label: 'Side Walls'),
+    ];
+
+    expect(
+      workRfiComponentElementSelections(
+        components: components.take(2).toList(growable: false),
+        selectedElements: const <WorkRfiElementOption>[
+          WorkRfiElementOption(
+            id: 'e1',
+            label: 'Toe Wall-1',
+            componentName: 'Toe Wall',
+            componentId: '2',
+          ),
+          WorkRfiElementOption(
+            id: 'e2',
+            label: 'Toe Wall-2',
+            componentName: 'Toe Wall',
+            componentId: '2',
+          ),
+        ],
+      ).map((WorkRfiComponentElementSelection row) => row.toJson()),
+      <Map<String, dynamic>>[
+        <String, dynamic>{
+          'componentName': 'Bottom Slab',
+          'elementName': null,
+        },
+        <String, dynamic>{
+          'componentName': 'Toe Wall',
+          'elementName': 'Toe Wall-1',
+        },
+        <String, dynamic>{
+          'componentName': 'Toe Wall',
+          'elementName': 'Toe Wall-2',
+        },
+      ],
+    );
+
+    expect(
+      workRfiComponentElementSelections(
+        components: components,
+        selectedElements: const <WorkRfiElementOption>[
+          WorkRfiElementOption(
+            id: 'e1',
+            label: 'Toe Wall-1',
+            componentName: 'Toe Wall',
+          ),
+          WorkRfiElementOption(
+            id: 'e2',
+            label: 'Toe Wall-2',
+            componentName: 'Toe Wall',
+          ),
+          WorkRfiElementOption(
+            id: 'e3',
+            label: 'Painting',
+            componentName: 'Finishes',
+          ),
+        ],
+      ).map((WorkRfiComponentElementSelection row) => row.toJson()),
+      <Map<String, dynamic>>[
+        <String, dynamic>{
+          'componentName': 'Bottom Slab',
+          'elementName': null,
+        },
+        <String, dynamic>{
+          'componentName': 'Toe Wall',
+          'elementName': 'Toe Wall-1',
+        },
+        <String, dynamic>{
+          'componentName': 'Toe Wall',
+          'elementName': 'Toe Wall-2',
+        },
+        <String, dynamic>{
+          'componentName': 'Finishes',
+          'elementName': 'Painting',
+        },
+        <String, dynamic>{
+          'componentName': 'Retaining Wall',
+          'elementName': null,
+        },
+        <String, dynamic>{
+          'componentName': 'Side Walls',
+          'elementName': null,
+        },
+      ],
+    );
+  });
+
+  test(
+    'activity name selection expands to one measurement row per catalog pair',
+    () {
+      final List<WorkRfiMeasurementDraft> rows =
+          workRfiRowsForSelectedActivityNames(
+            catalog: const <WorkRfiActivityOption>[
+              WorkRfiActivityOption(
+                id: '101',
+                label: 'Foundation',
+                component: 'Toe Wall',
+                element: 'Toe Wall-1',
+              ),
+              WorkRfiActivityOption(
+                id: '102',
+                label: 'Foundation',
+                component: 'Toe Wall',
+                element: 'Toe Wall-2',
+              ),
+              WorkRfiActivityOption(
+                id: '201',
+                label: 'Base Coat',
+                component: 'Finishes',
+                element: 'Painting',
+              ),
+            ],
+            selectedNames: const <String>['Foundation'],
+            existing: const <WorkRfiMeasurementDraft>[],
+          );
+      expect(rows, hasLength(2));
+      expect(rows.map((WorkRfiMeasurementDraft row) => row.activityId), <String>[
+        '101',
+        '102',
+      ]);
+      expect(rows.map((WorkRfiMeasurementDraft row) => row.element), <String>[
+        'Toe Wall-1',
+        'Toe Wall-2',
+      ]);
+    },
+  );
+
   test('projects and contracts parse, with short-name fallback', () {
     final WorkRfiProjectCatalog catalog = parseWorkRfiProjectCatalog(
       <String, dynamic>{
@@ -149,14 +282,14 @@ void main() {
           'data': <String, dynamic>{
             'strip_chart_component_id': 'Bottom Haunch',
           },
-        }).single.id,
-        'Bottom Haunch',
+        }).map((WorkRfiElementOption option) => option.id),
+        <String>['Bottom Haunch'],
       );
       expect(
         parseWorkRfiElements(<dynamic>[
           <String, dynamic>{'strip_chart_component_id': 'Excavation'},
-        ]).single.label,
-        'Excavation',
+        ]).map((WorkRfiElementOption option) => option.label),
+        <String>['Excavation'],
       );
 
       final List<WorkRfiOption> activities = parseWorkRfiActivities(<dynamic>[
@@ -414,7 +547,18 @@ void main() {
         weight: '1.5',
         no: '2',
       ),
-      3,
+      1.5,
+    );
+    expect(
+      workRfiTotalQty(
+        measurementType: 'Weight',
+        length: '',
+        breadth: '',
+        height: '',
+        weight: '13',
+        no: '3',
+      ),
+      13,
     );
     expect(
       workRfiTotalQty(
@@ -456,6 +600,10 @@ void main() {
     expect(workRfiFieldsFor('Number').totalQty, isFalse);
     expect(workRfiFieldsFor('Percent').length, isFalse);
     expect(workRfiUnitsFor('Percent'), <String>['%']);
+    expect(workRfiUnitsFor('Area'), <String>['cm²', 'm²', 'km²', 'ft²']);
+    expect(workRfiUnitsFor('Length'), <String>['mm', 'cm', 'm', 'km', 'in', 'ft']);
+    expect(workRfiUnitsFor('Volume'), <String>['cm³', 'm³', 'km³', 'ft³']);
+    expect(workRfiUnitsFor('Weight'), <String>['kg', 'g', 'ton']);
     expect(workRfiMeasurementTypes, contains('Percent'));
   });
 
@@ -811,6 +959,10 @@ void main() {
         component: 'Finishes',
         element:
             'Approach Road, Apron, curtain wall, drop wall and other protection works',
+        componentIds: const <String>['Finishes'],
+        elementIds: const <String>[
+          'Approach Road, Apron, curtain wall, drop wall and other protection works',
+        ],
         chainageFrom: '40',
         chainageTo: '50',
         layer: 'Layer 2',
@@ -818,6 +970,8 @@ void main() {
           WorkRfiMeasurementDraft(
             activityId: activityId,
             activityName: activityName,
+            key: workRfiLocalActivityWireId,
+            description: 'Measurement description',
             measurementType: 'Number',
             units: 'Nos',
             no: '5',
@@ -874,10 +1028,14 @@ void main() {
         'description': '',
         'activities': <Map<String, dynamic>>[
           <String, dynamic>{
+            'key': '0',
             'id': '0',
             'activityId': '0',
             'activity': '0',
             'activityName': 'Blanketing',
+            'component': '',
+            'element': '',
+            'description': 'Measurement description',
             'measurementType': 'Number',
             'units': 'Nos',
             'length': '',
@@ -892,6 +1050,11 @@ void main() {
         'enclosures': <String>['4', '34', '44'],
         'projectId': 'P01',
         'structureId': '55',
+        'structureName': '',
+        'componentIds': <String>['Finishes'],
+        'elementIds': <String>[
+          'Approach Road, Apron, curtain wall, drop wall and other protection works',
+        ],
       });
       expect(activityRow(body)['no'], isA<String>());
       expect(activityRow(body)['totalQty'], isA<int>());
@@ -1041,6 +1204,7 @@ void main() {
           WorkRfiMeasurementDraft(
             activityId: '1',
             activityName: 'Concrete',
+            description: 'Measurement description',
             measurementType: 'Number',
             units: 'Nos',
             no: '2',
@@ -1205,6 +1369,7 @@ void main() {
           WorkRfiMeasurementDraft(
             activityId: '1',
             activityName: 'Concrete',
+            description: 'Measurement description',
             measurementType: 'Number',
             units: 'Nos',
             no: '2',

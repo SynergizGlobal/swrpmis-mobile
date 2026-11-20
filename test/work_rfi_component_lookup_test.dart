@@ -14,7 +14,7 @@ void main() {
       _scriptedDio(
         calls: calls,
         body: (RequestOptions options) {
-          expect(options.path, ApiConstants.activitiesUpdateComponentsPath);
+          expect(options.path, ApiConstants.workRfiComponentsListPath);
           return <Map<String, dynamic>>[
             <String, dynamic>{'strip_chart_component': 'Blanketing'},
           ];
@@ -28,12 +28,12 @@ void main() {
       structureType: 'Minor Bridge',
     );
 
-    expect(calls.single.method, 'POST');
-    expect(calls.single.path, ApiConstants.activitiesUpdateComponentsPath);
-    expect(_payload(calls.single), <String, dynamic>{
-      'contract_id_fk': 'C01',
-      'strip_chart_structure_id_fk': '170',
-      'structure_type_fk': 'Minor Bridge',
+    expect(calls.single.method, 'GET');
+    expect(calls.single.path, ApiConstants.workRfiComponentsListPath);
+    expect(calls.single.queryParameters, <String, dynamic>{
+      'contractId': 'C01',
+      'structureTypeId': 'Minor Bridge',
+      'structureId': '170',
     });
     expect(options.single.id, 'Blanketing');
     expect(options.single.label, 'Blanketing');
@@ -56,11 +56,13 @@ void main() {
       ),
     );
 
-    final List<WorkRfiOption> options = await source.fetchElements(
+    final List<WorkRfiElementOption> options = await source.fetchElements(
       contractId: 'C01',
       structureId: '170',
-      component: 'Blanketing',
       structureType: 'Minor Bridge',
+      components: const <WorkRfiOption>[
+        WorkRfiOption(id: 'Blanketing', label: 'Blanketing'),
+      ],
     );
 
     expect(calls.single.method, 'POST');
@@ -73,6 +75,7 @@ void main() {
     });
     expect(options.single.id, 'CH 25400 to CH 26000');
     expect(options.single.label, 'CH 25400 to CH 26000');
+    expect(options.single.componentName, 'Blanketing');
     _expectReadOnlyLookups(calls);
   });
 
@@ -86,8 +89,8 @@ void main() {
     expect(
       parseWorkRfiElements(<Map<String, dynamic>>[
         <String, dynamic>{'strip_chart_component_id': 'CH 25400 to CH 26000'},
-      ]).single.label,
-      'CH 25400 to CH 26000',
+      ]).map((WorkRfiElementOption option) => option.id),
+      <String>['CH 25400 to CH 26000'],
     );
     expect(parseWorkRfiComponents(<dynamic>[]), isEmpty);
     expect(parseWorkRfiElements(<dynamic>[]), isEmpty);
@@ -145,13 +148,13 @@ void main() {
 
     final RequestOptions components = _single(
       calls,
-      ApiConstants.activitiesUpdateComponentsPath,
+      ApiConstants.workRfiComponentsListPath,
     );
-    expect(components.method, 'POST');
-    expect(_payload(components), <String, dynamic>{
-      'contract_id_fk': 'C01',
-      'strip_chart_structure_id_fk': '170',
-      'structure_type_fk': 'Minor Bridge',
+    expect(components.method, 'GET');
+    expect(components.queryParameters, <String, dynamic>{
+      'contractId': 'C01',
+      'structureTypeId': 'Minor Bridge',
+      'structureId': '170',
     });
     expect(_onTap(tester, WorkRfiFormPage.componentFieldKey), isNotNull);
     expect(_onTap(tester, WorkRfiFormPage.elementFieldKey), isNull);
@@ -193,14 +196,13 @@ void main() {
     expect(find.byKey(WorkRfiFormPage.componentFieldKey), findsOneWidget);
     expect(_onTap(tester, WorkRfiFormPage.elementFieldKey), isNull);
     expect(
-      _payload(
-        calls
-            .where(
-              (RequestOptions call) =>
-                  call.path == ApiConstants.activitiesUpdateComponentsPath,
-            )
-            .last,
-      )['strip_chart_structure_id_fk'],
+      calls
+          .where(
+            (RequestOptions call) =>
+                call.path == ApiConstants.workRfiComponentsListPath,
+          )
+          .last
+          .queryParameters['structureId'],
       '171',
     );
 
@@ -288,11 +290,11 @@ void main() {
     expect(find.byKey(WorkRfiFormPage.layerFieldKey), findsOneWidget);
     expect(find.text('e.g. 12+500'), findsOneWidget);
     expect(
-      _payload(_single(calls, ApiConstants.activitiesUpdateComponentsPath)),
+      _single(calls, ApiConstants.workRfiComponentsListPath).queryParameters,
       <String, dynamic>{
-        'contract_id_fk': 'C01',
-        'strip_chart_structure_id_fk': '170',
-        'structure_type_fk': 'Earthwork',
+        'contractId': 'C01',
+        'structureTypeId': 'Earthwork',
+        'structureId': '170',
       },
     );
     expect(
@@ -314,13 +316,13 @@ void main() {
     );
 
     final List<WorkRfiOption> options = await source.fetchDescriptions(
-      'Blanketing',
+      const <String>['Blanketing'],
     );
 
     final RequestOptions request = calls.single;
     expect(request.method, 'GET');
     expect(request.path, ApiConstants.rfiTypeDescriptionsPath);
-    expect(request.queryParameters['activity'], 'Blanketing');
+    expect(request.queryParameters['activity'], <String>['Blanketing']);
     expect(request.queryParameters['rfitype'], 'WORK');
     expect(options.single.id, '8');
     expect(options.single.label, 'Formation - Blanketing');
@@ -377,7 +379,7 @@ void main() {
     );
     expect(descriptions.method, 'GET');
     expect(descriptions.path, ApiConstants.rfiTypeDescriptionsPath);
-    expect(descriptions.queryParameters['activity'], 'Blanketing');
+    expect(descriptions.queryParameters['activity'], <String>['Blanketing']);
     expect(descriptions.queryParameters['rfitype'], 'WORK');
     expect(descriptions.uri.toString().startsWith('http'), isFalse);
     expect(_onTap(tester, WorkRfiFormPage.descriptionFieldKey), isNotNull);
@@ -406,7 +408,9 @@ void main() {
         .toList(growable: false);
     expect(descriptionCalls, hasLength(2));
     expect(descriptionCalls.last.method, 'GET');
-    expect(descriptionCalls.last.queryParameters['activity'], 'Earthwork');
+    expect(descriptionCalls.last.queryParameters['activity'], <String>[
+      'Earthwork',
+    ]);
     expect(descriptionCalls.last.queryParameters['rfitype'], 'WORK');
     expect(find.text('Earthwork'), findsNWidgets(3));
     expect(find.textContaining('Chainage From'), findsOneWidget);
@@ -431,33 +435,43 @@ void main() {
       _scriptedDio(
         calls: calls,
         body: (RequestOptions options) {
-          expect(options.path, ApiConstants.activitiesUpdateActivitiesPath);
+          expect(options.path, ApiConstants.workRfiActivitiesListsPath);
           return <Map<String, dynamic>>[
             <String, dynamic>{
               'strip_chart_activity_id': '2174',
               'strip_chart_activity_name': 'Excavation',
+              'component': 'Excavation & Levelling',
+              'element': 'Excavation',
             },
           ];
         },
       ),
     );
 
-    final List<WorkRfiOption> options = await source.fetchActivities(
+    final List<WorkRfiActivityOption> options = await source.fetchActivities(
       contractId: 'P01EN01',
       structureId: '113',
       structureType: 'Minor Bridge',
-      component: 'Excavation & Levelling',
-      element: 'Excavation',
+      selections: const <WorkRfiComponentElementSelection>[
+        WorkRfiComponentElementSelection(
+          componentName: 'Excavation & Levelling',
+          elementName: 'Excavation',
+        ),
+      ],
     );
 
     expect(calls.single.method, 'POST');
-    expect(calls.single.path, ApiConstants.activitiesUpdateActivitiesPath);
+    expect(calls.single.path, ApiConstants.workRfiActivitiesListsPath);
     expect(_payload(calls.single), <String, dynamic>{
-      'contract_id_fk': 'P01EN01',
-      'strip_chart_structure_id_fk': '113',
-      'structure_type_fk': 'Minor Bridge',
-      'strip_chart_component': 'Excavation & Levelling',
-      'strip_chart_component_id': 'Excavation',
+      'contractId': 'P01EN01',
+      'structureId': 113,
+      'structureTypeId': 'Minor Bridge',
+      'componentElementSelections': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'componentName': 'Excavation & Levelling',
+          'elementName': 'Excavation',
+        },
+      ],
     });
     expect(options.single.id, '2174');
     expect(options.single.label, 'Excavation');
@@ -467,7 +481,7 @@ void main() {
   testWidgets('create form loads activities after element selection', (
     WidgetTester tester,
   ) async {
-    tester.view.physicalSize = const Size(900, 2400);
+    tester.view.physicalSize = const Size(900, 3200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -518,14 +532,25 @@ void main() {
       sheet: 'Component',
       option: 'Excavation & Levelling',
     );
-    expect(
-      calls.where(
-        (RequestOptions call) =>
-            call.path == ApiConstants.activitiesUpdateActivitiesPath,
-      ),
-      isEmpty,
+    // Components alone still fetch activities with elementName: null.
+    final RequestOptions afterComponent = _single(
+      calls,
+      ApiConstants.workRfiActivitiesListsPath,
     );
-    expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNull);
+    expect(afterComponent.method, 'POST');
+    expect(_payload(afterComponent)['contractId'], 'P01EN01');
+    expect(_payload(afterComponent)['structureId'], 113);
+    expect(_payload(afterComponent)['structureTypeId'], 'Minor Bridge');
+    expect(
+      _payload(afterComponent)['componentElementSelections'],
+      <Map<String, dynamic>>[
+        <String, dynamic>{
+          'componentName': 'Excavation & Levelling',
+          'elementName': null,
+        },
+      ],
+    );
+    expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNotNull);
 
     await _pick(
       tester,
@@ -534,17 +559,20 @@ void main() {
       option: 'Excavation',
     );
 
-    final RequestOptions activities = _single(
-      calls,
-      ApiConstants.activitiesUpdateActivitiesPath,
-    );
+    final List<RequestOptions> afterElementCalls = calls
+        .where(
+          (RequestOptions call) =>
+              call.path == ApiConstants.workRfiActivitiesListsPath,
+        )
+        .toList(growable: false);
+    expect(afterElementCalls, hasLength(2));
+    final RequestOptions activities = afterElementCalls.last;
     expect(activities.method, 'POST');
-    expect(_payload(activities), <String, dynamic>{
-      'contract_id_fk': 'P01EN01',
-      'strip_chart_structure_id_fk': '113',
-      'structure_type_fk': 'Minor Bridge',
-      'strip_chart_component': 'Excavation & Levelling',
-      'strip_chart_component_id': 'Excavation',
+    final List<dynamic> selections =
+        _payload(activities)['componentElementSelections'] as List<dynamic>;
+    expect(selections.single, <String, dynamic>{
+      'componentName': 'Excavation & Levelling',
+      'elementName': 'Excavation',
     });
     expect(activities.uri.toString().startsWith('http'), isFalse);
     expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNotNull);
@@ -574,7 +602,7 @@ void main() {
       ApiConstants.rfiTypeDescriptionsPath,
     );
     expect(descriptions.method, 'GET');
-    expect(descriptions.queryParameters['activity'], 'Excavation');
+    expect(descriptions.queryParameters['activity'], <String>['Excavation']);
     expect(descriptions.queryParameters['rfitype'], 'WORK');
     expect(_onTap(tester, WorkRfiFormPage.descriptionFieldKey), isNotNull);
 
@@ -586,17 +614,49 @@ void main() {
     );
     expect(find.text('Box excavation check'), findsOneWidget);
 
-    await _pick(tester, field: 'Excavation', sheet: 'Element', option: 'PCC');
+    final Finder elementChip = find.descendant(
+      of: find.byKey(WorkRfiFormPage.elementFieldKey),
+      matching: find.widgetWithText(Chip, 'Excavation'),
+    );
+    final Finder removeElement = find.descendant(
+      of: elementChip,
+      matching: find.byIcon(Icons.close_rounded),
+    );
+    await tester.tap(removeElement);
+    await _settle(tester);
+    // Removing the only element refetches with elementName: null.
+    final List<RequestOptions> afterRemoveCalls = calls
+        .where(
+          (RequestOptions call) =>
+              call.path == ApiConstants.workRfiActivitiesListsPath,
+        )
+        .toList(growable: false);
+    expect(afterRemoveCalls.length, greaterThanOrEqualTo(3));
+    expect(
+      (_payload(afterRemoveCalls.last)['componentElementSelections']
+              as List<dynamic>)
+          .single['elementName'],
+      isNull,
+    );
+    await _pick(
+      tester,
+      field: WorkRfiFormPage.elementFieldKey,
+      sheet: 'Element',
+      option: 'PCC',
+    );
     expect(find.text('Box excavation check'), findsNothing);
     expect(find.byKey(WorkRfiFormPage.activityFieldKey), findsOneWidget);
     final List<RequestOptions> activityCalls = calls
         .where(
           (RequestOptions call) =>
-              call.path == ApiConstants.activitiesUpdateActivitiesPath,
+              call.path == ApiConstants.workRfiActivitiesListsPath,
         )
         .toList(growable: false);
-    expect(activityCalls, hasLength(2));
-    expect(_payload(activityCalls.last)['strip_chart_component_id'], 'PCC');
+    expect(activityCalls.length, greaterThanOrEqualTo(4));
+    final List<dynamic> lastSelections =
+        _payload(activityCalls.last)['componentElementSelections']
+            as List<dynamic>;
+    expect(lastSelections.single['elementName'], 'PCC');
     expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNotNull);
     await _open(tester, field: WorkRfiFormPage.activityFieldKey, sheet: 'Activity');
     expect(find.text('PCC Layer'), findsOneWidget);
@@ -607,6 +667,12 @@ void main() {
     ).pop();
     await _untilAbsent(tester, _sheetTitle('Activity'));
 
+    final int activitiesBeforeStructureChange = calls
+        .where(
+          (RequestOptions call) =>
+              call.path == ApiConstants.workRfiActivitiesListsPath,
+        )
+        .length;
     await _pick(
       tester,
       field: 'MNB CH 63+200 (RCC Box)',
@@ -615,14 +681,15 @@ void main() {
     );
     expect(find.byKey(WorkRfiFormPage.componentFieldKey), findsOneWidget);
     expect(find.byKey(WorkRfiFormPage.activityFieldKey), findsOneWidget);
+    // Structure change clears components/elements, so Activity stays disabled.
     expect(_onTap(tester, WorkRfiFormPage.activityFieldKey), isNull);
     expect(find.text('PCC Layer'), findsNothing);
     expect(
       calls.where(
         (RequestOptions call) =>
-            call.path == ApiConstants.activitiesUpdateActivitiesPath,
+            call.path == ApiConstants.workRfiActivitiesListsPath,
       ),
-      hasLength(2),
+      hasLength(activitiesBeforeStructureChange),
     );
     _expectReadOnlyLookups(calls);
   });
@@ -652,15 +719,18 @@ Dio _scriptedDio({
 
 Object? _minorBridgeActivitiesBody(RequestOptions options) {
   switch (options.path) {
+    case ApiConstants.materialRfiProjectsPath:
     case ApiConstants.rfiProjectNamesPath:
       return <Map<String, dynamic>>[
         <String, dynamic>{'projectId': 'P01', 'projectName': 'Tumkuru Project'},
       ];
+    case ApiConstants.materialRfiContractsPath:
     case ApiConstants.rfiContractNamesPath:
       return <Map<String, dynamic>>[
         <String, dynamic>{
-          'contractIdFk': 'P01EN01',
-          'contractShortName': 'New Broad gauge line',
+          'contract_id': 'P01EN01',
+          'contract_short_name': 'New Broad gauge line',
+          'project_id_fk': 'P01',
         },
       ];
     case ApiConstants.structureTypesInActivitiesPath:
@@ -679,6 +749,7 @@ Object? _minorBridgeActivitiesBody(RequestOptions options) {
           'strip_chart_structure_id_fk': 'MNB CH 64+000',
         },
       ];
+    case ApiConstants.workRfiComponentsListPath:
     case ApiConstants.activitiesUpdateComponentsPath:
       return <Map<String, dynamic>>[
         <String, dynamic>{'strip_chart_component': 'Excavation & Levelling'},
@@ -688,14 +759,26 @@ Object? _minorBridgeActivitiesBody(RequestOptions options) {
         <String, dynamic>{'strip_chart_component_id': 'Excavation'},
         <String, dynamic>{'strip_chart_component_id': 'PCC'},
       ];
+    case ApiConstants.workRfiActivitiesListsPath:
     case ApiConstants.activitiesUpdateActivitiesPath:
-      final String element =
-          _payload(options)['strip_chart_component_id']?.toString() ?? '';
+      final List<dynamic> selections =
+          (_payload(options)['componentElementSelections'] as List<dynamic>?) ??
+          const <dynamic>[];
+      final Object? elementRaw = selections.isEmpty
+          ? _payload(options)['strip_chart_component_id']
+          : (selections.single as Map)['elementName'];
+      final String element = elementRaw?.toString() ?? '';
+      if (element.isEmpty || element == 'null') {
+        // Matches web: component-only (null element) pairs may return no rows.
+        return <Map<String, dynamic>>[];
+      }
       if (element == 'Excavation') {
         return <Map<String, dynamic>>[
           <String, dynamic>{
             'strip_chart_activity_id': '2174',
             'strip_chart_activity_name': 'Excavation',
+            'component': 'Excavation & Levelling',
+            'element': 'Excavation',
           },
         ];
       }
@@ -703,11 +786,15 @@ Object? _minorBridgeActivitiesBody(RequestOptions options) {
         <String, dynamic>{
           'strip_chart_activity_id': '3001',
           'strip_chart_activity_name': 'PCC Layer',
+          'component': 'Excavation & Levelling',
+          'element': 'PCC',
         },
       ];
     case ApiConstants.rfiTypeDescriptionsPath:
-      final String activity =
-          options.queryParameters['activity']?.toString() ?? '';
+      final Object? activityRaw = options.queryParameters['activity'];
+      final String activity = activityRaw is List
+          ? activityRaw.first.toString()
+          : activityRaw?.toString() ?? '';
       final String rfiType =
           options.queryParameters['rfitype']?.toString() ?? '';
       if (activity == 'Excavation' && rfiType == 'WORK') {
@@ -723,15 +810,18 @@ Object? _minorBridgeActivitiesBody(RequestOptions options) {
 
 Object? _createFormBody(RequestOptions options) {
   switch (options.path) {
+    case ApiConstants.materialRfiProjectsPath:
     case ApiConstants.rfiProjectNamesPath:
       return <Map<String, dynamic>>[
         <String, dynamic>{'projectId': 'P01', 'projectName': 'Project Alpha'},
       ];
+    case ApiConstants.materialRfiContractsPath:
     case ApiConstants.rfiContractNamesPath:
       return <Map<String, dynamic>>[
         <String, dynamic>{
-          'contractIdFk': 'C01',
-          'contractShortName': 'Contract Alpha',
+          'contract_id': 'C01',
+          'contract_short_name': 'Contract Alpha',
+          'project_id_fk': 'P01',
         },
       ];
     case ApiConstants.structureTypesInActivitiesPath:
@@ -758,10 +848,12 @@ Object? _createFormBody(RequestOptions options) {
       ];
     case ApiConstants.rfiLayerRangePath:
       return <String, dynamic>{'minLayer': 1, 'maxLayer': 2};
+    case ApiConstants.workRfiComponentsListPath:
     case ApiConstants.activitiesUpdateComponentsPath:
-      final String structureId = _payload(
-        options,
-      )['strip_chart_structure_id_fk'].toString();
+      final String structureId =
+          (options.queryParameters['structureId'] ??
+                  _payload(options)['strip_chart_structure_id_fk'])
+              .toString();
       if (structureId == '171') {
         return <Map<String, dynamic>>[
           <String, dynamic>{'strip_chart_component': 'Excavation'},
@@ -778,8 +870,10 @@ Object? _createFormBody(RequestOptions options) {
         <String, dynamic>{'strip_chart_component_id': 'CH 25400 to CH 26000'},
       ];
     case ApiConstants.rfiTypeDescriptionsPath:
-      final String activity =
-          options.queryParameters['activity']?.toString() ?? '';
+      final Object? activityRaw = options.queryParameters['activity'];
+      final String activity = activityRaw is List
+          ? activityRaw.first.toString()
+          : activityRaw?.toString() ?? '';
       final String rfiType =
           options.queryParameters['rfitype']?.toString() ?? '';
       if (activity == 'Blanketing' && rfiType == 'WORK') {

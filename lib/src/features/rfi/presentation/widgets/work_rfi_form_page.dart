@@ -51,9 +51,11 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   List<WorkRfiContractOption> _contracts = <WorkRfiContractOption>[];
   List<WorkRfiOption> _structureTypes = <WorkRfiOption>[];
   List<WorkRfiOption> _structures = <WorkRfiOption>[];
-  List<WorkRfiOption> _components = <WorkRfiOption>[];
-  List<WorkRfiOption> _elements = <WorkRfiOption>[];
-  List<WorkRfiOption> _activityOptions = <WorkRfiOption>[];
+  List<WorkRfiOption> _componentOptions = <WorkRfiOption>[];
+  List<WorkRfiOption> _selectedComponents = <WorkRfiOption>[];
+  List<WorkRfiElementOption> _elementOptions = <WorkRfiElementOption>[];
+  List<WorkRfiElementOption> _selectedElements = <WorkRfiElementOption>[];
+  List<WorkRfiActivityOption> _activityCatalog = <WorkRfiActivityOption>[];
   List<WorkRfiOption> _selectedActivities = <WorkRfiOption>[];
   List<_MeasureRow> _rows = <_MeasureRow>[];
   List<WorkRfiOption> _descriptionOptions = <WorkRfiOption>[];
@@ -65,8 +67,6 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   String _contractId = '';
   String _structureType = '';
   String _structureId = '';
-  String _component = '';
-  String _element = '';
   String? _chainageFromError;
   String? _chainageToError;
   List<WorkRfiOption> _layers = <WorkRfiOption>[];
@@ -125,6 +125,13 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
 
   bool get _keepsLocalActivity =>
       !_editing && workRfiIsEarthworkOrBlanketing(_structureType);
+
+  List<WorkRfiOption> get _activityNameOptions {
+    if (_keepsLocalActivity && _selectedActivities.isNotEmpty) {
+      return _selectedActivities;
+    }
+    return workRfiUniqueActivityNames(_activityCatalog);
+  }
 
   bool get _busy =>
       !_ready ||
@@ -259,8 +266,6 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     _contractId = detail.contract;
     _structureType = detail.structureType;
     _structureId = detail.structure;
-    _component = detail.component;
-    _element = detail.element;
     _rfiRequired = detail.rfiRequired == 'Yes' || detail.rfiRequired == 'No'
         ? detail.rfiRequired
         : '';
@@ -347,51 +352,80 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (!mounted || components == null) {
       return;
     }
-    _components = _ensureOption(components, detail.component, detail.component);
-    if (detail.component.isEmpty) {
+    _componentOptions = _ensureManyOptions(components, _splitCsvIds(detail.component));
+    _selectedComponents = _optionsForIds(
+      _componentOptions,
+      _splitCsvIds(detail.component),
+    );
+    if (_selectedComponents.isEmpty && detail.component.trim().isEmpty) {
       return;
     }
-    final List<WorkRfiOption>? elements = await _guard(
+    final List<WorkRfiElementOption>? elements = await _guard(
       _source.fetchElements(
         contractId: detail.contract,
         structureId: detail.structure,
-        component: detail.component,
         structureType: detail.structureType,
+        components: _selectedComponents,
       ),
       'Elements unavailable',
     );
     if (!mounted || elements == null) {
       return;
     }
-    _elements = _ensureOption(elements, detail.element, detail.element);
-    if (detail.element.isEmpty) {
+    _elementOptions = elements;
+    _selectedElements = _elementsForIds(
+      _elementOptions,
+      _splitCsvIds(detail.element),
+    );
+    if (_selectedElements.isEmpty && detail.element.trim().isEmpty) {
       return;
     }
-    final List<WorkRfiOption>? activities = await _guard(
-      _source.fetchActivities(
-        contractId: detail.contract,
-        structureId: detail.structure,
-        structureType: detail.structureType,
-        component: detail.component,
-        element: detail.element,
-      ),
-      'Activities unavailable',
-    );
-    if (!mounted || activities == null) {
-      return;
+    if (workRfiIsEarthworkOrBlanketing(detail.structureType)) {
+      final WorkRfiEditActivities resolved = resolveWorkRfiEditActivities(
+        options: <WorkRfiOption>[
+          WorkRfiOption(
+            id: detail.structureType,
+            label: detail.structureType,
+          ),
+        ],
+        activityList: detail.activityList,
+        activityId: detail.activity,
+        measurements: detail.measurements,
+      );
+      _selectedActivities = resolved.selected;
+      _replaceRows(resolved.rows);
+    } else {
+      final List<WorkRfiActivityOption>? catalog = await _guard(
+        _source.fetchActivities(
+          contractId: detail.contract,
+          structureId: detail.structure,
+          structureType: detail.structureType,
+          selections: workRfiComponentElementSelections(
+            components: _selectedComponents,
+            selectedElements: _selectedElements,
+          ),
+        ),
+        'Activities unavailable',
+      );
+      if (!mounted || catalog == null) {
+        return;
+      }
+      _activityCatalog = catalog;
+      final List<WorkRfiOption> activityOptions = <WorkRfiOption>[
+        for (final WorkRfiActivityOption option in catalog) option.toOption(),
+      ];
+      final WorkRfiEditActivities resolved = resolveWorkRfiEditActivities(
+        options: activityOptions,
+        activityList: detail.activityList,
+        activityId: detail.activity,
+        measurements: detail.measurements,
+      );
+      _selectedActivities = _activityNamesFromEditSelection(
+        resolved.selected,
+        catalog,
+      );
+      _replaceRows(_enrichEditRows(resolved.rows, catalog));
     }
-    final WorkRfiEditActivities resolved = resolveWorkRfiEditActivities(
-      options: activities,
-      activityList: detail.activityList,
-      activityId: detail.activity,
-      measurements: detail.measurements,
-    );
-    _activityOptions = _dedupe(<WorkRfiOption>[
-      ...activities,
-      ...resolved.selected,
-    ]);
-    _selectedActivities = resolved.selected;
-    _replaceRows(resolved.rows);
     _descriptionIds = List<String>.from(detail.rfiDescriptionList);
     _enclosureIds = List<String>.from(detail.enclosuresList);
     await _refreshDescriptions(keep: detail.rfiDescriptionList);
@@ -519,104 +553,195 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     setState(() {
       _loadingComponents = false;
       if (options != null) {
-        _components = options;
+        _componentOptions = options;
       }
     });
   }
 
-  Future<void> _selectComponent(String id) async {
-    if (id == _component) {
+  Future<void> _setComponents(List<WorkRfiOption> selected) async {
+    if (_listsEqualById(_selectedComponents, selected)) {
       return;
     }
     final bool keepLocalActivity = _keepsLocalActivity;
     final int ticket = _bump(resetDescriptions: !keepLocalActivity);
+    // Keep chips that still belong to remaining components after the catalog
+    // refresh (do not wipe selected elements before filtering).
+    final List<WorkRfiElementOption> previousSelected =
+        List<WorkRfiElementOption>.from(_selectedElements);
     setState(() {
-      _component = id;
-      _clearElements(preserveCreateActivity: keepLocalActivity);
-      _loadingElements = true;
+      _selectedComponents = selected;
+      if (selected.isEmpty) {
+        _clearElements(preserveCreateActivity: keepLocalActivity);
+      } else {
+        if (!keepLocalActivity) {
+          _clearActivities();
+          _loadingActivities = true;
+        }
+        _loadingElements = true;
+      }
     });
-    final List<WorkRfiOption>? options = await _guard(
+    if (selected.isEmpty) {
+      return;
+    }
+    final List<WorkRfiElementOption>? options = await _guard(
       _source.fetchElements(
         contractId: _contractId,
         structureId: _structureId,
-        component: id,
         structureType: _structureType,
+        components: selected,
       ),
       'Elements unavailable',
     );
     if (!mounted || ticket != _cascade) {
       return;
     }
+    final List<WorkRfiElementOption> catalog =
+        options ?? <WorkRfiElementOption>[];
+    final List<WorkRfiElementOption> kept = _filterSelectedElements(
+      catalog,
+      previousSelected,
+    );
     setState(() {
       _loadingElements = false;
-      if (options != null) {
-        _elements = options;
+      _elementOptions = catalog;
+      _selectedElements = kept;
+      if (!keepLocalActivity) {
+        _loadingActivities = true;
       }
     });
+    // Components alone still post elementName:null pairs to the activities API.
+    if (!keepLocalActivity) {
+      await _reloadActivities(ticket: ticket);
+    }
   }
 
-  Future<void> _selectElement(String id) async {
-    if (id == _element) {
+  Future<void> _setElements(List<WorkRfiElementOption> selected) async {
+    if (_listsEqualByElementKey(_selectedElements, selected)) {
       return;
     }
     if (_keepsLocalActivity) {
-      setState(() => _element = id);
+      setState(() => _selectedElements = selected);
       return;
     }
     final int ticket = _bump();
     setState(() {
-      _element = id;
+      _selectedElements = selected;
       _clearActivities();
       _loadingActivities = true;
     });
-    final List<WorkRfiOption>? options = await _guard(
+    if (_selectedComponents.isEmpty) {
+      if (!mounted || ticket != _cascade) {
+        return;
+      }
+      setState(() {
+        _loadingActivities = false;
+        _activityCatalog = <WorkRfiActivityOption>[];
+      });
+      return;
+    }
+    // Empty elements still fetch with elementName:null for each component.
+    await _reloadActivities(ticket: ticket);
+  }
+
+  Future<void> _reloadActivities({required int ticket}) async {
+    final List<WorkRfiActivityOption>? catalog = await _guard(
       _source.fetchActivities(
         contractId: _contractId,
         structureId: _structureId,
         structureType: _structureType,
-        component: _component,
-        element: id,
+        selections: workRfiComponentElementSelections(
+          components: _selectedComponents,
+          selectedElements: _selectedElements,
+        ),
       ),
       'Activities unavailable',
     );
-    if (!mounted || ticket != _cascade) {
+    if (!mounted) {
       return;
     }
     setState(() {
       _loadingActivities = false;
-      if (options != null) {
-        _activityOptions = options;
+      if (ticket == _cascade) {
+        _activityCatalog = catalog ?? <WorkRfiActivityOption>[];
       }
     });
   }
 
-  Future<void> _setActivities(List<WorkRfiOption> selected) async {
-    final Map<String, _MeasureRow> existing = <String, _MeasureRow>{
-      for (final _MeasureRow row in _rows) row.activityId: row,
-    };
-    final List<_MeasureRow> next = <_MeasureRow>[];
-    for (final WorkRfiOption option in selected) {
-      final _MeasureRow? row = existing.remove(option.id);
-      if (row == null) {
-        next.add(
-          _MeasureRow(
-            WorkRfiMeasurementDraft(
-              activityId: option.id,
-              activityName: option.label,
-            ),
-          ),
-        );
-      } else {
-        row.activityName = option.label;
-        next.add(row);
-      }
+  Future<void> _pickComponents() async {
+    final List<String>? picked = await _pickMany(
+      title: 'Component',
+      options: _componentOptions,
+      selectedIds: <String>[
+        for (final WorkRfiOption option in _selectedComponents) option.id,
+      ],
+      emptyMessage: 'No components',
+    );
+    if (picked == null || !mounted) {
+      return;
     }
-    final List<_MeasureRow> removed = existing.values.toList(growable: false);
+    await _setComponents(_optionsForIds(_componentOptions, picked));
+  }
+
+  Future<void> _pickElements() async {
+    final List<WorkRfiOption> pickerOptions = <WorkRfiOption>[
+      for (final WorkRfiElementOption option in _elementOptions)
+        _elementPickerOption(option),
+    ];
+    final List<String>? picked = await _pickMany(
+      title: 'Element',
+      options: pickerOptions,
+      selectedIds: <String>[
+        for (final WorkRfiElementOption option in _selectedElements)
+          _elementPickerKey(option),
+      ],
+      emptyMessage: 'No elements',
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    final Map<String, WorkRfiElementOption> byKey = <String, WorkRfiElementOption>{
+      for (final WorkRfiElementOption option in _elementOptions)
+        _elementPickerKey(option): option,
+    };
+    await _setElements(
+      <WorkRfiElementOption>[
+        for (final String key in picked)
+          if (byKey[key] != null) byKey[key]!,
+      ],
+    );
+  }
+
+  Future<void> _setActivities(List<WorkRfiOption> selected) async {
+    final List<WorkRfiMeasurementDraft> existing = <WorkRfiMeasurementDraft>[
+      for (final _MeasureRow row in _rows) row.toDraft(),
+    ];
+    final List<String> names = <String>[
+      for (final WorkRfiOption option in selected) option.id.trim(),
+    ];
+    final List<WorkRfiMeasurementDraft> drafts;
+    if (_keepsLocalActivity) {
+      drafts = workRfiRowsForSelectedActivityNames(
+        catalog: <WorkRfiActivityOption>[
+          for (final WorkRfiOption option in selected)
+            WorkRfiActivityOption(
+              id: option.id,
+              label: option.label,
+            ),
+        ],
+        selectedNames: names,
+        existing: existing,
+      );
+    } else {
+      drafts = workRfiRowsForSelectedActivityNames(
+        catalog: _activityCatalog,
+        selectedNames: names,
+        existing: existing,
+      );
+    }
     setState(() {
       _selectedActivities = selected;
-      _rows = next;
+      _replaceRows(drafts);
     });
-    _dropRows(removed);
     await _refreshDescriptions();
   }
 
@@ -644,20 +769,14 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     }
     setState(() => _loadingDescriptions = true);
     try {
-      final List<List<WorkRfiOption>> lists = await Future.wait(
-        <Future<List<WorkRfiOption>>>[
-          for (final String name in names) _source.fetchDescriptions(name),
-        ],
-      );
+      final List<WorkRfiOption> merged = await _source.fetchDescriptions(names);
       if (!mounted || ticket != _descriptionTicket) {
         return;
       }
-      final List<WorkRfiOption> merged = _dedupe(<WorkRfiOption>[
-        for (final List<WorkRfiOption> list in lists) ...list,
-      ]);
+      merged.sort((WorkRfiOption a, WorkRfiOption b) => a.label.compareTo(b.label));
       final List<String> wanted = keep ?? _descriptionIds;
       setState(() {
-        _descriptionOptions = merged;
+        _descriptionOptions = _dedupe(merged);
         _descriptionIds = <String>[
           for (final String id in wanted)
             if (merged.any((WorkRfiOption option) => option.id == id)) id,
@@ -693,19 +812,12 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     }
     setState(() => _loadingEnclosures = true);
     try {
-      final List<List<WorkRfiOption>> lists = await Future.wait(
-        <Future<List<WorkRfiOption>>>[
-          for (final String label in labels) _source.fetchEnclosures(label),
-        ],
-      );
+      final List<WorkRfiOption> merged = await _source.fetchEnclosures(labels);
       if (!mounted || ticket != _enclosureTicket) {
         return;
       }
-      final List<WorkRfiOption> merged = _dedupe(<WorkRfiOption>[
-        for (final List<WorkRfiOption> list in lists) ...list,
-      ]);
       setState(() {
-        _enclosureOptions = merged;
+        _enclosureOptions = _dedupe(merged);
         _enclosureIds = <String>[
           for (final String id in _enclosureIds)
             if (merged.any((WorkRfiOption option) => option.id == id)) id,
@@ -756,13 +868,22 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   WorkRfiSubmitDraft _draft() {
+    final List<String> componentIds = <String>[
+      for (final WorkRfiOption option in _selectedComponents) option.id,
+    ];
+    final List<String> elementIds = <String>[
+      for (final WorkRfiElementOption option in _selectedElements) option.id,
+    ];
     return WorkRfiSubmitDraft(
       project: _projectId,
       contract: _contractId,
       structureType: _structureType,
       structure: _structureId,
-      component: _component,
-      element: _element,
+      structureName: _optionLabel(_structures, _structureId) ?? '',
+      component: componentIds.join(','),
+      element: elementIds.join(','),
+      componentIds: componentIds,
+      elementIds: elementIds,
       activities: <WorkRfiMeasurementDraft>[
         for (final _MeasureRow row in _rows) row.toDraft(),
       ],
@@ -902,34 +1023,52 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         ),
         _labeled(
           'Component',
-          child: _selectBox(
+          child: _multiBox(
             key: WorkRfiFormPage.componentFieldKey,
-            hint: 'Select...',
-            value: _optionLabel(_components, _component),
+            hint: 'Select component(s)...',
+            selected: _selectedComponents,
             enabled: _structureId.isNotEmpty && !_locked,
-            onTap: () => _pickSingle(
-              title: 'Component',
-              options: _components,
-              selectedId: _component,
-              emptyMessage: 'No components',
-              onPicked: _selectComponent,
-            ),
+            onTap: _pickComponents,
+            onRemove: (WorkRfiOption option) {
+              unawaited(
+                _setComponents(
+                  _selectedComponents
+                      .where((WorkRfiOption item) => item.id != option.id)
+                      .toList(growable: false),
+                ),
+              );
+            },
+            onClear: _selectedComponents.isEmpty
+                ? null
+                : () => unawaited(_setComponents(const <WorkRfiOption>[])),
           ),
         ),
         _labeled(
           'Element',
-          child: _selectBox(
+          child: _multiBox(
             key: WorkRfiFormPage.elementFieldKey,
-            hint: 'Select...',
-            value: _optionLabel(_elements, _element),
-            enabled: _component.isNotEmpty && !_locked,
-            onTap: () => _pickSingle(
-              title: 'Element',
-              options: _elements,
-              selectedId: _element,
-              emptyMessage: 'No elements',
-              onPicked: _selectElement,
-            ),
+            hint: 'Select element(s)...',
+            selected: <WorkRfiOption>[
+              for (final WorkRfiElementOption option in _selectedElements)
+                _elementPickerOption(option),
+            ],
+            enabled: _selectedComponents.isNotEmpty && !_locked,
+            onTap: _pickElements,
+            onRemove: (WorkRfiOption option) {
+              unawaited(
+                _setElements(
+                  _selectedElements
+                      .where(
+                        (WorkRfiElementOption item) =>
+                            _elementPickerKey(item) != option.id,
+                      )
+                      .toList(growable: false),
+                ),
+              );
+            },
+            onClear: _selectedElements.isEmpty
+                ? null
+                : () => unawaited(_setElements(const <WorkRfiElementOption>[])),
           ),
         ),
         if (chainage) _chainageGroup(),
@@ -1033,9 +1172,12 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           'Activity',
           child: _multiBox(
             key: WorkRfiFormPage.activityFieldKey,
-            hint: 'Select...',
+            hint: 'Select activities...',
             selected: _selectedActivities,
-            enabled: _element.isNotEmpty && !_locked,
+            enabled:
+                _selectedComponents.isNotEmpty &&
+                !_loadingActivities &&
+                !_locked,
             onTap: _pickActivities,
             onRemove: (WorkRfiOption option) {
               unawaited(
@@ -1055,7 +1197,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           'RFI Description',
           child: _multiBox(
             key: WorkRfiFormPage.descriptionFieldKey,
-            hint: 'Select...',
+            hint: 'Select RFI description(s)...',
             selected: _optionsFor(_descriptionOptions, _descriptionIds),
             enabled: _selectedActivities.isNotEmpty && !_locked,
             onTap: _pickDescriptions,
@@ -1206,12 +1348,12 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           'Activity',
           child: _multiBox(
             key: WorkRfiFormPage.activityFieldKey,
-            hint: 'Select...',
+            hint: 'Select activities...',
             selected: _selectedActivities,
             enabled:
                 (chainage
-                    ? activityChosen || _activityOptions.isNotEmpty
-                    : _element.isNotEmpty && !_loadingActivities) &&
+                    ? activityChosen || _activityNameOptions.isNotEmpty
+                    : _selectedComponents.isNotEmpty && !_loadingActivities) &&
                 !_locked,
             onTap: _pickActivities,
             onRemove: (WorkRfiOption option) {
@@ -1232,7 +1374,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
           'RFI Description',
           child: _multiBox(
             key: WorkRfiFormPage.descriptionFieldKey,
-            hint: 'Select...',
+            hint: 'Select RFI description(s)...',
             selected: _optionsFor(_descriptionOptions, _descriptionIds),
             enabled: _descriptionOptions.isNotEmpty && !_locked,
             onTap: _descriptionOptions.isEmpty ? null : _pickDescriptions,
@@ -1460,42 +1602,113 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     );
   }
 
-  /// Component and element shown on each measurement row, as on the web.
-  /// The form holds one component/element today, so every row shares them.
-  String get _rowComponentLabel =>
-      _optionLabel(_components, _component) ?? _component;
+  String _rowComponentLabel(_MeasureRow row) {
+    final String raw = row.component.trim();
+    if (raw.isEmpty) {
+      return '';
+    }
+    for (final WorkRfiOption option in <WorkRfiOption>[
+      ..._selectedComponents,
+      ..._componentOptions,
+    ]) {
+      if (option.id == raw || option.label == raw) {
+        return option.label.isEmpty ? option.id : option.label;
+      }
+    }
+    return raw;
+  }
 
-  String get _rowElementLabel => _optionLabel(_elements, _element) ?? _element;
+  String _rowElementLabel(_MeasureRow row) {
+    final String raw = row.element.trim();
+    if (raw.isEmpty) {
+      return '';
+    }
+    for (final WorkRfiElementOption option in <WorkRfiElementOption>[
+      ..._selectedElements,
+      ..._elementOptions,
+    ]) {
+      if (option.id == raw || option.label == raw) {
+        return option.label.isEmpty ? option.id : option.label;
+      }
+    }
+    return raw;
+  }
 
-  Widget _measureText(String text) {
+  Widget _measureText(String text, {bool faded = false}) {
+    final Color? color = faded
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)
+        : null;
     return Text(
       text.isEmpty ? '—' : text,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
+      style: color == null ? null : TextStyle(color: color),
     );
   }
 
   Widget _measureDataRow(_MeasureRow row, int index) {
     final WorkRfiMeasureFields fields = workRfiFieldsFor(row.measurementType);
     final List<String> units = workRfiUnitsFor(row.measurementType);
+    final bool fadePeer = index > 0 && _rows[index - 1].groupKey == row.groupKey;
+    final Color mark = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF9DC0F0)
+        : AppTheme.brandPrimary;
     return SizedBox(
       height: 68,
       child: Row(
         children: <Widget>[
           _fixedCell(0, Center(child: Text('${index + 1}'))),
-          _fixedCell(1, _measureText(_rowComponentLabel)),
-          _fixedCell(2, _measureText(_rowElementLabel)),
+          _fixedCell(
+            1,
+            _measureText(_rowComponentLabel(row), faded: fadePeer),
+          ),
+          _fixedCell(2, _measureText(_rowElementLabel(row), faded: fadePeer)),
           _fixedCell(
             3,
             Text(
               row.activityName,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: fadePeer
+                    ? Theme.of(context).colorScheme.onSurface.withValues(
+                          alpha: 0.45,
+                        )
+                    : null,
+              ),
             ),
           ),
           _fixedCell(
             4,
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: _WorkRfiTextField(
+                    controller: row.description,
+                    hint: 'Description',
+                    enabled: !_locked,
+                    dense: true,
+                    radius: 8,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Add row',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
+                  ),
+                  onPressed: _locked ? null : () => _addSiblingRow(row, index),
+                  icon: Icon(Icons.add_circle_outline_rounded, color: mark),
+                ),
+              ],
+            ),
+          ),
+          _fixedCell(
+            5,
             _tablePicker(
               text: row.measurementType,
               hint: 'Select',
@@ -1503,7 +1716,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             ),
           ),
           _fixedCell(
-            5,
+            6,
             _tablePicker(
               text: row.units,
               hint: 'Select',
@@ -1512,31 +1725,20 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                   : () => _pickMeasureUnits(row, units),
             ),
           ),
-          _fixedCell(6, _numberCell(row.length, enabled: fields.length)),
-          _fixedCell(7, _numberCell(row.breadth, enabled: fields.breadth)),
-          _fixedCell(8, _numberCell(row.height, enabled: fields.height)),
-          _fixedCell(9, _numberCell(row.weight, enabled: fields.weight)),
-          _fixedCell(10, _numberCell(row.no, enabled: fields.no)),
-          _fixedCell(11, _totalCell(row)),
+          _fixedCell(7, _numberCell(row.length, enabled: fields.length)),
+          _fixedCell(8, _numberCell(row.breadth, enabled: fields.breadth)),
+          _fixedCell(9, _numberCell(row.height, enabled: fields.height)),
+          _fixedCell(10, _numberCell(row.weight, enabled: fields.weight)),
+          _fixedCell(11, _numberCell(row.no, enabled: fields.no)),
+          _fixedCell(12, _totalCell(row)),
           SizedBox(
-            width: _measureWidths[12],
+            width: _measureWidths[13],
             child: IconButton(
               tooltip: 'Remove',
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-              onPressed: _locked
-                  ? null
-                  : () => unawaited(
-                      _setActivities(
-                        _selectedActivities
-                            .where(
-                              (WorkRfiOption option) =>
-                                  option.id != row.activityId,
-                            )
-                            .toList(growable: false),
-                      ),
-                    ),
+              onPressed: _locked ? null : () => _removeMeasureRow(row, index),
               icon: Icon(
                 Icons.close_rounded,
                 color: Theme.of(context).colorScheme.error,
@@ -1546,6 +1748,56 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
         ],
       ),
     );
+  }
+
+  void _addSiblingRow(_MeasureRow row, int index) {
+    final List<WorkRfiMeasurementDraft> siblings = <WorkRfiMeasurementDraft>[
+      for (final _MeasureRow sibling in _rows)
+        if (sibling.activityId == row.activityId &&
+            sibling.component == row.component &&
+            sibling.element == row.element)
+          sibling.toDraft(),
+    ];
+    final String key = workRfiNextMeasurementKey(
+      activityId: row.activityId,
+      siblings: siblings,
+    );
+    setState(() {
+      _rows.insert(
+        index + 1,
+        _MeasureRow(
+          WorkRfiMeasurementDraft(
+            activityId: row.activityId,
+            activityName: row.activityName,
+            key: key,
+            component: row.component,
+            element: row.element,
+          ),
+        ),
+      );
+    });
+  }
+
+  void _removeMeasureRow(_MeasureRow row, int index) {
+    final String activityName = row.activityName;
+    final List<_MeasureRow> next = <_MeasureRow>[..._rows]..removeAt(index);
+    final bool stillHasName = next.any(
+      (_MeasureRow item) => item.activityName == activityName,
+    );
+    List<WorkRfiOption> activities = _selectedActivities;
+    if (!stillHasName) {
+      activities = _selectedActivities
+          .where((WorkRfiOption option) => option.id != activityName)
+          .toList(growable: false);
+    }
+    setState(() {
+      _rows = next;
+      _selectedActivities = activities;
+    });
+    _dropRows(<_MeasureRow>[row]);
+    if (!stillHasName) {
+      unawaited(_refreshDescriptions());
+    }
   }
 
   Widget _fixedCell(int index, Widget child) {
@@ -1995,9 +2247,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Future<void> _pickActivities() async {
+    final List<WorkRfiOption> options = _activityNameOptions;
     final List<String>? picked = await _pickMany(
       title: 'Activity',
-      options: _activityOptions,
+      options: options,
       selectedIds: <String>[
         for (final WorkRfiOption option in _selectedActivities) option.id,
       ],
@@ -2007,7 +2260,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
       return;
     }
     final Map<String, WorkRfiOption> byId = <String, WorkRfiOption>{
-      for (final WorkRfiOption option in _activityOptions) option.id: option,
+      for (final WorkRfiOption option in options) option.id: option,
     };
     final List<WorkRfiOption> next = <WorkRfiOption>[];
     final Set<String> seen = <String>{};
@@ -2423,19 +2676,22 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   void _applyCreateActivity(String structureType) {
     _clearDescriptions();
     if (!workRfiIsEarthworkOrBlanketing(structureType)) {
-      _activityOptions = <WorkRfiOption>[];
+      _activityCatalog = <WorkRfiActivityOption>[];
       _selectedActivities = <WorkRfiOption>[];
       return;
     }
     final String label =
         _optionLabel(_structureTypes, structureType) ?? structureType;
     final WorkRfiOption option = WorkRfiOption(id: structureType, label: label);
-    _activityOptions = <WorkRfiOption>[option];
+    _activityCatalog = <WorkRfiActivityOption>[
+      WorkRfiActivityOption(id: option.id, label: option.label),
+    ];
     _selectedActivities = <WorkRfiOption>[option];
     _replaceRows(<WorkRfiMeasurementDraft>[
       WorkRfiMeasurementDraft(
         activityId: option.id,
         activityName: option.label,
+        key: option.id,
       ),
     ]);
   }
@@ -2478,6 +2734,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (resetDescriptions) {
       _descriptionTicket++;
       _enclosureTicket++;
+      _loadingDescriptions = false;
+      _loadingEnclosures = false;
     }
     return ++_cascade;
   }
@@ -2516,15 +2774,15 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   void _clearComponents({bool preserveCreateActivity = false}) {
-    _component = '';
-    _components = <WorkRfiOption>[];
+    _selectedComponents = <WorkRfiOption>[];
+    _componentOptions = <WorkRfiOption>[];
     _loadingComponents = false;
     _clearElements(preserveCreateActivity: preserveCreateActivity);
   }
 
   void _clearElements({bool preserveCreateActivity = false}) {
-    _element = '';
-    _elements = <WorkRfiOption>[];
+    _selectedElements = <WorkRfiElementOption>[];
+    _elementOptions = <WorkRfiElementOption>[];
     _loadingElements = false;
     if (preserveCreateActivity) {
       return;
@@ -2533,7 +2791,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   void _clearActivities() {
-    _activityOptions = <WorkRfiOption>[];
+    _activityCatalog = <WorkRfiActivityOption>[];
     _selectedActivities = <WorkRfiOption>[];
     _loadingActivities = false;
     _replaceRows(const <WorkRfiMeasurementDraft>[]);
@@ -2603,11 +2861,12 @@ const List<String> _measureLabels = <String>[
   'Component',
   'Element',
   'Activity',
+  'Description',
   'Type of Measurement',
   'Units',
-  'Length',
-  'Breadth',
-  'Height',
+  'L',
+  'B',
+  'H',
   'Weight',
   'No.',
   'Total Qty',
@@ -2615,29 +2874,34 @@ const List<String> _measureLabels = <String>[
 ];
 
 const List<double> _measureWidths = <double>[
-  56,
-  128,
-  128,
-  120,
-  148,
-  88,
-  76,
-  76,
-  76,
-  76,
-  68,
-  88,
   48,
+  112,
+  112,
+  108,
+  168,
+  132,
+  76,
+  60,
+  60,
+  60,
+  68,
+  60,
+  72,
+  44,
 ];
 
 class _MeasureRow {
   _MeasureRow(WorkRfiMeasurementDraft draft)
-    : activityId = draft.activityId,
+    : rowKey = draft.rowKey,
+      activityId = draft.activityId,
       activityName = draft.activityName,
+      component = draft.component,
+      element = draft.element,
       measurementType = workRfiMeasurementTypes.contains(draft.measurementType)
           ? draft.measurementType
           : '',
       units = _initialUnits(draft),
+      description = TextEditingController(text: draft.description),
       length = TextEditingController(
         text: _shown(
           draft.measurementType,
@@ -2681,10 +2945,14 @@ class _MeasureRow {
         ),
       );
 
+  final String rowKey;
   final String activityId;
   String activityName;
+  final String component;
+  final String element;
   String measurementType;
   String units;
+  final TextEditingController description;
   final TextEditingController length;
   final TextEditingController breadth;
   final TextEditingController height;
@@ -2695,10 +2963,16 @@ class _MeasureRow {
   final TextEditingController totalQty;
   bool _disposed = false;
 
+  String get groupKey => '$activityId|$component|$element';
+
   WorkRfiMeasurementDraft toDraft() {
     return WorkRfiMeasurementDraft(
       activityId: activityId,
       activityName: activityName,
+      key: rowKey,
+      component: component,
+      element: element,
+      description: description.text,
       measurementType: measurementType,
       units: units,
       length: length.text,
@@ -2715,6 +2989,7 @@ class _MeasureRow {
       return;
     }
     _disposed = true;
+    description.dispose();
     length.dispose();
     breadth.dispose();
     height.dispose();
@@ -2764,6 +3039,187 @@ List<WorkRfiOption> _optionsFor(List<WorkRfiOption> options, List<String> ids) {
     for (final String id in ids)
       WorkRfiOption(id: id, label: _optionLabel(options, id) ?? id),
   ];
+}
+
+List<String> _splitCsvIds(String raw) {
+  return <String>[
+    for (final String part in raw.split(','))
+      if (part.trim().isNotEmpty) part.trim(),
+  ];
+}
+
+List<WorkRfiOption> _optionsForIds(List<WorkRfiOption> catalog, List<String> ids) {
+  final List<WorkRfiOption> picked = <WorkRfiOption>[];
+  final Set<String> seen = <String>{};
+  for (final String id in ids) {
+    if (!seen.add(id)) {
+      continue;
+    }
+    WorkRfiOption? match;
+    for (final WorkRfiOption option in catalog) {
+      if (option.id == id) {
+        match = option;
+        break;
+      }
+    }
+    picked.add(match ?? WorkRfiOption(id: id, label: id));
+  }
+  return picked;
+}
+
+List<WorkRfiOption> _ensureManyOptions(
+  List<WorkRfiOption> options,
+  List<String> ids,
+) {
+  var merged = options;
+  for (final String id in ids) {
+    merged = _ensureOption(merged, id, id);
+  }
+  return merged;
+}
+
+List<WorkRfiElementOption> _elementsForIds(
+  List<WorkRfiElementOption> catalog,
+  List<String> ids,
+) {
+  final List<WorkRfiElementOption> picked = <WorkRfiElementOption>[];
+  final Set<String> seen = <String>{};
+  for (final String id in ids) {
+    if (!seen.add(id)) {
+      continue;
+    }
+    WorkRfiElementOption? match;
+    for (final WorkRfiElementOption option in catalog) {
+      if (option.id == id) {
+        match = option;
+        break;
+      }
+    }
+    if (match != null) {
+      picked.add(match);
+    } else {
+      picked.add(
+        WorkRfiElementOption(
+          id: id,
+          label: id,
+          componentName: '',
+        ),
+      );
+    }
+  }
+  return picked;
+}
+
+List<WorkRfiElementOption> _filterSelectedElements(
+  List<WorkRfiElementOption> catalog,
+  List<WorkRfiElementOption> selected,
+) {
+  final Map<String, WorkRfiElementOption> byKey = <String, WorkRfiElementOption>{
+    for (final WorkRfiElementOption option in catalog)
+      _elementPickerKey(option): option,
+  };
+  return <WorkRfiElementOption>[
+    for (final WorkRfiElementOption option in selected)
+      if (byKey.containsKey(_elementPickerKey(option))) byKey[_elementPickerKey(option)]!,
+  ];
+}
+
+String _elementPickerKey(WorkRfiElementOption option) =>
+    '${option.componentName}::${option.id}';
+
+WorkRfiOption _elementPickerOption(WorkRfiElementOption option) => WorkRfiOption(
+      id: _elementPickerKey(option),
+      label: option.label.isEmpty ? option.id : option.label,
+    );
+
+bool _listsEqualById(List<WorkRfiOption> left, List<WorkRfiOption> right) {
+  if (left.length != right.length) {
+    return false;
+  }
+  for (var i = 0; i < left.length; i++) {
+    if (left[i].id != right[i].id) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _listsEqualByElementKey(
+  List<WorkRfiElementOption> left,
+  List<WorkRfiElementOption> right,
+) {
+  if (left.length != right.length) {
+    return false;
+  }
+  for (var i = 0; i < left.length; i++) {
+    if (_elementPickerKey(left[i]) != _elementPickerKey(right[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+List<WorkRfiOption> _activityNamesFromEditSelection(
+  List<WorkRfiOption> selected,
+  List<WorkRfiActivityOption> catalog,
+) {
+  final Map<String, String> idToName = <String, String>{
+    for (final WorkRfiActivityOption option in catalog) option.id: option.label,
+  };
+  final List<WorkRfiOption> names = <WorkRfiOption>[];
+  final Set<String> seen = <String>{};
+  for (final WorkRfiOption option in selected) {
+    final String name = (idToName[option.id] ?? option.label).trim();
+    if (name.isEmpty || !seen.add(name)) {
+      continue;
+    }
+    names.add(WorkRfiOption(id: name, label: name));
+  }
+  return names;
+}
+
+List<WorkRfiMeasurementDraft> _enrichEditRows(
+  List<WorkRfiMeasurementDraft> rows,
+  List<WorkRfiActivityOption> catalog,
+) {
+  return <WorkRfiMeasurementDraft>[
+    for (final WorkRfiMeasurementDraft row in rows) _enrichEditRow(row, catalog),
+  ];
+}
+
+WorkRfiMeasurementDraft _enrichEditRow(
+  WorkRfiMeasurementDraft row,
+  List<WorkRfiActivityOption> catalog,
+) {
+  if (row.component.isNotEmpty && row.element.isNotEmpty) {
+    return row;
+  }
+  WorkRfiActivityOption? match;
+  for (final WorkRfiActivityOption option in catalog) {
+    if (option.id == row.activityId) {
+      match = option;
+      break;
+    }
+  }
+  if (match == null) {
+    return row;
+  }
+  return WorkRfiMeasurementDraft(
+    activityId: row.activityId,
+    activityName: row.activityName,
+    key: row.key.isEmpty ? row.activityId : row.key,
+    component: row.component.isEmpty ? match.component : row.component,
+    element: row.element.isEmpty ? match.element : row.element,
+    description: row.description,
+    measurementType: row.measurementType,
+    units: row.units,
+    length: row.length,
+    breadth: row.breadth,
+    height: row.height,
+    weight: row.weight,
+    no: row.no,
+    totalQty: row.totalQty,
+  );
 }
 
 List<WorkRfiOption> _ensureOption(

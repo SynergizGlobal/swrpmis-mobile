@@ -322,12 +322,27 @@ class ApiConstants {
       '/ajax/getStructureTypesInActivitiesUpdate';
   static const String activitiesUpdateStructuresPath =
       '/ajax/getNewActivitiesUpdateStructures';
+
+  /// Legacy ajax POST used by older Work RFI / Quality lookups.
   static const String activitiesUpdateComponentsPath =
       '/ajax/getNewActivitiesUpdateComponentsList';
+
+  /// Web Create Works RFI: GET with contractId, structureTypeId, structureId.
+  static const String workRfiComponentsListPath =
+      '/getNewActivitiesUpdateComponentsList';
+
+  /// Temporary Elements source until the web Elements URL is confirmed.
+  /// Prefer namespaced fetchElements adapter over calling this from UI.
   static const String activitiesUpdateComponentIdsPath =
       '/ajax/getNewActivitiesUpdateComponentIdsList';
+
+  /// Legacy single-pair activities lookup.
   static const String activitiesUpdateActivitiesPath =
       '/ajax/getNewActivitiesUpdateActivitiesList';
+
+  /// Web Create Works RFI: POST with componentElementSelections (plural Lists).
+  static const String workRfiActivitiesListsPath =
+      '/getNewActivitiesUpdateActivitiesLists';
   static const String rfiTypeDescriptionsPath = '/rfi/rfi-type-descriptions';
 
   /// GET `?contractId=P01EN01` → `[{userId, userName}]`, the contractor
