@@ -11,6 +11,8 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/features/reports/data/contract_detail_report_file.dart';
 import 'package:swr_pmis_mobile/src/features/reports/data/datasources/activities_export_remote_data_source.dart';
+import 'package:swr_pmis_mobile/src/features/reports/data/datasources/contractors_list_report_remote_data_source.dart';
+import 'package:swr_pmis_mobile/src/features/reports/data/datasources/issues_summary_report_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/activities_export_option.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/bg_contractual_letters.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/bg_insurance_report.dart';
@@ -18,12 +20,18 @@ import 'package:swr_pmis_mobile/src/features/reports/domain/entities/contract_co
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/contract_detail_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/doc_contractual_letters.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/insurance_contractual_letters.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/issue_details_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/issues_summary_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/land_acquisition_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/list_of_contractors_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/list_of_contracts_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/pending_issues_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/quality_control_summary_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/reports_tree.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/rfi_summary_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/station_improvements_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/domain/entities/tpc_status_report.dart';
+import 'package:swr_pmis_mobile/src/features/reports/domain/entities/utility_shifting_report.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/activities_export_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/bg_contractual_letters_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/bg_insurance_report_page.dart';
@@ -31,10 +39,14 @@ import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_detail_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/doc_contractual_letters_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/insurance_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/issue_details_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/land_acquisition_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/list_of_contracts_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/pending_issues_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/quality_control_summary_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/rfi_summary_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/utility_shifting_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/providers/reports_providers.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/widgets/report_generating_dialog.dart';
 
@@ -141,13 +153,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       formName: node.formName,
       webFormUrl: node.webFormUrl,
     )) {
+      final ActivitiesExportRemoteDataSource source = ref.read(
+        activitiesExportRemoteDataSourceProvider,
+      );
       await _confirmAndDownloadReport(
         context,
         label: node.formName.trim().isEmpty
             ? 'TPC Status Report'
             : node.formName.trim(),
-        download: (ActivitiesExportRemoteDataSource source) =>
-            source.downloadTpcStatusReport(),
+        download: source.downloadTpcStatusReport,
       );
       return;
     }
@@ -156,13 +170,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       formName: node.formName,
       webFormUrl: node.webFormUrl,
     )) {
+      final ActivitiesExportRemoteDataSource source = ref.read(
+        activitiesExportRemoteDataSourceProvider,
+      );
       await _confirmAndDownloadReport(
         context,
         label: node.formName.trim().isEmpty
             ? 'Station Improvement Progress Report'
             : node.formName.trim(),
-        download: (ActivitiesExportRemoteDataSource source) =>
-            source.downloadStationImprovementsReport(),
+        download: source.downloadStationImprovementsReport,
       );
       return;
     }
@@ -185,6 +201,24 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       context.pushNamed(
         ContractDetailReportPage.routeName,
         queryParameters: <String, String>{'name': 'Contract Detail Report'},
+      );
+      return;
+    }
+    // Before List of Contracts — contractorslist is confirm→download only.
+    if (isListOfContractorsReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      final ContractorsListReportRemoteDataSource source = ref.read(
+        contractorsListReportRemoteDataSourceProvider,
+      );
+      await _confirmAndDownloadReport(
+        context,
+        label: node.formName.trim().isEmpty
+            ? 'List of Contractors'
+            : node.formName.trim(),
+        download: source.download,
       );
       return;
     }
@@ -290,6 +324,83 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       );
       return;
     }
+    // Issues → Pending Issues Report: HOD + Contract filter page.
+    if (isPendingIssuesReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        PendingIssuesReportPage.routeName,
+        queryParameters: <String, String>{
+          'name': node.formName.trim().isEmpty
+              ? 'Pending Issues Report'
+              : node.formName.trim(),
+        },
+      );
+      return;
+    }
+    // Issues → Issue Details Report: six-filter page (hod_user_id_fk = user id).
+    if (isIssueDetailsReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        IssueDetailsReportPage.routeName,
+        queryParameters: const <String, String>{
+          // UI title matches web: "Issues Details Report".
+          'name': 'Issues Details Report',
+        },
+      );
+      return;
+    }
+    // Issues → Issues Summary Report: confirm → GET download (not a filter page).
+    if (isIssuesSummaryReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      final IssuesSummaryReportRemoteDataSource source = ref.read(
+        issuesSummaryReportRemoteDataSourceProvider,
+      );
+      await _confirmAndDownloadReport(
+        context,
+        label: node.formName.trim().isEmpty
+            ? 'Issues Summary Report'
+            : node.formName.trim(),
+        download: source.download,
+      );
+      return;
+    }
+    // Land Acquisition Report: Project + Type Of Land + Sub Category filter page.
+    if (isLandAcquisitionReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        LandAcquisitionReportPage.routeName,
+        queryParameters: const <String, String>{
+          'name': 'Land Acquisition Report',
+        },
+      );
+      return;
+    }
+    // Utility → Utility Shifting Report: Project + Agency + Contract + HOD.
+    if (isUtilityShiftingReport(
+      formId: node.formId,
+      formName: node.formName,
+      webFormUrl: node.webFormUrl,
+    )) {
+      context.pushNamed(
+        UtilityShiftingReportPage.routeName,
+        queryParameters: const <String, String>{
+          'name': 'Utility Shifting Report',
+        },
+      );
+      return;
+    }
     context.pushNamed(
       ReportPlaceholderPage.routeName,
       pathParameters: <String, String>{
@@ -305,10 +416,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   Future<void> _confirmAndDownloadReport(
     BuildContext context, {
     required String label,
-    required Future<({Uint8List bytes, String fileName})> Function(
-      ActivitiesExportRemoteDataSource source,
-    )
-    download,
+    required Future<({Uint8List bytes, String fileName})> Function() download,
   }) async {
     final bool confirmed = await AppDialog.confirm(
       context,
@@ -321,15 +429,12 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       return;
     }
     try {
-      final ActivitiesExportRemoteDataSource source = ref.read(
-        activitiesExportRemoteDataSourceProvider,
-      );
       final ({Uint8List bytes, String fileName}) file =
           await runWithReportGeneratingDialog(
             context: context,
             title: 'Downloading report',
             message: 'Please wait while the file is being prepared.',
-            action: () => download(source),
+            action: download,
           );
       if (!context.mounted) {
         return;

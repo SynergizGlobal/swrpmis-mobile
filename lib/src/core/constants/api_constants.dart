@@ -96,6 +96,12 @@ class ApiConstants {
   /// POST body `{}` → downloadable report file.
   static const String contractorsListReportPath =
       '/contract-report/contractorslist';
+
+  /// Reports → Issues → Issues Summary Report.
+  /// GET → downloadable report file. Path segment `ALL` is required.
+  static const String issuesSummaryReportPath =
+      '/api/issues-report/issues-summary-report/ALL';
+
   static const String issueContractsFilterPath =
       '/issue/ajax/getContractsListFilterInIssue';
   static const String issueHodFilterPath =
@@ -257,6 +263,41 @@ class ApiConstants {
   static const String rfiSummaryDateRangePath = '/api/rfi-summary/date-range';
   static const String rfiSummaryReportExcelPath =
       '/api/rfi-summary/report/excel';
+
+  /// Reports → Issues → Pending Issues Report (formId 296 / issues-report).
+  static const String pendingIssuesHodListPath =
+      '/api/issues-report/getHodList';
+  static const String pendingIssuesContractListPath =
+      '/api/issues-report/getContractList';
+  static const String pendingIssuesGeneratePath =
+      '/api/issues-report/generate-pending';
+
+  /// Reports → Issues → Issue Details Report (formId 298 / issue-details-report).
+  /// HOD + Contract lists reuse [pendingIssuesHodListPath] /
+  /// [pendingIssuesContractListPath] with body `{}`.
+  static const String issueDetailsStatusListPath =
+      '/api/issues-report/status-list';
+  static const String issueDetailsLocationListPath =
+      '/api/issues-report/location-list';
+  static const String issueDetailsCategoryListPath =
+      '/api/issues-report/category-list';
+  static const String issueDetailsTitleListPath =
+      '/api/issues-report/title-list';
+  static const String issueDetailsGeneratePath =
+      '/api/issues-details-report/generate';
+
+  /// Reports → Land Acquisition (formId 1316 / la-report).
+  static const String landReportProjectListPath =
+      '/api/land-report/project-list';
+  static const String landReportTypeListPath = '/api/land-report/type-list';
+  static const String landReportSubCategoryListPath =
+      '/api/land-report/sub-category-list';
+  static const String landReportGeneratePath = '/api/land-report/generate';
+
+  /// Reports → Utility / Utility Shifting Report (formId 1317 / 1401).
+  /// One GET loads Project, Execution Agency, Impacted Contract, and HOD lists.
+  /// TODO(utility-report): add generate/download path when backend provides it.
+  static const String utilityReportFiltersPath = '/utility-report';
 
   static const String ncrObservationsPath = '/api/quality/ncr-observations';
 

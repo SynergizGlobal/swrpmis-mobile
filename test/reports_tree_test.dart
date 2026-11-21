@@ -284,21 +284,24 @@ List<Map<String, dynamic>> _sampleForms() {
       priority: 10,
       formsSubMenu: <Map<String, dynamic>>[
         _form(
-          formId: 292,
+          formId: 297,
           formName: 'Issues Summary Report',
+          webFormUrl: 'generate-issues-summary-report',
           parentId: 278,
           parentName: 'Issues',
         ),
         _form(
-          formId: 291,
+          formId: 298,
           formName: 'Issue Details Report',
+          webFormUrl: 'issue-details-report',
           priority: 2,
           parentId: 278,
           parentName: 'Issues',
         ),
         _form(
-          formId: 290,
+          formId: 296,
           formName: 'Pending Issues Report',
+          webFormUrl: 'issues-report',
           priority: 1,
           parentId: 278,
           parentName: 'Issues',

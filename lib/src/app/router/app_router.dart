@@ -59,10 +59,14 @@ import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/contract_detail_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/doc_contractual_letters_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/insurance_contractual_letters_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/issue_details_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/land_acquisition_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/list_of_contracts_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/pending_issues_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/quality_control_summary_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/report_placeholder_page.dart';
 import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/rfi_summary_report_page.dart';
+import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/utility_shifting_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_user_role.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_inspection_flow_page.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/pages/rfi_page.dart';
@@ -388,6 +392,58 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             key: state.pageKey,
             child: RfiSummaryReportPage(
               title: name.isEmpty ? 'RFI Summary Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: PendingIssuesReportPage.routePath,
+        name: PendingIssuesReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: PendingIssuesReportPage(
+              title: name.isEmpty ? 'Pending Issues Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: IssueDetailsReportPage.routePath,
+        name: IssueDetailsReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: IssueDetailsReportPage(
+              title: name.isEmpty ? 'Issues Details Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: LandAcquisitionReportPage.routePath,
+        name: LandAcquisitionReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: LandAcquisitionReportPage(
+              title: name.isEmpty ? 'Land Acquisition Report' : name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: UtilityShiftingReportPage.routePath,
+        name: UtilityShiftingReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: UtilityShiftingReportPage(
+              title: name.isEmpty ? 'Utility Shifting Report' : name,
             ),
           );
         },
