@@ -289,7 +289,9 @@ class _RfiLogPreviewDialogState extends ConsumerState<RfiLogPreviewDialog> {
         'Request For Inspection (RFI)',
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w800,
-          color: AppTheme.brandPrimary,
+          color: AppTheme.brandAccentOnSurface(
+            Theme.of(context).brightness,
+          ),
         ),
       ),
       const SizedBox(height: 12),

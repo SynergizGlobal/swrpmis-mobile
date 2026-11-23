@@ -528,7 +528,9 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
   Widget _stepHeader() {
     return Container(
       width: double.infinity,
-      color: const Color(0xFFD6E4F5),
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.surfaceContainerHighest
+          : const Color(0xFFD6E4F5),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -538,7 +540,9 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
-              color: AppTheme.brandPrimary,
+              color: AppTheme.brandAccentOnSurface(
+                Theme.of(context).brightness,
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -553,6 +557,9 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
                 final AddContractStep step = AddContractStepX.all[index];
                 final bool active = index == _stepIndex;
                 final bool done = index < _stepIndex;
+                final Brightness brightness = Theme.of(context).brightness;
+                final ColorScheme cs = Theme.of(context).colorScheme;
+                final Color accent = AppTheme.brandAccentOnSurface(brightness);
                 return ChoiceChip(
                   label: Text(step.shortTitle),
                   selected: active,
@@ -576,13 +583,14 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
                           }
                           setState(() => _stepIndex = index);
                         },
-                  selectedColor: AppTheme.brandPrimary,
+                  selectedColor: AppTheme.dataTableHeaderFill,
+                  backgroundColor: AppPalette.of(context).fieldFill,
                   labelStyle: TextStyle(
                     color: active
-                        ? Colors.white
+                        ? AppTheme.dataTableHeaderOnFill
                         : done
-                        ? AppTheme.brandPrimary
-                        : null,
+                        ? accent
+                        : cs.onSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -594,7 +602,9 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
           Text(
             'Step ${_stepIndex + 1} of ${AddContractStepX.all.length}',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -1339,7 +1349,7 @@ class _AddContractFormPageState extends ConsumerState<AddContractFormPage> {
         title,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: AppTheme.brandPrimary,
+          color: AppTheme.brandAccentOnSurface(Theme.of(context).brightness),
           fontWeight: FontWeight.w800,
         ),
       ),

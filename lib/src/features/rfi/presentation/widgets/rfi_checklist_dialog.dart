@@ -200,7 +200,9 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
           children: <Widget>[
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-              color: const Color(0xFFD6E4F5),
+              color: theme.brightness == Brightness.dark
+                  ? theme.colorScheme.surfaceContainerHighest
+                  : const Color(0xFFD6E4F5),
               child: Row(
                 children: <Widget>[
                   Expanded(
@@ -208,7 +210,7 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
                       widget.enclosure.enclosureName.toUpperCase(),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.brandPrimary,
+                        color: AppTheme.brandAccentOnSurface(theme.brightness),
                       ),
                     ),
                   ),
@@ -224,12 +226,19 @@ class _RfiChecklistDialogState extends State<_RfiChecklistDialog> {
             if (_info.isNotEmpty)
               Container(
                 width: double.infinity,
-                color: const Color(0xFFE8F1FB),
+                color: theme.brightness == Brightness.dark
+                    ? theme.colorScheme.surfaceContainerHigh
+                    : const Color(0xFFE8F1FB),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
                 ),
-                child: Text(_info, style: theme.textTheme.bodyMedium),
+                child: Text(
+                  _info,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
               ),
             Expanded(
               child: _loading
@@ -445,13 +454,13 @@ class _ChecklistTable extends StatelessWidget {
                     width,
                     Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.brandPrimary,
+                        color: AppTheme.brandAccentOnSurface(scheme.brightness),
                       ),
                     ),
                     color: scheme.brightness == Brightness.dark
-                        ? const Color(0xFF1B3556)
+                        ? scheme.surfaceContainerHighest
                         : const Color(0xFFE8F1FB),
                   ),
               ],

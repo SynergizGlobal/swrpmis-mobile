@@ -220,9 +220,8 @@ class _TableHeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
     return ColoredBox(
-      color: scheme.primary,
+      color: AppTheme.dataTableHeaderFill,
       child: Row(
         children: <Widget>[
           for (int i = 0; i < columns.length; i++)
@@ -238,7 +237,7 @@ class _TableHeaderRow extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: scheme.onPrimary,
+                    color: AppTheme.dataTableHeaderOnFill,
                     fontWeight: FontWeight.w800,
                   ),
                 ),

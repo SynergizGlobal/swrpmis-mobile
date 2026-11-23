@@ -181,6 +181,41 @@ class AppTheme {
   static const double fieldHeight = 48;
   static const EdgeInsets cardPadding = EdgeInsets.all(16);
 
+  /// Navy fill for data-table headers. Prefer this over [ColorScheme.primary]:
+  /// in dark mode primary is a light blue, so white labels fail contrast.
+  static const Color dataTableHeaderFill = brandPrimary;
+  static const Color dataTableHeaderOnFill = Color(0xFFFFFFFF);
+
+  /// Brand accent for text/icons on surfaces (navy in light, light blue in dark).
+  /// Prefer this over hardcoding [brandPrimary] as a foreground color.
+  static Color brandAccentOnSurface(Brightness brightness) =>
+      brightness == Brightness.dark
+          ? const Color(0xFF9DC0F0)
+          : brandPrimary;
+
+  /// Soft metric / badge fill: solid pastel in light, translucent accent in dark
+  /// so [ColorScheme.onSurface] labels stay readable on the chip.
+  static Color softMetricFill(
+    Brightness brightness, {
+    required Color lightFill,
+    required Color accent,
+    double darkAlpha = 0.22,
+  }) {
+    if (brightness == Brightness.dark) {
+      return accent.withValues(alpha: darkAlpha);
+    }
+    return lightFill;
+  }
+
+  /// Foreground paired with [softMetricFill] for self-contained badges.
+  static Color softMetricForeground(
+    Brightness brightness, {
+    required Color lightForeground,
+    required Color darkForeground,
+  }) {
+    return brightness == Brightness.dark ? darkForeground : lightForeground;
+  }
+
   static ThemeData get light {
     const Color onSurface = Color(0xFF0F172A);
     const Color onSurfaceVariant = Color(0xFF475569);

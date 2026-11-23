@@ -181,9 +181,8 @@ class _TableHeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
     return ColoredBox(
-      color: scheme.primary,
+      color: AppTheme.dataTableHeaderFill,
       child: Row(
         children: <Widget>[
           for (int i = 0; i < columns.length; i++)
@@ -199,7 +198,7 @@ class _TableHeaderRow extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: scheme.onPrimary,
+                    color: AppTheme.dataTableHeaderOnFill,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -299,12 +298,29 @@ class _TypeBadge extends StatelessWidget {
       return Text('—', style: Theme.of(context).textTheme.bodySmall);
     }
     final bool isNcr = key == 'NCR';
+    final Brightness brightness = Theme.of(context).brightness;
     final Color foreground = isNcr
-        ? const Color(0xFFB91C1C)
-        : const Color(0xFF0369A1);
+        ? AppTheme.softMetricForeground(
+            brightness,
+            lightForeground: const Color(0xFFB91C1C),
+            darkForeground: const Color(0xFFFCA5A5),
+          )
+        : AppTheme.softMetricForeground(
+            brightness,
+            lightForeground: const Color(0xFF0369A1),
+            darkForeground: const Color(0xFF7DD3FC),
+          );
     final Color fill = isNcr
-        ? const Color(0xFFFEE2E2)
-        : const Color(0xFFE0F2FE);
+        ? AppTheme.softMetricFill(
+            brightness,
+            lightFill: const Color(0xFFFEE2E2),
+            accent: const Color(0xFFEF4444),
+          )
+        : AppTheme.softMetricFill(
+            brightness,
+            lightFill: const Color(0xFFE0F2FE),
+            accent: const Color(0xFF0284C7),
+          );
     return _Pill(
       label: isNcr ? 'NCR' : label,
       foreground: foreground,

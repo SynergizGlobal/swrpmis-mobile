@@ -685,7 +685,9 @@ class _StepHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: AppTheme.brandPrimary,
+                color: AppTheme.brandAccentOnSurface(
+                  Theme.of(context).brightness,
+                ),
               ),
             ),
           ],

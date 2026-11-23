@@ -292,7 +292,9 @@ class _RfiValidationPreviewPageState
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w800,
-          color: AppTheme.brandPrimary,
+          color: AppTheme.brandAccentOnSurface(
+            Theme.of(context).brightness,
+          ),
         ),
       ),
       const SizedBox(height: 8),
@@ -465,7 +467,9 @@ class _RfiValidationPreviewPageState
           'Enclosures Uploaded',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
-            color: AppTheme.brandPrimary,
+            color: AppTheme.brandAccentOnSurface(
+              Theme.of(context).brightness,
+            ),
           ),
         ),
         for (final RfiValidationEnclosureFile enclosure

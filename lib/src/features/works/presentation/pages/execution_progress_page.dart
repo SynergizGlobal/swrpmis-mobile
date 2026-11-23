@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/features/works/domain/execution_chart_data.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/project_overview_page.dart';
 import 'package:swr_pmis_mobile/src/features/works/presentation/providers/works_providers.dart';
 import 'package:swr_pmis_mobile/src/features/works/presentation/widgets/execution_progress_chart.dart';
 
@@ -21,24 +22,32 @@ class ExecutionProgressPage extends ConsumerWidget {
   final String projectId;
   final String fallbackName;
 
+  void _goBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    // Deep link / cold start: return to Project Overview hub, not Works list.
+    context.goNamed(
+      ProjectOverviewPage.routeName,
+      pathParameters: <String, String>{'projectId': projectId},
+      queryParameters: <String, String>{
+        if (fallbackName.trim().isNotEmpty) 'name': fallbackName,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // GET /execution/progress runs only while this Track Strip page is open.
     final AsyncValue<ExecutionChartData> progress = ref.watch(
       executionProgressProvider(projectId),
     );
 
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/works');
-            }
-          },
-        ),
-        title: const Text('Execution progress'),
+        leading: BackButton(onPressed: () => _goBack(context)),
+        title: const Text('Track Strip Chart'),
       ),
       body: progress.when(
         loading: () => const AppFullscreenLoader(),

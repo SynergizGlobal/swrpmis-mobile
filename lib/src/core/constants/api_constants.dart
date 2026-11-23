@@ -37,6 +37,24 @@ class ApiConstants {
   static const String projectListByTypePath =
       '/projects/api/getProjectListByType';
   static const String executionProgressPath = '/execution/progress';
+
+  /// GET `?projectId=` → site photos rows for Project Overview → Site Images.
+  static const String sitePhotosDisplayPath = '/execution/site-photos-display';
+
+  /// GET `?fromDate=&toDate=&date=&projectId=` → Daily Progress Report rows.
+  /// Response is typically a JSON array of structure-level progress objects.
+  static const String dailyProgressPath = '/execution/daily-progress';
+
+  /// GET `?projectId=` → Project Overview → Exception Report (structure-wise).
+  static const String exceptionReportPath = '/api/exception-report';
+
+  /// GET structure detail for Exception Report View action.
+  static String exceptionReportStructurePath(int structureId) =>
+      '/api/exception-report/structures/$structureId';
+
+  /// GET structure / site photo bytes by stored file name (WCR-compatible path).
+  static String structureFilePath(String fileName) =>
+      '/STRUCTURE_FILES/${Uri.encodeComponent(fileName.trim())}';
   static const String reportFormsPath = '/forms/api/getReportForms';
   static const String updateFormsPath = '/forms/api/getUpdateForms';
   static const String activitiesExportProjectsPath =

@@ -87,7 +87,7 @@ class RfiSubmitProgressDialog extends StatelessWidget {
                     'Submitting Inspection',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.brandPrimary,
+                      color: AppTheme.brandAccentOnSurface(theme.brightness),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -96,7 +96,11 @@ class RfiSubmitProgressDialog extends StatelessWidget {
                         ? 'Please do not close the app or go back until submission completes.'
                         : 'Submission stopped.',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFFB45309),
+                      color: AppTheme.softMetricForeground(
+                        theme.brightness,
+                        lightForeground: const Color(0xFFB45309),
+                        darkForeground: const Color(0xFFFBBF24),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -111,12 +115,22 @@ class RfiSubmitProgressDialog extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFDECEC),
+                        color: AppTheme.softMetricFill(
+                          theme.brightness,
+                          lightFill: const Color(0xFFFDECEC),
+                          accent: const Color(0xFFEF4444),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         error,
-                        style: const TextStyle(color: Color(0xFFB42318)),
+                        style: TextStyle(
+                          color: AppTheme.softMetricForeground(
+                            theme.brightness,
+                            lightForeground: const Color(0xFFB42318),
+                            darkForeground: const Color(0xFFFCA5A5),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),

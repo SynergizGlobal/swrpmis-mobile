@@ -76,7 +76,12 @@ import 'package:swr_pmis_mobile/src/features/reports/presentation/pages/reports_
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/privacy_policy_page.dart';
 import 'package:swr_pmis_mobile/src/features/settings/presentation/pages/settings_page.dart';
 import 'package:swr_pmis_mobile/src/features/shell/presentation/app_shell.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/daily_progress_page.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/exception_report_detail_page.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/exception_report_page.dart';
 import 'package:swr_pmis_mobile/src/features/works/presentation/pages/execution_progress_page.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/project_overview_page.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/site_images_page.dart';
 import 'package:swr_pmis_mobile/src/features/works/presentation/pages/works_page.dart';
 
 final goRouterRefreshProvider = Provider<GoRouterRefresh>((ref) {
@@ -466,18 +471,98 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: ExecutionProgressPage.routePath,
-        name: ExecutionProgressPage.routeName,
+        path: ProjectOverviewPage.routePath,
+        name: ProjectOverviewPage.routeName,
         pageBuilder: (BuildContext context, GoRouterState state) {
           final String projectId = state.pathParameters['projectId'] ?? '';
           final String name = state.uri.queryParameters['name'] ?? '';
           return fadeSlidePage(
             key: state.pageKey,
-            child: ExecutionProgressPage(
+            child: ProjectOverviewPage(
               projectId: projectId,
               fallbackName: name,
             ),
           );
+        },
+      ),
+      GoRoute(
+        path: SiteImagesPage.routePath,
+        name: SiteImagesPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String projectId = state.pathParameters['projectId'] ?? '';
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: SiteImagesPage(
+              projectId: projectId,
+              fallbackName: name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: DailyProgressPage.routePath,
+        name: DailyProgressPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String projectId = state.pathParameters['projectId'] ?? '';
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: DailyProgressPage(
+              projectId: projectId,
+              fallbackName: name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: ExceptionReportPage.routePath,
+        name: ExceptionReportPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String projectId = state.pathParameters['projectId'] ?? '';
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ExceptionReportPage(
+              projectId: projectId,
+              fallbackName: name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: ExceptionReportDetailPage.routePath,
+        name: ExceptionReportDetailPage.routeName,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final String projectId = state.pathParameters['projectId'] ?? '';
+          final String structureIdRaw =
+              state.pathParameters['structureId'] ?? '';
+          final int structureId = int.tryParse(structureIdRaw) ?? 0;
+          final String name = state.uri.queryParameters['name'] ?? '';
+          return fadeSlidePage(
+            key: state.pageKey,
+            child: ExceptionReportDetailPage(
+              projectId: projectId,
+              structureId: structureId,
+              fallbackName: name,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: ExecutionProgressPage.routePath,
+        name: ExecutionProgressPage.routeName,
+        redirect: (BuildContext context, GoRouterState state) {
+          // Progress chart lives on Project Overview; keep deep link working.
+          final String projectId = state.pathParameters['projectId'] ?? '';
+          final String name = state.uri.queryParameters['name'] ?? '';
+          final Uri overview = Uri(
+            path: '/works/overview/${Uri.encodeComponent(projectId)}',
+            queryParameters: name.trim().isEmpty
+                ? null
+                : <String, String>{'name': name},
+          );
+          return overview.toString();
         },
       ),
       GoRoute(

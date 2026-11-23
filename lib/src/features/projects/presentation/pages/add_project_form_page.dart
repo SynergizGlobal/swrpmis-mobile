@@ -855,7 +855,7 @@ class _AddProjectFormPageState extends ConsumerState<AddProjectFormPage> {
         title,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: AppTheme.brandPrimary,
+          color: AppTheme.brandAccentOnSurface(Theme.of(context).brightness),
           fontWeight: FontWeight.w800,
         ),
       ),

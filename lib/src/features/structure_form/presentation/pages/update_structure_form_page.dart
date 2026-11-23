@@ -793,7 +793,9 @@ class _UpdateStructureFormPageState
                 child: Text(
                   'Existing file: $existing',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.brandPrimary,
+                    color: AppTheme.brandAccentOnSurface(
+                      Theme.of(context).brightness,
+                    ),
                   ),
                 ),
               ),
@@ -880,7 +882,9 @@ class _Section extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.brandPrimary,
+              color: AppTheme.brandAccentOnSurface(
+                Theme.of(context).brightness,
+              ),
               fontWeight: FontWeight.w700,
             ),
           ),

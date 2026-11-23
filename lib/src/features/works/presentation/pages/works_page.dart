@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/network/user_friendly_error_message.dart';
 import 'package:swr_pmis_mobile/src/features/works/domain/entities/works_tree.dart';
-import 'package:swr_pmis_mobile/src/features/works/presentation/pages/execution_progress_page.dart';
+import 'package:swr_pmis_mobile/src/features/works/presentation/pages/project_overview_page.dart';
 import 'package:swr_pmis_mobile/src/features/works/presentation/providers/works_providers.dart';
 
 class WorksPage extends ConsumerStatefulWidget {
@@ -82,7 +82,7 @@ class _WorksPageState extends ConsumerState<WorksPage> {
                     },
                     onProject: (WorksProject project) {
                       context.pushNamed(
-                        ExecutionProgressPage.routeName,
+                        ProjectOverviewPage.routeName,
                         pathParameters: <String, String>{
                           'projectId': project.id,
                         },

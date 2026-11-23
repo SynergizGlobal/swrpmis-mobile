@@ -1356,7 +1356,9 @@ class _Section extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppTheme.brandPrimary,
+              color: AppTheme.brandAccentOnSurface(
+                Theme.of(context).brightness,
+              ),
               fontWeight: FontWeight.w800,
             ),
           ),

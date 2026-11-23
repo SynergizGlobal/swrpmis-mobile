@@ -273,14 +273,18 @@ class _RfiInspectionFlowPageState
                 children: <Widget>[
                   Container(
                     width: double.infinity,
-                    color: const Color(0xFFD6E4F5),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.surfaceContainerHighest
+                        : const Color(0xFFD6E4F5),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       title,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.brandPrimary,
+                            color: AppTheme.brandAccentOnSurface(
+                              Theme.of(context).brightness,
+                            ),
                           ),
                     ),
                   ),
@@ -551,7 +555,9 @@ class _RfiInspectionFlowPageState
                 'Upload Site Image',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.brandPrimary,
+                      color: AppTheme.brandAccentOnSurface(
+                        Theme.of(context).brightness,
+                      ),
                     ),
               ),
               const SizedBox(height: 8),
@@ -1602,8 +1608,9 @@ class _RfiInspectionFlowPageState
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final bool dark = scheme.brightness == Brightness.dark;
     final Color headerFill = dark
-        ? const Color(0xFF1B3556)
+        ? scheme.surfaceContainerHighest
         : const Color(0xFFE8F1FB);
+    final Color headerFg = AppTheme.brandAccentOnSurface(scheme.brightness);
     final BorderSide line = BorderSide(color: scheme.outlineVariant);
     Widget cell(double width, Widget child, {Color? color}) => Container(
       width: width,
@@ -1627,9 +1634,9 @@ class _RfiInspectionFlowPageState
                     Text(
                       label,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.brandPrimary,
+                        color: headerFg,
                       ),
                     ),
                     color: headerFill,
@@ -1711,11 +1718,17 @@ class _RfiInspectionFlowPageState
   }
 
   Widget _sectionCard({required String title, required Widget child}) {
+    final Brightness brightness = Theme.of(context).brightness;
+    final ColorScheme cs = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0x661E4F8A)),
+        border: Border.all(
+          color: AppTheme.brandAccentOnSurface(brightness).withValues(
+            alpha: 0.4,
+          ),
+        ),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -1724,13 +1737,16 @@ class _RfiInspectionFlowPageState
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppTheme.brandPrimary,
+            style: TextStyle(
+              color: AppTheme.brandAccentOnSurface(brightness),
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 12),
-          child,
+          DefaultTextStyle.merge(
+            style: TextStyle(color: cs.onSurface),
+            child: child,
+          ),
         ],
       ),
     );
