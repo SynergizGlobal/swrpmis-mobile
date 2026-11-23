@@ -309,8 +309,7 @@ class RfiLogPdf {
   }
 
   static List<pw.Widget> measurementSection(RfiLogPdfScope scope) {
-    final RfiLogMeasurement? row = scope.report.measurement;
-    if (row == null) {
+    if (scope.report.measurements.isEmpty) {
       return const <pw.Widget>[];
     }
     return <pw.Widget>[
@@ -320,6 +319,10 @@ class RfiLogPdf {
       _dataTable(
         scope,
         const <String>[
+          'Component',
+          'Element',
+          'Activity',
+          'Description',
           'Type',
           'Units',
           'Length',
@@ -330,16 +333,21 @@ class RfiLogPdf {
           'Total Quantity',
         ],
         <List<String>>[
-          <String>[
-            rfiLogPdfText(row.measurementType),
-            rfiLogPdfText(row.units),
-            rfiLogPdfText(row.length),
-            rfiLogPdfText(row.breadth),
-            rfiLogPdfText(row.height),
-            rfiLogPdfText(row.weight),
-            rfiLogPdfText(row.count),
-            rfiLogPdfText(row.totalQty),
-          ],
+          for (final RfiLogMeasurement row in scope.report.measurements)
+            <String>[
+              rfiLogPdfText(row.component),
+              rfiLogPdfText(row.element),
+              rfiLogPdfText(row.activityName),
+              rfiLogPdfText(row.description),
+              rfiLogPdfText(row.measurementType),
+              rfiLogPdfText(row.units),
+              rfiLogPdfText(row.length),
+              rfiLogPdfText(row.breadth),
+              rfiLogPdfText(row.height),
+              rfiLogPdfText(row.weight),
+              rfiLogPdfText(row.count),
+              rfiLogPdfText(row.totalQty),
+            ],
         ],
       ),
     ];

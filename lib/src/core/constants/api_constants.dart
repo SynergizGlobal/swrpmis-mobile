@@ -319,6 +319,9 @@ class ApiConstants {
   /// DELETE with body `{"id": 101, "description": "<reason>"}`. Soft delete:
   /// the server replies "RFI marked as deleted successfully!".
   static const String rfiDeletePath = '/rfi/delete';
+
+  /// POST (no body). Closes an RFI; server replies "RFI closed successfully".
+  static String rfiClosePath(int id) => '/rfi/close/rfi/$id';
   static const String workRfiCreatePath = '/rfi/api/workRfi/create';
   static const String materialRfiCreatePath = '/rfi/api/materialRfi/create';
   static const String materialRfiProjectsPath = '/rfi/api/projects';

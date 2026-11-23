@@ -70,6 +70,41 @@ void main() {
       expect(actions, contains(RfiListRowAction.deleteRfi));
       expect(actions, isNot(contains(RfiListRowAction.editRfi)));
     });
+
+    test('Close RFI is gated by canRejectOrClose', () {
+      expect(
+        rfiListRowActions(
+          role: RfiUserRole.engineer,
+          status: 'INSPECTED_BY_AE',
+          canModify: true,
+        ),
+        contains(RfiListRowAction.closeRfi),
+      );
+      expect(
+        rfiListRowActions(
+          role: RfiUserRole.engineer,
+          status: 'VALIDATION_PENDING',
+          canModify: true,
+        ),
+        contains(RfiListRowAction.closeRfi),
+      );
+      expect(
+        rfiListRowActions(
+          role: RfiUserRole.contractor,
+          status: 'INSPECTED_BY_AE',
+          canModify: true,
+        ),
+        isNot(contains(RfiListRowAction.closeRfi)),
+      );
+      expect(
+        rfiListRowActions(
+          role: RfiUserRole.engineer,
+          status: 'CREATED',
+          canModify: true,
+        ),
+        isNot(contains(RfiListRowAction.closeRfi)),
+      );
+    });
   });
 
   group('canEditRfi', () {

@@ -192,6 +192,7 @@ class RfiInspectionMeasurement {
     required this.totalQty,
     this.component = '',
     this.element = '',
+    this.description = '',
     this.activityIdFk,
   });
 
@@ -199,6 +200,7 @@ class RfiInspectionMeasurement {
   final int? activityIdFk;
   final String component;
   final String element;
+  final String description;
   final String measurementType;
   final String units;
   final String length;
@@ -229,6 +231,7 @@ class RfiInspectionMeasurement {
       totalQty: _double(json['totalQty']) ?? 0,
       component: _text(json['component']),
       element: _text(json['element']),
+      description: _firstText(json, const <String>['description', 'desc']),
       activityIdFk: _int(json['activityIdFk'] ?? json['activityId']),
     );
   }

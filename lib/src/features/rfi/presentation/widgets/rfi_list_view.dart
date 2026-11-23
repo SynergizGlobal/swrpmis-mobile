@@ -42,6 +42,7 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
   int _pageSize = TablePage.defaultPageSize;
   int _page = 1;
   bool _exporting = false;
+  bool _closing = false;
 
   @override
   void dispose() {
@@ -139,9 +140,10 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
         await _startInspection(item, offline: true);
       case RfiListRowAction.submit:
         await _startInspection(item, offline: false);
+      case RfiListRowAction.closeRfi:
+        await _onClose(item);
       case RfiListRowAction.uploadAttachments:
       case RfiListRowAction.uploadTestResults:
-      case RfiListRowAction.closeRfi:
       case RfiListRowAction.changeExecutive:
         await AppDialog.show(
           context,
@@ -381,6 +383,67 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
     );
   }
 
+  /// Confirm, then `POST /rfi/close/rfi/{id}` (numeric [RfiListItem.id]).
+  Future<void> _onClose(RfiListItem item) async {
+    final int? id = item.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Close RFI',
+        message: 'This RFI cannot be closed.',
+      );
+      return;
+    }
+    if (_closing) {
+      return;
+    }
+    final String code = item.rfiId.trim();
+    final bool confirmed = await AppDialog.confirm(
+      context,
+      title: 'Close RFI',
+      message: code.isEmpty
+          ? 'Close this RFI?'
+          : 'Close RFI $code?',
+      primaryLabel: 'Confirm',
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    setState(() => _closing = true);
+    try {
+      final String message = await ref
+          .read(rfiRemoteDataSourceProvider)
+          .closeRfi(id: id);
+      if (!mounted) {
+        return;
+      }
+      ref.invalidate(rfiListProvider(widget.kind));
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.success,
+        title: 'Closed',
+        message: message,
+      );
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Close failed',
+        message: error is DioException
+            ? userFriendlyErrorMessage(error)
+            : error.toString(),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _closing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<RfiListItem>> asyncList = ref.watch(
@@ -422,7 +485,9 @@ class _RfiListViewState extends ConsumerState<RfiListView> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          RfiContentLoader(loading: asyncList.isLoading || _exporting),
+          RfiContentLoader(
+            loading: asyncList.isLoading || _exporting || _closing,
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(

@@ -347,6 +347,7 @@ class _RfiValidationPreviewPageState
         _hTable(
           <String>[
             if (isWork) ...<String>['Component', 'Element', 'Activity'],
+            'Description',
             'Type',
             'Units',
             'Length',
@@ -364,6 +365,7 @@ class _RfiValidationPreviewPageState
                   rfiValidationBlank(row.element),
                   rfiValidationBlank(row.activityName),
                 ],
+                rfiValidationBlank(row.description),
                 rfiValidationBlank(row.measurementType),
                 rfiValidationBlank(row.units),
                 rfiValidationBlank(row.length),

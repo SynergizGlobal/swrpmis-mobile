@@ -402,6 +402,7 @@ void main() {
             'weight': null,
             'totalQty': 40.0,
             'activityName': 'Reinforcement & Shuttering',
+            'description': '1',
             'component': null,
             'element': null,
             'b': null,
@@ -414,6 +415,7 @@ void main() {
             'measurementType': 'Number',
             'totalQty': 3.0,
             'activityName': 'Concreting',
+            'description': 'aa',
             'no': 3,
             'units': 'Nos',
           },
@@ -448,7 +450,9 @@ void main() {
     expect(report.enclosures.single.file, contains('rfi_105_5_'));
     expect(report.measurementDetails, hasLength(2));
     expect(report.measurementDetails.first.totalQty, '40');
+    expect(report.measurementDetails.first.description, '1');
     expect(report.measurementDetails.last.count, '3');
+    expect(report.measurementDetails.last.description, 'aa');
     expect(report.validationList, isEmpty);
     expect(
       report.reportFileName,

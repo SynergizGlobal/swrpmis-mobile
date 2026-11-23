@@ -5,7 +5,7 @@ class RfiLogReport {
   const RfiLogReport({
     required this.details,
     required this.workDetails,
-    required this.measurement,
+    required this.measurements,
     required this.checklistItems,
     required this.enclosurePaths,
     required this.attachmentPaths,
@@ -13,7 +13,7 @@ class RfiLogReport {
 
   final RfiLogReportDetails details;
   final List<RfiLogWorkDetail> workDetails;
-  final RfiLogMeasurement? measurement;
+  final List<RfiLogMeasurement> measurements;
   final List<RfiLogChecklistItem> checklistItems;
   final List<String> enclosurePaths;
   final List<String> attachmentPaths;
@@ -54,7 +54,7 @@ class RfiLogReport {
                 RfiLogWorkDetail.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList(growable: false),
-      measurement: _measurement(
+      measurements: _measurements(
         root['measurementDetails'] ?? details['measurementDetails'],
       ),
       checklistItems:
@@ -295,6 +295,10 @@ class RfiLogWorkDetail {
 
 class RfiLogMeasurement {
   const RfiLogMeasurement({
+    required this.component,
+    required this.element,
+    required this.activityName,
+    required this.description,
     required this.measurementType,
     required this.units,
     required this.length,
@@ -305,6 +309,10 @@ class RfiLogMeasurement {
     required this.totalQty,
   });
 
+  final String component;
+  final String element;
+  final String activityName;
+  final String description;
   final String measurementType;
   final String units;
   final String length;
@@ -316,13 +324,17 @@ class RfiLogMeasurement {
 
   factory RfiLogMeasurement.fromJson(Map<String, dynamic> json) {
     return RfiLogMeasurement(
+      component: _text(json['component']),
+      element: _text(json['element']),
+      activityName: _text(json['activityName'] ?? json['activity']),
+      description: _text(json['description'] ?? json['desc']),
       measurementType: _text(json['measurementType'] ?? json['type']),
       units: _text(json['units'] ?? json['unit']),
       length: rfiLogQuantityText(json['l'] ?? json['length']),
       breadth: rfiLogQuantityText(json['b'] ?? json['breadth']),
       height: rfiLogQuantityText(json['h'] ?? json['height']),
       weight: rfiLogQuantityText(json['weight']),
-      count: rfiLogQuantityText(json['no'] ?? json['count']),
+      count: rfiLogQuantityText(json['no'] ?? json['count'] ?? json['noOfItems']),
       totalQty: rfiLogQuantityText(json['totalQty'] ?? json['totalQuantity']),
     );
   }
@@ -434,19 +446,14 @@ List<dynamic> _asList(Object? value) {
   return const <dynamic>[];
 }
 
-RfiLogMeasurement? _measurement(Object? value) {
-  if (value is List) {
-    for (final Object? item in value) {
-      if (item is Map) {
-        return RfiLogMeasurement.fromJson(Map<String, dynamic>.from(item));
-      }
+List<RfiLogMeasurement> _measurements(Object? value) {
+  final List<RfiLogMeasurement> rows = <RfiLogMeasurement>[];
+  for (final Object? item in _asList(value)) {
+    if (item is Map) {
+      rows.add(RfiLogMeasurement.fromJson(Map<String, dynamic>.from(item)));
     }
-    return null;
   }
-  if (value is Map) {
-    return RfiLogMeasurement.fromJson(Map<String, dynamic>.from(value));
-  }
-  return null;
+  return rows;
 }
 
 List<String> _paths(Object? value) {

@@ -391,11 +391,15 @@ class _RfiLogPreviewDialogState extends ConsumerState<RfiLogPreviewDialog> {
           ],
         ),
       ],
-      if (report.measurement != null) ...<Widget>[
+      if (report.measurements.isNotEmpty) ...<Widget>[
         const SizedBox(height: 12),
         _banner('Measurement Details'),
         _hTable(
           const <String>[
+            'Component',
+            'Element',
+            'Activity',
+            'Description',
             'Type',
             'Units',
             'Length',
@@ -406,16 +410,21 @@ class _RfiLogPreviewDialogState extends ConsumerState<RfiLogPreviewDialog> {
             'Total Quantity',
           ],
           <List<String>>[
-            <String>[
-              rfiLogDialogText(report.measurement!.measurementType),
-              rfiLogDialogText(report.measurement!.units),
-              rfiLogDialogText(report.measurement!.length),
-              rfiLogDialogText(report.measurement!.breadth),
-              rfiLogDialogText(report.measurement!.height),
-              rfiLogDialogText(report.measurement!.weight),
-              rfiLogDialogText(report.measurement!.count),
-              rfiLogDialogText(report.measurement!.totalQty),
-            ],
+            for (final RfiLogMeasurement row in report.measurements)
+              <String>[
+                rfiLogDialogText(row.component),
+                rfiLogDialogText(row.element),
+                rfiLogDialogText(row.activityName),
+                rfiLogDialogText(row.description),
+                rfiLogDialogText(row.measurementType),
+                rfiLogDialogText(row.units),
+                rfiLogDialogText(row.length),
+                rfiLogDialogText(row.breadth),
+                rfiLogDialogText(row.height),
+                rfiLogDialogText(row.weight),
+                rfiLogDialogText(row.count),
+                rfiLogDialogText(row.totalQty),
+              ],
           ],
         ),
       ],

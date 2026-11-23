@@ -43,6 +43,7 @@ class RfiInspectionView extends ConsumerStatefulWidget {
 class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
   final TextEditingController _search = TextEditingController();
   bool _submitting = false;
+  bool _closing = false;
   int _pageSize = TablePage.compactDefaultPageSize;
   int _page = 1;
 
@@ -144,7 +145,7 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          RfiContentLoader(loading: inspection.loading),
+          RfiContentLoader(loading: inspection.loading || _closing),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(
@@ -459,6 +460,8 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
         );
       case RfiInspectionAction.deleteRfi:
         await _deleteRfi(context, row);
+      case RfiInspectionAction.closeRfi:
+        await _closeRfi(context, row);
       case RfiInspectionAction.uploadAttachments:
         await _uploadAttachment(context, row);
       case RfiInspectionAction.sendForValidation:
@@ -578,6 +581,69 @@ class _RfiInspectionViewState extends ConsumerState<RfiInspectionView> {
       title: 'Deleted',
       message: message,
     );
+  }
+
+  /// Confirm, then `POST /rfi/close/rfi/{id}` (numeric [RfiInspectionRow.id]).
+  Future<void> _closeRfi(BuildContext context, RfiInspectionRow row) async {
+    final int? id = row.id;
+    if (id == null) {
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Close RFI',
+        message: 'This RFI cannot be closed.',
+      );
+      return;
+    }
+    if (_closing) {
+      return;
+    }
+    final String code = row.rfiId.trim();
+    final bool confirmed = await AppDialog.confirm(
+      context,
+      title: 'Close RFI',
+      message: code.isEmpty
+          ? 'Close this RFI?'
+          : 'Close RFI $code?',
+      primaryLabel: 'Confirm',
+    );
+    if (!confirmed || !context.mounted) {
+      return;
+    }
+    setState(() => _closing = true);
+    try {
+      final String message = await ref
+          .read(rfiRemoteDataSourceProvider)
+          .closeRfi(id: id);
+      if (!context.mounted) {
+        return;
+      }
+      unawaited(
+        ref.read(rfiInspectionControllerProvider.notifier).refreshDetails(),
+      );
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.success,
+        title: 'Closed',
+        message: message,
+      );
+    } on Object catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      await AppDialog.show(
+        context,
+        variant: AppDialogVariant.error,
+        title: 'Close failed',
+        message: error is DioException
+            ? userFriendlyErrorMessage(error)
+            : error.toString(),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _closing = false);
+      }
+    }
   }
 }
 

@@ -50,6 +50,7 @@ class RfiPdfMeasurement {
     this.component = '',
     this.element = '',
     this.activityName = '',
+    this.description = '',
     this.type = '',
     this.units = '',
     this.l = '',
@@ -63,6 +64,7 @@ class RfiPdfMeasurement {
   final String component;
   final String element;
   final String activityName;
+  final String description;
   final String type;
   final String units;
   final String l;
@@ -603,6 +605,7 @@ class RfiInspectionPdf {
         _table(
           <String>[
             if (d.isWork) ...<String>['Component', 'Element', 'Activity'],
+            'Description',
             'Type of Measurement',
             'Units',
             'L',
@@ -620,6 +623,7 @@ class RfiInspectionPdf {
                   m.element,
                   m.activityName,
                 ],
+                m.description,
                 m.type,
                 m.units,
                 m.l,

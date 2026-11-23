@@ -59,6 +59,15 @@ class RfiRemoteDataSource {
     return rfiDeleteMessage(response.data);
   }
 
+  /// Closes an RFI. Empty POST to `/rfi/close/rfi/{id}`; returns the server's
+  /// plain-text message, or a default when it sends none.
+  Future<String> closeRfi({required int id}) async {
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.rfiClosePath(id),
+    );
+    return rfiCloseMessage(response.data);
+  }
+
   List<Map<String, dynamic>> _asList(dynamic data) {
     if (data is List) {
       return data
@@ -86,6 +95,7 @@ class RfiRemoteDataSource {
 }
 
 const String rfiDeleteDefaultMessage = 'RFI marked as deleted successfully!';
+const String rfiCloseDefaultMessage = 'RFI closed successfully';
 
 /// The delete endpoint answers with plain text; a JSON `message` is also
 /// accepted in case the server wraps it later.
@@ -100,4 +110,19 @@ String rfiDeleteMessage(dynamic data) {
     }
   }
   return rfiDeleteDefaultMessage;
+}
+
+/// The close endpoint answers with plain text; a JSON `message` is also
+/// accepted in case the server wraps it later.
+String rfiCloseMessage(dynamic data) {
+  if (data is String && data.trim().isNotEmpty) {
+    return data.trim();
+  }
+  if (data is Map) {
+    final Object? message = data['message'] ?? data['msg'];
+    if (message is String && message.trim().isNotEmpty) {
+      return message.trim();
+    }
+  }
+  return rfiCloseDefaultMessage;
 }

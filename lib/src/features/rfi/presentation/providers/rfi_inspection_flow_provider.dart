@@ -51,6 +51,7 @@ class RfiInspectionMeasurementRow {
     this.activityName = '',
     this.component = '',
     this.element = '',
+    this.description = '',
     this.activityIdFk,
     this.type = 'Select',
     this.units = 'Select U',
@@ -68,6 +69,9 @@ class RfiInspectionMeasurementRow {
   final String component;
   final String element;
 
+  /// Per-row measurement description from create / rfi-details.
+  final String description;
+
   /// The P6 activity this row measures; sent back as `activityIdFk`.
   final int? activityIdFk;
   final String type;
@@ -81,6 +85,7 @@ class RfiInspectionMeasurementRow {
 
   RfiInspectionMeasurementRow copyWith({
     String? activityName,
+    String? description,
     String? type,
     String? units,
     String? length,
@@ -94,6 +99,7 @@ class RfiInspectionMeasurementRow {
       activityName: activityName ?? this.activityName,
       component: component,
       element: element,
+      description: description ?? this.description,
       activityIdFk: activityIdFk,
       type: type ?? this.type,
       units: units ?? this.units,
@@ -109,6 +115,7 @@ class RfiInspectionMeasurementRow {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'activityName': activityName,
+      'description': description.trim().isEmpty ? null : description.trim(),
       'measurementType': type == 'Select' ? null : type,
       'units': units == 'Select U' ? null : units,
       'length': double.tryParse(length),
@@ -345,6 +352,7 @@ class RfiInspectionFlowController
                       activityName: m.activityName,
                       component: m.component,
                       element: m.element,
+                      description: m.description,
                       activityIdFk: m.activityIdFk,
                       type: m.measurementType.isEmpty
                           ? 'Select'
@@ -963,6 +971,7 @@ class RfiInspectionFlowController
               component: m.component,
               element: m.element,
               activityName: m.activityName,
+              description: m.description,
               type: m.type == rfiInspectionNoType ? '' : m.type,
               units: m.units == rfiInspectionNoUnit ? '' : m.units,
               l: m.length,
@@ -1217,6 +1226,7 @@ class RfiInspectionFlowController
             (RfiInspectionMeasurementRow m) => RfiSubmitMeasurement(
               activityIdFk: m.activityIdFk,
               activityName: m.activityName,
+              description: m.description,
               measurementType: m.type == rfiInspectionNoType ? '' : m.type,
               units: m.units == rfiInspectionNoUnit ? '' : m.units,
               length: m.length,

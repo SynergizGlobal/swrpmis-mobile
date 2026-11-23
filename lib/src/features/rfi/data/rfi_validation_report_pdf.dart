@@ -301,6 +301,7 @@ Future<Uint8List> _buildCoverPages({
             _dataTable(
               headers: <String>[
                 if (isWork) ...<String>['Component', 'Element', 'Activity'],
+                'Description',
                 'Type',
                 'Units',
                 'Length',
@@ -319,6 +320,7 @@ Future<Uint8List> _buildCoverPages({
                       rfiValidationBlank(row.element),
                       rfiValidationBlank(row.activityName),
                     ],
+                    rfiValidationBlank(row.description),
                     rfiValidationBlank(row.measurementType),
                     rfiValidationBlank(row.units),
                     rfiValidationBlank(row.length),

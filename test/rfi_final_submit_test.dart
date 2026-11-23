@@ -58,6 +58,7 @@ void main() {
         <String, dynamic>{
           'activityIdFk': 1887,
           'activityName': 'Reinforcement & Shuttering',
+          'description': null,
           'measurementType': 'Percent',
           'l': null,
           'b': null,
@@ -70,6 +71,7 @@ void main() {
         <String, dynamic>{
           'activityIdFk': 1888,
           'activityName': 'Concreting',
+          'description': null,
           'measurementType': 'Number',
           'l': null,
           'b': null,

@@ -3,6 +3,7 @@ class RfiSubmitMeasurement {
   const RfiSubmitMeasurement({
     required this.activityIdFk,
     required this.activityName,
+    this.description = '',
     required this.measurementType,
     required this.units,
     required this.length,
@@ -15,6 +16,7 @@ class RfiSubmitMeasurement {
 
   final int? activityIdFk;
   final String activityName;
+  final String description;
   final String measurementType;
   final String units;
   final String length;
@@ -28,6 +30,7 @@ class RfiSubmitMeasurement {
     return <String, dynamic>{
       'activityIdFk': activityIdFk,
       'activityName': _textOrNull(activityName),
+      'description': _textOrNull(description),
       'measurementType': _textOrNull(measurementType),
       'l': _double(length),
       'b': _double(breadth),

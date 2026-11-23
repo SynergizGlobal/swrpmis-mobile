@@ -83,16 +83,22 @@ void main() {
         'inspectionQuantity': '697.320000',
       },
     ],
-    'measurementDetails': <String, dynamic>{
-      'measurementType': 'Volume',
-      'units': 'km³',
-      'l': 3,
-      'b': 3,
-      'h': 3,
-      'weight': null,
-      'no': 3,
-      'totalQty': 81.0,
-    },
+    'measurementDetails': <Map<String, dynamic>>[
+      <String, dynamic>{
+        'component': 'Excavation & Levelling',
+        'element': 'Excavation',
+        'activityName': 'Excavation',
+        'description': '1',
+        'measurementType': 'Volume',
+        'units': 'km³',
+        'l': 3,
+        'b': 3,
+        'h': 3,
+        'weight': null,
+        'no': 3,
+        'totalQty': 81.0,
+      },
+    ],
     'checklistItems': <Map<String, dynamic>>[
       for (int index = 0; index < 7; index++)
         <String, dynamic>{
@@ -139,10 +145,13 @@ void main() {
     expect(details.conInspTime, '16:40:51');
     expect(details.enggInspDate, isEmpty);
     expect(details.statusText, 'Active');
-    expect(report.measurement?.totalQty, '81');
-    expect(report.measurement?.length, '3');
-    expect(report.measurement?.weight, isEmpty);
-    expect(rfiLogPdfText(report.measurement!.weight), '---');
+    expect(report.measurements, hasLength(1));
+    expect(report.measurements.single.totalQty, '81');
+    expect(report.measurements.single.length, '3');
+    expect(report.measurements.single.weight, isEmpty);
+    expect(report.measurements.single.component, 'Excavation & Levelling');
+    expect(report.measurements.single.description, '1');
+    expect(rfiLogPdfText(report.measurements.single.weight), '---');
     expect(report.checklistItems, hasLength(7));
     expect(
       report.checklistGroups.single.titleFor(details.rfiDescription),
@@ -151,6 +160,68 @@ void main() {
     expect(report.workDetails.single.activityName, isEmpty);
     expect(rfiLogPdfText(report.workDetails.single.activityName), '---');
     expect(report.hasEnclosures, isFalse);
+  });
+
+  test('log report keeps all multi-element measurements with description', () {
+    final RfiLogReport report = RfiLogReport.fromJson(<String, dynamic>{
+      'reportDetails': <String, dynamic>{
+        'rfiId': 'RFI_W_RUB_36838_FOUN_OPNF_RNFSHT_0001',
+        'component': 'Excavation & Levelling, Foundation, Return Wall',
+        'element': 'Open Foundation, PCC Work, Return Wall 1',
+        'activity': 'Reinforcement & Shuttering, Concreting, Foundation',
+        'rfiDescription': 'Reinforcement, Formwork, Concreting',
+        'descriptionByContractor': 'dev testing',
+        'rfiCategory': 'WORK',
+      },
+      'measurementDetails': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'component': 'Foundation',
+          'element': 'Open Foundation',
+          'activityName': 'Reinforcement & Shuttering',
+          'description': '1',
+          'measurementType': 'Area',
+          'units': 'cm²',
+          'l': 1,
+          'b': 2,
+          'no': 1,
+          'totalQty': 2,
+        },
+        <String, dynamic>{
+          'component': 'Foundation',
+          'element': 'Open Foundation',
+          'activityName': 'Concreting',
+          'description': 'aa',
+          'measurementType': 'Length',
+          'units': 'mm',
+          'l': 22,
+          'no': 2,
+          'totalQty': 44,
+        },
+        <String, dynamic>{
+          'component': 'Return Wall',
+          'element': 'Return Wall 1',
+          'activityName': 'Foundation',
+          'description': '--',
+          'measurementType': 'Number',
+          'units': 'Nos',
+          'no': 22,
+          'totalQty': 22,
+        },
+      ],
+    });
+
+    expect(report.details.component, contains('Return Wall'));
+    expect(report.details.element, contains('PCC Work'));
+    expect(report.details.activity, contains('Concreting'));
+    expect(report.measurements, hasLength(3));
+    expect(
+      report.measurements.map((RfiLogMeasurement m) => m.description).toList(),
+      <String>['1', 'aa', '--'],
+    );
+    expect(report.measurements[0].activityName, 'Reinforcement & Shuttering');
+    expect(report.measurements[1].totalQty, '44');
+    expect(report.measurements[2].component, 'Return Wall');
+    expect(rfiLogPdfText(report.measurements[0].height), '---');
   });
 
   test('a Windows selfie path is not treated as a URL', () {

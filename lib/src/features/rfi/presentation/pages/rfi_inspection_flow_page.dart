@@ -1421,6 +1421,7 @@ class _RfiInspectionFlowPageState
     ('Component', 120),
     ('Element', 130),
     ('Activity', 160),
+    ('Description', 140),
     ('Type of Measurement', 150),
     ('Units', 110),
     ('Length', 90),
@@ -1463,6 +1464,13 @@ class _RfiInspectionFlowPageState
               onChanged: (String v) => update(row.copyWith(activityName: v)),
             )
           : Text(row.activityName),
+      _cellField(
+        key: 'desc-$index',
+        value: row.description,
+        enabled: editable,
+        numeric: false,
+        onChanged: (String v) => update(row.copyWith(description: v)),
+      ),
       _cellDropdown(
         key: 'type-$index-${row.type}',
         value: row.type,

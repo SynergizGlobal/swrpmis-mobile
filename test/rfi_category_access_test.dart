@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:swr_pmis_mobile/src/core/constants/api_constants.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/data/datasources/rfi_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/entities/rfi_category_access.dart';
 import 'package:swr_pmis_mobile/src/features/rfi/domain/rfi_list_kind.dart';
@@ -90,5 +91,16 @@ void main() {
     expect(rfiDeleteMessage(<String, dynamic>{'message': 'Done'}), 'Done');
     expect(rfiDeleteMessage(null), rfiDeleteDefaultMessage);
     expect(rfiDeleteMessage(''), rfiDeleteDefaultMessage);
+  });
+
+  test('close path and plain-text message', () {
+    expect(ApiConstants.rfiClosePath(8063), '/rfi/close/rfi/8063');
+    expect(
+      rfiCloseMessage('RFI closed successfully'),
+      'RFI closed successfully',
+    );
+    expect(rfiCloseMessage(<String, dynamic>{'message': 'Done'}), 'Done');
+    expect(rfiCloseMessage(null), rfiCloseDefaultMessage);
+    expect(rfiCloseMessage(''), rfiCloseDefaultMessage);
   });
 }

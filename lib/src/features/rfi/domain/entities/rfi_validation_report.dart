@@ -302,6 +302,7 @@ class RfiValidationMeasurement {
     required this.component,
     required this.element,
     required this.activityName,
+    required this.description,
     required this.measurementType,
     required this.units,
     required this.length,
@@ -315,6 +316,7 @@ class RfiValidationMeasurement {
   final String component;
   final String element;
   final String activityName;
+  final String description;
   final String measurementType;
   final String units;
   final String length;
@@ -329,13 +331,14 @@ class RfiValidationMeasurement {
       component: _text(json['component']),
       element: _text(json['element']),
       activityName: _text(json['activityName'] ?? json['activity']),
+      description: _text(json['description'] ?? json['desc']),
       measurementType: _text(json['measurementType'] ?? json['type']),
       units: _text(json['units'] ?? json['unit']),
       length: _qty(json['l'] ?? json['length']),
       breadth: _qty(json['b'] ?? json['breadth']),
       height: _qty(json['h'] ?? json['height']),
       weight: _qty(json['weight']),
-      count: _qty(json['no'] ?? json['count']),
+      count: _qty(json['no'] ?? json['count'] ?? json['noOfItems']),
       totalQty: _qty(json['totalQty'] ?? json['totalQuantity']),
     );
   }
