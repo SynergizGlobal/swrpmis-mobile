@@ -43,20 +43,38 @@ class RfiInspectionFlowRemoteDataSource {
     return RfiInspectionDetails.fromJson(_asMap(response.data));
   }
 
+  /// POST `/rfi/saveDraft` like the web: multipart part `data` is a JSON file
+  /// (`filename=blob`, `Content-Type: application/json`). Optional `selfie`.
   Future<int> saveDraft({
     required Map<String, dynamic> data,
-    required String selfiePath,
+    String? selfiePath,
   }) async {
-    final FormData form = FormData.fromMap(<String, dynamic>{
-      'data': jsonEncode(data),
-      'selfie': await MultipartFile.fromFile(
-        selfiePath,
-        filename: p.basename(selfiePath),
+    final FormData form = FormData();
+    form.files.add(
+      MapEntry<String, MultipartFile>(
+        'data',
+        MultipartFile.fromBytes(
+          utf8.encode(jsonEncode(data)),
+          filename: 'blob',
+          contentType: DioMediaType('application', 'json'),
+        ),
       ),
-    });
+    );
+    if (selfiePath != null && selfiePath.trim().isNotEmpty) {
+      form.files.add(
+        MapEntry<String, MultipartFile>(
+          'selfie',
+          await MultipartFile.fromFile(
+            selfiePath,
+            filename: p.basename(selfiePath),
+          ),
+        ),
+      );
+    }
     final Response<dynamic> response = await _dio.post<dynamic>(
       ApiConstants.rfiSaveDraftPath,
       data: form,
+      options: Options(responseType: ResponseType.plain),
     );
     return _parseInspectionId(response.data);
   }

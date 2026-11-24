@@ -1,9 +1,11 @@
-/// One measurement row as `/rfi/finalSubmit` expects it (web keys: l, b, h, no).
+/// One measurement row as `/rfi/saveDraft` and `/rfi/finalSubmit` expect it
+/// (web keys: activityIdFk, component, element, l, b, h, no, totalQty).
 class RfiSubmitMeasurement {
   const RfiSubmitMeasurement({
     required this.activityIdFk,
     required this.activityName,
-    this.description = '',
+    this.component = '',
+    this.element = '',
     required this.measurementType,
     required this.units,
     required this.length,
@@ -16,7 +18,8 @@ class RfiSubmitMeasurement {
 
   final int? activityIdFk;
   final String activityName;
-  final String description;
+  final String component;
+  final String element;
   final String measurementType;
   final String units;
   final String length;
@@ -30,7 +33,8 @@ class RfiSubmitMeasurement {
     return <String, dynamic>{
       'activityIdFk': activityIdFk,
       'activityName': _textOrNull(activityName),
-      'description': _textOrNull(description),
+      'component': _textOrNull(component),
+      'element': _textOrNull(element),
       'measurementType': _textOrNull(measurementType),
       'l': _double(length),
       'b': _double(breadth),

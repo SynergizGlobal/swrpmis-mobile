@@ -6,6 +6,86 @@ import 'package:swr_pmis_mobile/src/features/rfi/presentation/providers/rfi_insp
 import 'package:swr_pmis_mobile/src/features/rfi/presentation/widgets/rfi_submit_progress_dialog.dart';
 
 void main() {
+  test('saveDraft/finalSubmit data matches web Weight and Area rows', () {
+    final Map<String, dynamic> data = buildRfiFinalSubmitPayload(
+      inspectionId: 7774,
+      rfiId: 8093,
+      uploadedBy: 'ENGG',
+      location: '',
+      chainage: '31590',
+      nameOfRepresentative: 'M C SHEKHAR',
+      measurements: const <RfiSubmitMeasurement>[
+        RfiSubmitMeasurement(
+          activityIdFk: 1060,
+          activityName: 'Reinforcement & Shuttering',
+          measurementType: 'Weight',
+          units: 'ton',
+          length: '',
+          breadth: '',
+          height: '',
+          weight: '6.97',
+          no: '1',
+          totalQty: 6.97,
+        ),
+        RfiSubmitMeasurement(
+          activityIdFk: 1060,
+          activityName: 'Reinforcement & Shuttering',
+          measurementType: 'Area',
+          units: 'm²',
+          length: '58.553',
+          breadth: '0.3',
+          height: '',
+          weight: '',
+          no: '1',
+          totalQty: 17.5659,
+        ),
+      ],
+      testInsiteLab: 'VISUAL',
+      inspectionStatus: null,
+      engineerRemarks: null,
+      descriptionEnclosure: '',
+      supportingDescriptions: const <String>[],
+      inspectionMode: 'ONLINE',
+    );
+    expect(data['inspectionId'], 7774);
+    expect(data['uploadedBy'], 'ENGG');
+    expect(data['location'], isNull);
+    expect(data['testInsiteLab'], 'VISUAL');
+    expect(data['inspectionStatus'], isNull);
+    expect(data['supportingDescriptions'], isEmpty);
+    expect(data['inspectionMode'], 'ONLINE');
+    expect(data['measurements'], <Map<String, dynamic>>[
+      <String, dynamic>{
+        'activityIdFk': 1060,
+        'activityName': 'Reinforcement & Shuttering',
+        'component': null,
+        'element': null,
+        'measurementType': 'Weight',
+        'l': null,
+        'b': null,
+        'h': null,
+        'weight': 6.97,
+        'units': 'ton',
+        'no': 1,
+        'totalQty': 6.97,
+      },
+      <String, dynamic>{
+        'activityIdFk': 1060,
+        'activityName': 'Reinforcement & Shuttering',
+        'component': null,
+        'element': null,
+        'measurementType': 'Area',
+        'l': 58.553,
+        'b': 0.3,
+        'h': null,
+        'weight': null,
+        'units': 'm²',
+        'no': 1,
+        'totalQty': 17.5659,
+      },
+    ]);
+  });
+
   test('finalSubmit data matches the web payload for RFI 105', () {
     final Map<String, dynamic> data = buildRfiFinalSubmitPayload(
       inspectionId: 89,
@@ -58,7 +138,8 @@ void main() {
         <String, dynamic>{
           'activityIdFk': 1887,
           'activityName': 'Reinforcement & Shuttering',
-          'description': null,
+          'component': null,
+          'element': null,
           'measurementType': 'Percent',
           'l': null,
           'b': null,
@@ -71,7 +152,8 @@ void main() {
         <String, dynamic>{
           'activityIdFk': 1888,
           'activityName': 'Concreting',
-          'description': null,
+          'component': null,
+          'element': null,
           'measurementType': 'Number',
           'l': null,
           'b': null,

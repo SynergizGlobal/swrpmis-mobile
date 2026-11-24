@@ -1178,39 +1178,10 @@ class RfiInspectionFlowController
     return true;
   }
 
-  Map<String, dynamic> _draftPayload() {
-    final RfiInspectionMeasurementRow first = state.measurements.isNotEmpty
-        ? state.measurements.first
-        : const RfiInspectionMeasurementRow();
-    return <String, dynamic>{
-      'rfiId': arg.rfiId,
-      'conInspectionId': state.conInspectionId,
-      'chainage': state.chainage,
-      'location': state.location,
-      'inspectionMode': arg.inspectionMode,
-      'nameOfRepresentative': state.contractorRepresentative,
-      'dateOfInspection': state.dateOfInspection,
-      'timeOfInspection': state.timeOfInspection,
-      'descriptionEnclosure': state.contractorDescription,
-      'inspectionStatus': _mapTestType(state.testInSiteLab),
-      'measurementType': first.type == 'Select' ? null : first.type,
-      'units': first.units == 'Select U' ? null : first.units,
-      'length': double.tryParse(first.length),
-      'breadth': double.tryParse(first.breadth),
-      'height': double.tryParse(first.height),
-      'weight': double.tryParse(first.weight),
-      'noOfItems': int.tryParse(first.no),
-      'totalQty': first.totalQty,
-      'measurements': state.measurements
-          .map((RfiInspectionMeasurementRow m) => m.toJson())
-          .toList(growable: false),
-      'supportingDescriptions': rfiSupportingUploads(state.supportingDocuments)
-          .map((RfiLocalSupportingDoc d) => d.description)
-          .toList(growable: false),
-    };
-  }
+  /// Same JSON as web `/rfi/saveDraft` (and `/rfi/finalSubmit` `data`).
+  Map<String, dynamic> _draftPayload() => _submitPayload();
 
-  /// The `/rfi/finalSubmit` `data` JSON, matching the web payload.
+  /// The multipart `data` JSON for saveDraft / finalSubmit, matching the web.
   Map<String, dynamic> _submitPayload() {
     return buildRfiFinalSubmitPayload(
       inspectionId: isEngineer
@@ -1226,7 +1197,8 @@ class RfiInspectionFlowController
             (RfiInspectionMeasurementRow m) => RfiSubmitMeasurement(
               activityIdFk: m.activityIdFk,
               activityName: m.activityName,
-              description: m.description,
+              component: m.component,
+              element: m.element,
               measurementType: m.type == rfiInspectionNoType ? '' : m.type,
               units: m.units == rfiInspectionNoUnit ? '' : m.units,
               length: m.length,
