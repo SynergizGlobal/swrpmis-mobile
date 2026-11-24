@@ -281,6 +281,9 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     _description.text = detail.description;
     _descriptionIds = List<String>.from(detail.rfiDescriptionList);
     _enclosureIds = List<String>.from(detail.enclosuresList);
+    _chainageFrom.text = detail.chainageFrom;
+    _chainageTo.text = detail.chainageTo;
+    _layerId = detail.layer;
   }
 
   Future<void> _restore(WorkRfiDetail detail) async {
@@ -313,18 +316,26 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (detail.structureType.isEmpty) {
       return;
     }
-    if (workRfiIsEarthworkOrBlanketing(detail.structureType)) {
-      final WorkRfiLayerRange? range = await _readLayerRange(
-        detail.structureType,
-      );
+    if (workRfiShowsLayer(detail.structureType)) {
+      final WorkRfiLayerRange range =
+          await _readLayerRange(detail.structureType) ??
+          const WorkRfiLayerRange(
+            minLayer: workRfiDefaultMinLayer,
+            maxLayer: workRfiDefaultMaxLayer,
+          );
       if (!mounted) {
         return;
       }
-      if (range != null) {
-        _layers = workRfiLayerOptions(
-          minLayer: range.minLayer,
-          maxLayer: range.maxLayer,
-        );
+      _layers = workRfiLayerOptions(
+        minLayer: range.minLayer,
+        maxLayer: range.maxLayer,
+      );
+      if (!_layers.any((WorkRfiOption option) => option.id == _layerId) &&
+          _layerId.isNotEmpty) {
+        _layers = <WorkRfiOption>[
+          ..._layers,
+          WorkRfiOption(id: _layerId, label: _layerId),
+        ];
       }
     }
     final List<WorkRfiOption>? structures = await _guard(
@@ -953,7 +964,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Widget _locationCard() {
-    final bool chainage = workRfiIsEarthworkOrBlanketing(_structureType);
+    final bool chainage = workRfiShowsChainage(_structureType);
     return _section(
       title: 'LOCATION',
       children: <Widget>[
@@ -1077,20 +1088,15 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Widget _chainageGroup() {
-    final Color outline = Theme.of(context).colorScheme.outlineVariant;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-          border: Border.all(color: outline),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              _labeled(
+    final bool showLayer = workRfiShowsLayer(_structureType);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: _labeled(
                 'Chainage From',
                 error: _chainageFromError,
                 child: _WorkRfiTextField(
@@ -1106,7 +1112,10 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                       _alertChainage('Chainage From', _chainageFrom.text),
                 ),
               ),
-              _labeled(
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _labeled(
                 'Chainage To',
                 error: _chainageToError,
                 child: _WorkRfiTextField(
@@ -1122,37 +1131,44 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
                       _alertChainage('Chainage To', _chainageTo.text),
                 ),
               ),
-              _labeled(
-                'Layer',
-                child: _selectBox(
-                  key: WorkRfiFormPage.layerFieldKey,
-                  hint: 'Select...',
-                  value: _optionLabel(_layers, _layerId),
-                  enabled: _layers.isNotEmpty && !_locked,
-                  onTap: () => _pickSingle(
-                    title: 'Layer',
-                    options: _layers,
-                    selectedId: _layerId,
-                    emptyMessage: 'No layers',
-                    onPicked: (String id) async {
-                      setState(() => _layerId = id);
-                    },
+            ),
+            if (showLayer) ...<Widget>[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _labeled(
+                  'Layer',
+                  child: _selectBox(
+                    key: WorkRfiFormPage.layerFieldKey,
+                    hint: 'Select Layer...',
+                    value: _optionLabel(_layers, _layerId),
+                    enabled: _layers.isNotEmpty && !_locked,
+                    onTap: () => _pickSingle(
+                      title: 'Layer',
+                      options: _layers,
+                      selectedId: _layerId,
+                      emptyMessage: 'No layers',
+                      onPicked: (String id) async {
+                        setState(() => _layerId = id);
+                      },
+                    ),
                   ),
                 ),
               ),
-              Text(
-                workRfiChainageRule,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
             ],
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            '* $workRfiChainageRule',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -1336,7 +1352,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   }
 
   Widget _createActivityCard() {
-    final bool chainage = workRfiIsEarthworkOrBlanketing(_structureType);
+    final bool localActivity = workRfiIsEarthworkOrBlanketing(_structureType);
     final bool yes = _rfiRequired == 'Yes';
     final bool no = _rfiRequired == 'No';
     final bool activityChosen = _selectedActivities.isNotEmpty;
@@ -1351,7 +1367,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
             hint: 'Select activities...',
             selected: _selectedActivities,
             enabled:
-                (chainage
+                (localActivity
                     ? activityChosen || _activityNameOptions.isNotEmpty
                     : _selectedComponents.isNotEmpty && !_loadingActivities) &&
                 !_locked,
@@ -2593,11 +2609,8 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
   Future<WorkRfiLayerRange?> _readLayerRange(String structureType) async {
     try {
       return await _source.fetchLayerRange(structureType);
-    } on Object catch (error) {
-      if (!mounted) {
-        return null;
-      }
-      await _showError('Layers unavailable', error);
+    } on Object {
+      // Fall back to Layer 1…N + Subgrade Top Layer when the range API fails.
       return null;
     }
   }
@@ -2698,7 +2711,7 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
 
   Future<void> _loadLayers(String structureType) async {
     final int ticket = ++_layerTicket;
-    if (!workRfiIsEarthworkOrBlanketing(structureType)) {
+    if (!workRfiShowsLayer(structureType)) {
       if (!mounted || ticket != _layerTicket) {
         return;
       }
@@ -2712,18 +2725,21 @@ class _WorkRfiFormPageState extends ConsumerState<WorkRfiFormPage> {
     if (mounted) {
       setState(() => _loadingLayers = true);
     }
-    final WorkRfiLayerRange? range = await _readLayerRange(structureType);
+    final WorkRfiLayerRange range =
+        await _readLayerRange(structureType) ??
+        const WorkRfiLayerRange(
+          minLayer: workRfiDefaultMinLayer,
+          maxLayer: workRfiDefaultMaxLayer,
+        );
     if (!mounted || ticket != _layerTicket) {
       return;
     }
     setState(() {
       _loadingLayers = false;
-      _layers = range == null
-          ? <WorkRfiOption>[]
-          : workRfiLayerOptions(
-              minLayer: range.minLayer,
-              maxLayer: range.maxLayer,
-            );
+      _layers = workRfiLayerOptions(
+        minLayer: range.minLayer,
+        maxLayer: range.maxLayer,
+      );
       if (!_layers.any((WorkRfiOption option) => option.id == _layerId)) {
         _layerId = '';
       }

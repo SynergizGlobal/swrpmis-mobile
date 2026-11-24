@@ -417,6 +417,63 @@ void main() {
     _expectReadOnlyLookups(calls);
   });
 
+  testWidgets('track work shows chainage without layer', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final List<RequestOptions> calls = <RequestOptions>[];
+    final WorkRfiRemoteDataSource source = WorkRfiRemoteDataSource(
+      _scriptedDio(calls: calls, body: _createFormBody),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          workRfiRemoteDataSourceProvider.overrideWithValue(source),
+        ],
+        child: const MaterialApp(home: WorkRfiFormPage()),
+      ),
+    );
+    await _until(tester, find.text('Select...'));
+    await _pick(
+      tester,
+      field: 'Select...',
+      sheet: 'Project',
+      option: 'Project Alpha',
+    );
+    await _pick(
+      tester,
+      field: 'Select...',
+      sheet: 'Contract',
+      option: 'Contract Alpha',
+    );
+    await _pick(
+      tester,
+      field: 'Select...',
+      sheet: 'Structure Type',
+      option: 'Track Work',
+    );
+
+    expect(find.textContaining('Chainage From'), findsOneWidget);
+    expect(find.textContaining('Chainage To'), findsOneWidget);
+    expect(find.byKey(WorkRfiFormPage.layerFieldKey), findsNothing);
+    expect(find.textContaining('multiples of 10'), findsOneWidget);
+
+    await _pick(
+      tester,
+      field: 'Track Work',
+      sheet: 'Structure Type',
+      option: 'Minor Bridge',
+    );
+    expect(find.textContaining('Chainage From'), findsNothing);
+    expect(find.byKey(WorkRfiFormPage.layerFieldKey), findsNothing);
+    _expectReadOnlyLookups(calls);
+  });
+
   test('minor bridge activities parse id as value and name as label', () {
     final WorkRfiOption option = parseWorkRfiActivities(<Map<String, dynamic>>[
       <String, dynamic>{
@@ -829,6 +886,7 @@ Object? _createFormBody(RequestOptions options) {
         <String, dynamic>{'structure_type': 'Minor Bridge'},
         <String, dynamic>{'structure_type': 'Earthwork'},
         <String, dynamic>{'structure_type': 'Blanketing'},
+        <String, dynamic>{'structure_type': 'Track Work'},
         <String, dynamic>{'structure_type': 'Important Bridge'},
       ];
     case ApiConstants.activitiesUpdateStructuresPath:

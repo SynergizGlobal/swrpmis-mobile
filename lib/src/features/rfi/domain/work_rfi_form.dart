@@ -254,6 +254,9 @@ class WorkRfiDetail {
     required this.progressDate,
     required this.description,
     required this.measurements,
+    this.chainageFrom = '',
+    this.chainageTo = '',
+    this.layer = '',
   });
 
   final int? id;
@@ -278,6 +281,9 @@ class WorkRfiDetail {
   final String progressDate;
   final String description;
   final List<WorkRfiMeasurementDraft> measurements;
+  final String chainageFrom;
+  final String chainageTo;
+  final String layer;
 }
 
 class WorkRfiEditActivities {
@@ -423,6 +429,13 @@ DateTime? workRfiInspectionDateAfterTypeChange({
 const String workRfiChainageRule =
     'Chainages From & To shall be multiples of 10 (must be divisible by 10, no decimals).';
 
+/// Web Layer dropdown ends with this fixed option after Layer 1…N.
+const String workRfiSubgradeTopLayer = 'Subgrade Top Layer';
+
+/// Fallback Layer 1…N when the layer-range API is unavailable.
+const int workRfiDefaultMinLayer = 1;
+const int workRfiDefaultMaxLayer = 3;
+
 class WorkRfiLayerRange {
   const WorkRfiLayerRange({required this.minLayer, required this.maxLayer});
 
@@ -430,10 +443,25 @@ class WorkRfiLayerRange {
   final int maxLayer;
 }
 
+String _workRfiStructureTypeKey(String structureType) =>
+    structureType.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
 bool workRfiIsEarthworkOrBlanketing(String structureType) {
-  final String key = structureType.trim().toLowerCase();
+  final String key = _workRfiStructureTypeKey(structureType);
   return key == 'earthwork' || key == 'blanketing';
 }
+
+bool workRfiIsTrackWork(String structureType) =>
+    _workRfiStructureTypeKey(structureType) == 'track work';
+
+/// Blanketing, Earthwork, and Track Work show Chainage From / To (web create).
+bool workRfiShowsChainage(String structureType) =>
+    workRfiIsEarthworkOrBlanketing(structureType) ||
+    workRfiIsTrackWork(structureType);
+
+/// Layer is required only for Blanketing and Earthwork — not Track Work.
+bool workRfiShowsLayer(String structureType) =>
+    workRfiIsEarthworkOrBlanketing(structureType);
 
 /// Activity id the server expects for Earthwork and Blanketing. Those types
 /// have no strip-chart activity; the web form posts the string "0".
@@ -460,11 +488,20 @@ List<WorkRfiOption> workRfiLayerOptions({
   required int maxLayer,
 }) {
   if (minLayer > maxLayer) {
-    return const <WorkRfiOption>[];
+    return const <WorkRfiOption>[
+      WorkRfiOption(
+        id: workRfiSubgradeTopLayer,
+        label: workRfiSubgradeTopLayer,
+      ),
+    ];
   }
   return <WorkRfiOption>[
     for (var layer = minLayer; layer <= maxLayer; layer++)
       WorkRfiOption(id: 'Layer $layer', label: 'Layer $layer'),
+    const WorkRfiOption(
+      id: workRfiSubgradeTopLayer,
+      label: workRfiSubgradeTopLayer,
+    ),
   ];
 }
 
@@ -472,16 +509,34 @@ String workRfiChainageAlert(String fieldLabel) {
   return '$fieldLabel must be a whole number divisible by 10. Please re-enter.';
 }
 
-bool workRfiChainageAccepted(String raw) {
+/// Metres for a chainage typed as plain metres (`12500`) or web `km+mmm`
+/// (`12+500` → 12500). Returns null when the text is empty or not parseable.
+int? workRfiParseChainageMeters(String raw) {
   final String text = raw.trim();
-  if (!RegExp(r'^\d+$').hasMatch(text)) {
+  if (text.isEmpty) {
+    return null;
+  }
+  if (RegExp(r'^\d+$').hasMatch(text)) {
+    return int.tryParse(text);
+  }
+  final RegExpMatch? plus = RegExp(r'^(\d+)\+(\d{1,3})$').firstMatch(text);
+  if (plus == null) {
+    return null;
+  }
+  final int? km = int.tryParse(plus.group(1)!);
+  final int? metres = int.tryParse(plus.group(2)!);
+  if (km == null || metres == null || metres >= 1000) {
+    return null;
+  }
+  return km * 1000 + metres;
+}
+
+bool workRfiChainageAccepted(String raw) {
+  final int? meters = workRfiParseChainageMeters(raw);
+  if (meters == null) {
     return false;
   }
-  final int? value = int.tryParse(text);
-  if (value == null) {
-    return false;
-  }
-  return value % 10 == 0;
+  return meters % 10 == 0;
 }
 
 String? workRfiChainageError(String raw, {required String fieldLabel}) {
@@ -493,17 +548,20 @@ String? workRfiChainageError(String raw, {required String fieldLabel}) {
 }
 
 String workRfiPostedChainage(String raw) {
-  final String text = raw.trim();
-  if (!workRfiChainageAccepted(text)) {
+  final int? meters = workRfiParseChainageMeters(raw);
+  if (meters == null || meters % 10 != 0) {
     return '';
   }
-  return int.parse(text).toString();
+  return meters.toString();
 }
 
 String workRfiPostedLayer(String raw) {
   final String text = raw.trim();
   if (text.isEmpty) {
     return '';
+  }
+  if (text.toLowerCase() == workRfiSubgradeTopLayer.toLowerCase()) {
+    return workRfiSubgradeTopLayer;
   }
   final RegExpMatch? labeled = RegExp(
     r'^Layer\s+(\d+)$',
@@ -733,6 +791,13 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
       draft.element.trim().isEmpty) {
     missing.add('Element');
   }
+  if (workRfiShowsChainage(draft.structureType)) {
+    requireText(draft.chainageFrom, 'Chainage From');
+    requireText(draft.chainageTo, 'Chainage To');
+  }
+  if (workRfiShowsLayer(draft.structureType)) {
+    requireText(draft.layer, 'Layer');
+  }
   if (draft.activities.isEmpty) {
     missing.add('Activity');
   }
@@ -810,6 +875,14 @@ String? workRfiValidationMessage(WorkRfiSubmitDraft draft) {
   }
   if (missing.isNotEmpty) {
     return 'Missing ${missing.join(', ')}.';
+  }
+  if (workRfiShowsChainage(draft.structureType)) {
+    if (!workRfiChainageAccepted(draft.chainageFrom)) {
+      return workRfiChainageAlert('Chainage From');
+    }
+    if (!workRfiChainageAccepted(draft.chainageTo)) {
+      return workRfiChainageAlert('Chainage To');
+    }
   }
   if (invalidActivities.isNotEmpty) {
     return 'Missing a valid activity for ${invalidActivities.join(', ')}. '
@@ -894,6 +967,8 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
   }
   final String componentJoined = componentIds.join(',');
   final String elementJoined = elementIds.join(',');
+  final bool postsChainage = workRfiShowsChainage(draft.structureType);
+  final bool postsLayer = workRfiShowsLayer(draft.structureType);
   return <String, dynamic>{
     'project': draft.project,
     'contract': draft.contract,
@@ -901,9 +976,11 @@ Map<String, dynamic> buildWorkRfiPayload(WorkRfiSubmitDraft draft) {
     'structure': draft.structure,
     'component': componentJoined,
     'element': elementJoined,
-    'chainageFrom': workRfiPostedChainage(draft.chainageFrom),
-    'chainageTo': workRfiPostedChainage(draft.chainageTo),
-    'layer': workRfiPostedLayer(draft.layer),
+    'chainageFrom': postsChainage
+        ? workRfiPostedChainage(draft.chainageFrom)
+        : '',
+    'chainageTo': postsChainage ? workRfiPostedChainage(draft.chainageTo) : '',
+    'layer': postsLayer ? workRfiPostedLayer(draft.layer) : '',
     'activity': activityIds.isEmpty ? '' : activityIds.first,
     'selectedActivities': activityIds,
     'rfiDescription': '',
@@ -1269,6 +1346,17 @@ WorkRfiDetail? parseWorkRfiDetail(dynamic data) {
     ]),
     description: _text(map['description']),
     measurements: _measurements(map['measurements']),
+    chainageFrom: _firstText(map, const <String>[
+      'chainageFrom',
+      'fromChainage',
+      'chainage_from',
+    ]),
+    chainageTo: _firstText(map, const <String>[
+      'chainageTo',
+      'toChainage',
+      'chainage_to',
+    ]),
+    layer: _text(map['layer']),
   );
   if (detail.id == null && detail.project.isEmpty && detail.contract.isEmpty) {
     return null;

@@ -820,7 +820,7 @@ void main() {
     expect(workRfiApiTime('02:30 PM'), '14:30');
   });
 
-  test('earthwork and blanketing detection is case-insensitive', () {
+  test('earthwork blanketing and track work visibility is case-insensitive', () {
     expect(workRfiIsEarthworkOrBlanketing('Earthwork'), isTrue);
     expect(workRfiIsEarthworkOrBlanketing('earthwork'), isTrue);
     expect(workRfiIsEarthworkOrBlanketing(' EARTHWORK '), isTrue);
@@ -829,18 +829,35 @@ void main() {
     expect(workRfiIsEarthworkOrBlanketing('RUB'), isFalse);
     expect(workRfiIsEarthworkOrBlanketing('Minor Bridge'), isFalse);
     expect(workRfiIsEarthworkOrBlanketing(''), isFalse);
+    expect(workRfiIsTrackWork('Track Work'), isTrue);
+    expect(workRfiIsTrackWork('track work'), isTrue);
+    expect(workRfiIsTrackWork('Track Supply'), isFalse);
+    expect(workRfiShowsChainage('Blanketing'), isTrue);
+    expect(workRfiShowsChainage('Earthwork'), isTrue);
+    expect(workRfiShowsChainage('Track Work'), isTrue);
+    expect(workRfiShowsChainage('Minor Bridge'), isFalse);
+    expect(workRfiShowsLayer('Blanketing'), isTrue);
+    expect(workRfiShowsLayer('Earthwork'), isTrue);
+    expect(workRfiShowsLayer('Track Work'), isFalse);
+    expect(workRfiShowsLayer('Stations'), isFalse);
   });
 
-  test('layer labels run from min through max', () {
+  test('layer labels run from min through max plus Subgrade Top Layer', () {
     expect(
       workRfiLayerOptions(
         minLayer: 1,
         maxLayer: 3,
       ).map((WorkRfiOption option) => option.id),
-      <String>['Layer 1', 'Layer 2', 'Layer 3'],
+      <String>[
+        'Layer 1',
+        'Layer 2',
+        'Layer 3',
+        workRfiSubgradeTopLayer,
+      ],
     );
     expect(workRfiPostedLayer('2'), 'Layer 2');
     expect(workRfiPostedLayer('Layer 2'), 'Layer 2');
+    expect(workRfiPostedLayer(workRfiSubgradeTopLayer), workRfiSubgradeTopLayer);
     final WorkRfiLayerRange? blanketing = parseWorkRfiLayerRange(
       <String, dynamic>{'maxLayer': 3, 'minLayer': 1},
     );
@@ -854,7 +871,7 @@ void main() {
         minLayer: earthwork!.minLayer,
         maxLayer: earthwork.maxLayer,
       ),
-      hasLength(54),
+      hasLength(55),
     );
     expect(
       workRfiLayerOptions(
@@ -868,7 +885,7 @@ void main() {
         minLayer: earthwork.minLayer,
         maxLayer: earthwork.maxLayer,
       ).last.label,
-      'Layer 54',
+      workRfiSubgradeTopLayer,
     );
   });
 
@@ -883,7 +900,7 @@ void main() {
     expect(structure.label, 'CH 25400 to CH 34000');
   });
 
-  test('chainage posts whole multiples of 10 and rejects plus notation', () {
+  test('chainage accepts metres and web km+mmm multiples of 10', () {
     const String fromAlert =
         'Chainage From must be a whole number divisible by 10. Please re-enter.';
     const String toAlert =
@@ -892,6 +909,12 @@ void main() {
     expect(workRfiChainageError('30', fieldLabel: 'Chainage To'), isNull);
     expect(workRfiPostedChainage('10'), '10');
     expect(workRfiPostedChainage('30'), '30');
+    expect(workRfiParseChainageMeters('12+500'), 12500);
+    expect(workRfiParseChainageMeters('12+000'), 12000);
+    expect(workRfiChainageError('12+500', fieldLabel: 'Chainage From'), isNull);
+    expect(workRfiChainageError('12+000', fieldLabel: 'Chainage To'), isNull);
+    expect(workRfiPostedChainage('12+500'), '12500');
+    expect(workRfiPostedChainage('12+000'), '12000');
     expect(
       workRfiChainageError('12.5', fieldLabel: 'Chainage From'),
       fromAlert,
@@ -900,13 +923,8 @@ void main() {
       workRfiChainageError('12+501', fieldLabel: 'Chainage From'),
       fromAlert,
     );
-    expect(
-      workRfiChainageError('12+000', fieldLabel: 'Chainage From'),
-      fromAlert,
-    );
-    expect(workRfiChainageError('12+500', fieldLabel: 'Chainage To'), toAlert);
-    expect(workRfiPostedChainage('12+000'), isEmpty);
-    expect(workRfiPostedChainage('12+500'), isEmpty);
+    expect(workRfiChainageError('12+505', fieldLabel: 'Chainage To'), toAlert);
+    expect(workRfiPostedChainage('12+501'), isEmpty);
     expect(workRfiPostedChainage('12.5'), isEmpty);
 
     final Map<String, dynamic> body = buildWorkRfiPayload(
@@ -936,6 +954,34 @@ void main() {
     expect(body['chainageFrom'], '10');
     expect(body['chainageTo'], '30');
     expect(body['layer'], 'Layer 2');
+
+    final Map<String, dynamic> trackWork = buildWorkRfiPayload(
+      const WorkRfiSubmitDraft(
+        project: 'P01',
+        contract: 'P01EN01',
+        structureType: 'Track Work',
+        structure: '55',
+        component: 'Rails',
+        element: 'Rail',
+        activities: <WorkRfiMeasurementDraft>[],
+        descriptionIds: <String>[],
+        rfiRequired: 'No',
+        typeOfRfi: '',
+        contractorRepresentative: '',
+        progressDate: '2026-10-12',
+        dateOfSubmission: '',
+        timeOfInspection: '',
+        dateOfInspection: '',
+        enclosureIds: <String>[],
+        description: '',
+        chainageFrom: '12+500',
+        chainageTo: '13+000',
+        layer: 'Layer 2',
+      ),
+    );
+    expect(trackWork['chainageFrom'], '12500');
+    expect(trackWork['chainageTo'], '13000');
+    expect(trackWork['layer'], isEmpty);
   });
 
   group('create payload matches the web capture', () {
