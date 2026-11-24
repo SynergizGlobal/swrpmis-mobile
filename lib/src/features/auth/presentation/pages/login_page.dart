@@ -166,17 +166,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             children: <Widget>[
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.fromLTRB(12, topInset + 12, 8, 14),
-                color: AppTheme.brandPrimary,
-                child: const Text(
-                  AppConstants.welcomeTitle,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                padding: EdgeInsets.fromLTRB(12, topInset + 2, 8, 14),
               ),
               Expanded(
                 child: SafeArea(
@@ -563,7 +553,7 @@ class _LoginCard extends StatelessWidget {
                     letterSpacing: 1.4,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 10),
                 TextFormField(
                   controller: userIdController,
                   textInputAction: TextInputAction.next,
@@ -623,7 +613,7 @@ class _LoginCard extends StatelessWidget {
                   },
                   onFieldSubmitted: (_) => onSubmit?.call(),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Row(
                   children: <Widget>[
                     Checkbox(
@@ -646,7 +636,7 @@ class _LoginCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 FilledButton(
                   onPressed: onSubmit,
                   style: FilledButton.styleFrom(
