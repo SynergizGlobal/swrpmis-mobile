@@ -8,6 +8,7 @@ import 'package:swr_pmis_mobile/src/features/mail/domain/mail_compose.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_dashboard.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_parse.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_thread.dart';
 
 final mailRemoteDataSourceProvider = Provider<MailRemoteDataSource>((ref) {
   return MailRemoteDataSource(ref.watch(dioProvider));
@@ -84,6 +85,27 @@ class MailRemoteDataSource {
     );
     return mailApiMessage(response.data) ??
         (starred ? 'Mail starred' : 'Star removed');
+  }
+
+  Future<String> markMailRead({
+    required int mailId,
+    required String userId,
+  }) async {
+    final String uid = userId.trim();
+    if (uid.isEmpty) {
+      throw StateError('User id missing; cannot mark mail as read.');
+    }
+    final Response<dynamic> response = await _dio.put<dynamic>(
+      ApiConstants.mailReadPath(mailId, uid),
+    );
+    return mailApiMessage(response.data) ?? 'Mail marked as read';
+  }
+
+  Future<List<MailThreadMessage>> fetchThread(int mailId) async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.mailThreadPath(mailId),
+    );
+    return parseMailThread(response.data);
   }
 
   Future<String> moveToTrash({required int mailId}) async {

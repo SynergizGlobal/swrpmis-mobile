@@ -607,6 +607,13 @@ class ApiConstants {
   static String mailPermanentDeletePath(int mailId) =>
       '/api/mail/$mailId/permanent';
 
+  /// Mark a mail as read for a user: `PUT /api/mail/{mailId}/read/{userId}`.
+  static String mailReadPath(int mailId, String userId) =>
+      '/api/mail/$mailId/read/${Uri.encodeComponent(userId.trim())}';
+
+  /// Thread messages for preview: `GET /api/mail/{mailId}/thread`.
+  static String mailThreadPath(int mailId) => '/api/mail/$mailId/thread';
+
   static String documentsRepositoryFolderPath(int folderId) =>
       '/api/documents/repository/folder/$folderId';
 

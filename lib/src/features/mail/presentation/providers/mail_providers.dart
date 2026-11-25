@@ -5,6 +5,7 @@ import 'package:swr_pmis_mobile/src/features/mail/domain/document_repository.dar
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_compose.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_dashboard.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_thread.dart';
 
 final mailLabelsProvider = FutureProvider.autoDispose<List<MailLabel>>((
   ref,
@@ -67,6 +68,11 @@ final mailLabelMailsProvider = FutureProvider.autoDispose
           .fetchLabelMails(labelName);
     });
 
+final mailThreadProvider = FutureProvider.autoDispose
+    .family<List<MailThreadMessage>, int>((ref, int mailId) async {
+      return ref.watch(mailRemoteDataSourceProvider).fetchThread(mailId);
+    });
+
 class MailBadgeCounts {
   const MailBadgeCounts({required this.unreadInbox, required this.drafts});
 
@@ -119,6 +125,21 @@ Future<String> mailToggleStar(
       .read(mailRemoteDataSourceProvider)
       .setStarred(mailId: mailId, starred: starred);
   await mailRefreshAll(ref);
+  return message;
+}
+
+Future<String> mailMarkRead(
+  WidgetRef ref, {
+  required int mailId,
+  required String userId,
+}) async {
+  final String message = await ref
+      .read(mailRemoteDataSourceProvider)
+      .markMailRead(mailId: mailId, userId: userId);
+  ref.invalidate(mailInboxProvider);
+  ref.invalidate(mailBadgeCountsProvider);
+  ref.invalidate(mailDashboardProvider);
+  ref.invalidate(mailStarredProvider);
   return message;
 }
 

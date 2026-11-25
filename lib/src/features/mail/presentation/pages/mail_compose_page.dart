@@ -10,12 +10,16 @@ import 'package:swr_pmis_mobile/src/app/theme/app_theme.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_button_lottie.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_fullscreen_loader.dart';
 import 'package:swr_pmis_mobile/src/core/widgets/app_dialog.dart';
+import 'package:swr_pmis_mobile/src/features/auth/domain/entities/auth_session.dart';
+import 'package:swr_pmis_mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:swr_pmis_mobile/src/features/mail/data/datasources/mail_remote_data_source.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/document_repository.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_compose.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_parse.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_thread.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_module_page.dart';
+import 'package:swr_pmis_mobile/src/features/mail/presentation/pages/mail_thread_page.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/providers/mail_providers.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_attach_repository_dialog.dart';
 import 'package:swr_pmis_mobile/src/features/mail/presentation/widgets/mail_message_actions.dart';
@@ -479,6 +483,91 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
     }
   }
 
+  MailThreadHeaderMeta _previewMeta(AuthSession? session) {
+    final String userId = session?.userId.trim() ?? '';
+    final String userName = session?.userName.trim() ?? userId;
+    return MailThreadHeaderMeta(
+      subject: _subject.text.trim().isEmpty
+          ? '(No Subject)'
+          : _subject.text.trim(),
+      referenceId: _referenceId,
+      category: _category,
+      priority: _priority,
+      requiredResponse: _requiredResponse,
+      targetResponseDate: _targetDate,
+      status: 'DRAFT',
+      senderName: userName,
+      senderId: userId,
+      to: List<String>.from(_toUserIds),
+      cc: List<String>.from(_ccUserIds),
+    );
+  }
+
+  List<MailThreadMessage> _localPreviewMessages(AuthSession? session) {
+    final String userId = session?.userId.trim() ?? '';
+    final String userName = session?.userName.trim() ?? userId;
+    final List<MailThreadAttachment> attachments = <MailThreadAttachment>[
+      for (final MailComposeAttachment file in _localAttachments)
+        MailThreadAttachment(name: file.name),
+      for (final RepositoryItem item in _repoAttachments)
+        MailThreadAttachment(name: item.displayName),
+    ];
+    return <MailThreadMessage>[
+      MailThreadMessage(
+        id: _savedDraftId ?? widget.draftId ?? 0,
+        mailId: _savedDraftId ?? widget.draftId ?? 0,
+        threadId: _threadId,
+        parentMessageId: null,
+        senderId: userId,
+        senderName: userName,
+        subject: _subject.text.trim(),
+        body: _message.text.trim(),
+        action: 'DRAFT',
+        sentAt: null,
+        toUserIds: List<String>.from(_toUserIds),
+        ccUserIds: List<String>.from(_ccUserIds),
+        bccUserIds: List<String>.from(_bccUserIds),
+        attachments: attachments,
+      ),
+    ];
+  }
+
+  Future<void> _openPreview() async {
+    _commitPendingRecipients();
+    final AuthSession? session =
+        ref.read(authControllerProvider).valueOrNull;
+    final int? draftId = _savedDraftId ?? widget.draftId;
+    final MailThreadHeaderMeta meta = _previewMeta(session);
+    final List<MailThreadMessage> local = _localPreviewMessages(session);
+    if (draftId != null && draftId > 0) {
+      try {
+        final List<MailThreadMessage> thread = await ref
+            .read(mailRemoteDataSourceProvider)
+            .fetchThread(draftId);
+        if (!mounted) {
+          return;
+        }
+        await openMailThreadPage(
+          context,
+          mailId: draftId,
+          meta: meta,
+          localMessages: thread.isEmpty ? local : thread,
+        );
+        return;
+      } catch (_) {
+        // Fall through to local compose preview when thread is unavailable.
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    await openMailThreadPage(
+      context,
+      meta: meta,
+      localMessages: local,
+    );
+  }
+
   Future<void> _send() async {
     _commitPendingRecipients();
     final String? error = _validate(forSend: true);
@@ -553,6 +642,11 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       appBar: AppBar(
         title: const Text('Compose Mail'),
         actions: <Widget>[
+          TextButton.icon(
+            onPressed: _busy ? null : _openPreview,
+            icon: const Icon(Icons.visibility_outlined),
+            label: const Text('Preview'),
+          ),
           TextButton.icon(
             onPressed: _busy ? null : _saveDraft,
             icon: const Icon(Icons.save_outlined),

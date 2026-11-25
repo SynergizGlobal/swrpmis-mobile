@@ -3,6 +3,7 @@ import 'package:swr_pmis_mobile/src/features/mail/domain/document_repository.dar
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_compose.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_dashboard.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_thread.dart';
 
 List<MailLabel> parseMailLabels(dynamic data) {
   final List<MailLabel> out = <MailLabel>[];
@@ -216,6 +217,75 @@ String formatMailDatePicker(DateTime? date) {
     return '';
   }
   return DateFormat('dd/MM/yyyy').format(date.toLocal());
+}
+
+String formatMailThreadTimestamp(DateTime? date) {
+  if (date == null) {
+    return '—';
+  }
+  return DateFormat('dd/MM/yyyy - HH:mm').format(date.toLocal());
+}
+
+List<MailThreadMessage> parseMailThread(dynamic data) {
+  final List<MailThreadMessage> out = <MailThreadMessage>[];
+  for (final Map<String, dynamic> json in _maps(data)) {
+    final MailThreadMessage? message = _threadMessage(json);
+    if (message != null) {
+      out.add(message);
+    }
+  }
+  return out;
+}
+
+MailThreadMessage? _threadMessage(Map<String, dynamic> json) {
+  final int id = _int(json['id']) ?? _int(json['mailId']) ?? 0;
+  final String subject = _display(json['subject']);
+  final String body = _display(json['body']);
+  final String senderId = _display(json['senderId']);
+  if (id == 0 && subject.isEmpty && body.isEmpty && senderId.isEmpty) {
+    return null;
+  }
+  return MailThreadMessage(
+    id: id,
+    mailId: _int(json['mailId']) ?? id,
+    threadId: _int(json['threadId']),
+    parentMessageId: _int(json['parentMessageId']),
+    senderId: senderId,
+    senderName: _display(json['senderName']),
+    subject: subject,
+    body: body,
+    action: _display(json['action']).isEmpty
+        ? 'ORIGINAL'
+        : _display(json['action']),
+    sentAt: parseMailDateTime(json['sentAt']),
+    toUserIds: _stringList(json['toUserIds'] ?? json['to']),
+    ccUserIds: _stringList(json['ccUserIds'] ?? json['cc']),
+    bccUserIds: _stringList(json['bccUserIds'] ?? json['bcc']),
+    attachments: _threadAttachments(json['attachments']),
+  );
+}
+
+List<MailThreadAttachment> _threadAttachments(dynamic listValue) {
+  if (listValue is! List || listValue.isEmpty) {
+    return const <MailThreadAttachment>[];
+  }
+  final List<MailThreadAttachment> out = <MailThreadAttachment>[];
+  for (final dynamic item in listValue) {
+    if (item is Map) {
+      final String name = _display(
+        item['name'] ?? item['fileName'] ?? item['title'],
+      );
+      if (name.isNotEmpty) {
+        out.add(MailThreadAttachment(name: name));
+      }
+    } else {
+      final String name = item.toString().trim();
+      if (name.isNotEmpty) {
+        out.add(MailThreadAttachment(name: name));
+      }
+    }
+  }
+  return out;
 }
 
 List<MailMessage> _parseMessages(

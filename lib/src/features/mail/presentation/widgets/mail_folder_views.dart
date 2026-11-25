@@ -86,7 +86,11 @@ class _MailInboxListViewState extends ConsumerState<MailInboxListView> {
                         itemBuilder: (BuildContext context, int index) {
                           return _InboxRow(
                             message: filtered[index],
-                            onOpen: () => showMailDetailSheet(context, filtered[index]),
+                            onOpen: () => showMailDetailSheet(
+                              context,
+                              filtered[index],
+                              markAsRead: true,
+                            ),
                             onStar: () => mailToggleStarAction(
                               context,
                               ref,
@@ -510,6 +514,7 @@ class _MailSentListViewState extends ConsumerState<MailSentListView> {
                     for (final MailMessage message in page.items)
                       _SentRow(
                         message: message,
+                        onOpen: () => showMailDetailSheet(context, message),
                         onTrash: () =>
                             mailTrashAction(context, ref, message),
                       ),
@@ -538,9 +543,14 @@ class _MailSentListViewState extends ConsumerState<MailSentListView> {
 }
 
 class _SentRow extends StatelessWidget {
-  const _SentRow({required this.message, required this.onTrash});
+  const _SentRow({
+    required this.message,
+    required this.onOpen,
+    required this.onTrash,
+  });
 
   final MailMessage message;
+  final VoidCallback onOpen;
   final VoidCallback onTrash;
 
   @override
@@ -548,42 +558,49 @@ class _SentRow extends StatelessWidget {
     final DateTime? when = message.sentAt ?? message.createdAt;
     return Column(
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                flex: 2,
-                child: Text(message.toDisplay, maxLines: 2, overflow: TextOverflow.ellipsis),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  message.displaySubject,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+        InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    message.toDisplay,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(formatMailDateShort(when)),
-                    Text(
-                      formatMailTime(when),
-                      style: MailTheme.mutedStyle(context, fontSize: 12),
-                    ),
-                  ],
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    message.displaySubject,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              mailSentStatusBadge(context),
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded),
-                onPressed: onTrash,
-              ),
-            ],
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(formatMailDateShort(when)),
+                      Text(
+                        formatMailTime(when),
+                        style: MailTheme.mutedStyle(context, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                mailSentStatusBadge(context),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  onPressed: onTrash,
+                ),
+              ],
+            ),
           ),
         ),
         const Divider(height: 1),

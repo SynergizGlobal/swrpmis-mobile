@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_list.dart';
 import 'package:swr_pmis_mobile/src/features/mail/domain/mail_parse.dart';
+import 'package:swr_pmis_mobile/src/features/mail/domain/mail_thread.dart';
 
 void main() {
   test('parseMailDateTime handles array and ISO', () {
@@ -134,5 +135,54 @@ void main() {
       }),
       88,
     );
+  });
+
+  test('parseMailThread maps action badges and recipients', () {
+    final List<MailThreadMessage> thread = parseMailThread(<String, dynamic>{
+      'success': true,
+      'data': <dynamic>[
+        <String, dynamic>{
+          'id': 420,
+          'mailId': 420,
+          'threadId': 420,
+          'parentMessageId': null,
+          'senderId': 'PMIS_IT_001',
+          'senderName': 'Nihal',
+          'subject': 'Testing the draft system',
+          'body': 'Testing the draft system in QA',
+          'action': 'ORIGINAL',
+          'sentAt': <dynamic>[2026, 11, 25, 14, 56, 50, 581913000],
+          'toUserIds': <String>['PMIS_RU_001', 'PMIS_SU_008'],
+          'ccUserIds': <String>['PMIS_DA_002'],
+          'bccUserIds': <dynamic>[],
+          'attachments': <dynamic>[],
+        },
+        <String, dynamic>{
+          'id': 421,
+          'mailId': 421,
+          'threadId': 420,
+          'senderId': 'PMIS_SU_008',
+          'senderName': 'AJEET KUMAR',
+          'subject': 'Re: Testing the draft system',
+          'body': 'Testing the Replay Button',
+          'action': 'REPLY',
+          'sentAt': <dynamic>[2026, 11, 25, 15, 0, 10, 0],
+          'toUserIds': <String>['PMIS_IT_001'],
+          'ccUserIds': <dynamic>[],
+          'attachments': <dynamic>[
+            <String, dynamic>{'name': 'Blanketing_72 (1).pdf'},
+          ],
+        },
+      ],
+      'message': 'Thread messages retrieved successfully',
+    });
+
+    expect(thread, hasLength(2));
+    expect(thread.first.action, 'ORIGINAL');
+    expect(thread.first.displaySender, 'Nihal (PMIS_IT_001)');
+    expect(thread.first.toUserIds, <String>['PMIS_RU_001', 'PMIS_SU_008']);
+    expect(thread.last.action, 'REPLY');
+    expect(thread.last.attachments.single.name, 'Blanketing_72 (1).pdf');
+    expect(formatMailThreadTimestamp(thread.first.sentAt), contains('25/11/2026'));
   });
 }
