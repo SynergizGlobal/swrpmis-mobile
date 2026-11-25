@@ -2,6 +2,50 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 @immutable
+class MailComposeProject {
+  const MailComposeProject({
+    required this.projectId,
+    required this.projectName,
+  });
+
+  final String projectId;
+  final String projectName;
+
+  String get label {
+    final String name = projectName.trim();
+    if (name.isEmpty || name == projectId) {
+      return projectId;
+    }
+    return name;
+  }
+}
+
+@immutable
+class MailComposeContract {
+  const MailComposeContract({
+    required this.contractId,
+    required this.contractShortName,
+    required this.contractName,
+  });
+
+  final String contractId;
+  final String contractShortName;
+  final String contractName;
+
+  String get label {
+    final String shortName = contractShortName.trim();
+    if (shortName.isNotEmpty) {
+      return shortName;
+    }
+    final String name = contractName.trim();
+    if (name.isNotEmpty) {
+      return name;
+    }
+    return contractId;
+  }
+}
+
+@immutable
 class MailRecipient {
   const MailRecipient({
     required this.emailId,
@@ -13,9 +57,26 @@ class MailRecipient {
   final String userId;
   final String username;
 
+  String get displayName {
+    if (username.trim().isNotEmpty) {
+      return username.trim();
+    }
+    if (emailId.trim().isNotEmpty) {
+      return emailId.trim();
+    }
+    return userId.trim();
+  }
+
+  String get chipLabel {
+    final String name = displayName;
+    if (userId.isEmpty || name == userId) {
+      return name;
+    }
+    return name;
+  }
+
   String get initial {
-    final String source =
-        username.trim().isNotEmpty ? username.trim() : emailId.trim();
+    final String source = displayName;
     if (source.isEmpty) {
       return '?';
     }
@@ -37,13 +98,27 @@ class MailComposeAttachment {
 }
 
 @immutable
+class MailDraftSaveResult {
+  const MailDraftSaveResult({
+    required this.message,
+    this.draftId,
+  });
+
+  final int? draftId;
+  final String message;
+}
+
+@immutable
 class MailComposePayload {
   const MailComposePayload({
-    required this.to,
-    required this.cc,
-    required this.bcc,
+    required this.toUserIds,
+    required this.ccUserIds,
+    required this.bccUserIds,
     required this.subject,
     required this.body,
+    required this.projectId,
+    required this.contractId,
+    required this.contractShortName,
     required this.referenceId,
     required this.category,
     required this.requiredResponse,
@@ -57,11 +132,14 @@ class MailComposePayload {
     this.threadId,
   });
 
-  final List<String> to;
-  final List<String> cc;
-  final List<String> bcc;
+  final List<String> toUserIds;
+  final List<String> ccUserIds;
+  final List<String> bccUserIds;
   final String subject;
   final String body;
+  final String projectId;
+  final String contractId;
+  final String contractShortName;
   final String referenceId;
   final String category;
   final bool requiredResponse;
@@ -79,11 +157,14 @@ class MailComposePayload {
         ? null
         : DateFormat('yyyy-MM-dd').format(targetResponseDate!);
     return <String, dynamic>{
-      'to': to,
-      'cc': cc,
-      'bcc': bcc,
+      'toUserIds': toUserIds,
+      'ccUserIds': ccUserIds,
+      'bccUserIds': bccUserIds,
       'subject': subject,
       'body': body,
+      'contractId': contractId,
+      'contractShortName': contractShortName,
+      'projectId': projectId,
       'referenceId': referenceId,
       'category': category,
       'requiredResponse': requiredResponse,

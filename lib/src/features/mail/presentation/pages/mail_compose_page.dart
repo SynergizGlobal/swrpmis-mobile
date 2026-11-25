@@ -47,14 +47,19 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   final GlobalKey<_RecipientFieldState> _bccFieldKey =
       GlobalKey<_RecipientFieldState>();
 
-  final List<String> _to = <String>[];
-  final List<String> _cc = <String>[];
-  final List<String> _bcc = <String>[];
+  final List<String> _toUserIds = <String>[];
+  final List<String> _ccUserIds = <String>[];
+  final List<String> _bccUserIds = <String>[];
+  final Map<String, MailRecipient> _recipientDirectory =
+      <String, MailRecipient>{};
   final List<String> _tags = <String>[];
   final List<MailComposeAttachment> _localAttachments =
       <MailComposeAttachment>[];
   final List<RepositoryItem> _repoAttachments = <RepositoryItem>[];
 
+  String? _projectId;
+  String? _contractId;
+  String _contractShortName = '';
   String _category = 'Inspection';
   bool _requiredResponse = true;
   DateTime? _targetDate;
@@ -64,6 +69,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   bool _referenceLoaded = false;
   bool _busy = false;
   bool _sendSuccess = false;
+  int? _savedDraftId;
   int? _threadId;
 
   static const List<String> _categories = <String>[
@@ -169,13 +175,17 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
         return;
       }
       setState(() {
-        _to
+        _savedDraftId = item.mailId;
+        _rememberRecipientsFromIds(item.to);
+        _rememberRecipientsFromIds(item.cc);
+        _rememberRecipientsFromIds(item.bcc);
+        _toUserIds
           ..clear()
           ..addAll(item.to);
-        _cc
+        _ccUserIds
           ..clear()
           ..addAll(item.cc);
-        _bcc
+        _bccUserIds
           ..clear()
           ..addAll(item.bcc);
         _subject.text = item.subject;
@@ -194,6 +204,49 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
           ..addAll(item.tags.map(_normalizeTag));
         _referenceLoaded = true;
       });
+    });
+  }
+
+  void _rememberRecipientsFromIds(List<String> ids) {
+    for (final String id in ids) {
+      final String trimmed = id.trim();
+      if (trimmed.isEmpty || _recipientDirectory.containsKey(trimmed)) {
+        continue;
+      }
+      _recipientDirectory[trimmed] = MailRecipient(
+        userId: trimmed,
+        username: trimmed,
+        emailId: '',
+      );
+    }
+  }
+
+  void _rememberRecipient(MailRecipient recipient) {
+    final String id = recipient.userId.trim();
+    if (id.isEmpty) {
+      return;
+    }
+    _recipientDirectory[id] = recipient;
+  }
+
+  void _onProjectChanged(String? projectId) {
+    setState(() {
+      _projectId = projectId;
+      _contractId = null;
+      _contractShortName = '';
+      _toUserIds.clear();
+      _ccUserIds.clear();
+      _bccUserIds.clear();
+    });
+  }
+
+  void _onContractChanged(MailComposeContract? contract) {
+    setState(() {
+      _contractId = contract?.contractId;
+      _contractShortName = contract?.contractShortName.trim() ?? '';
+      _toUserIds.clear();
+      _ccUserIds.clear();
+      _bccUserIds.clear();
     });
   }
 
@@ -302,11 +355,14 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
 
   MailComposePayload _buildPayload() {
     return MailComposePayload(
-      to: List<String>.from(_to),
-      cc: List<String>.from(_cc),
-      bcc: List<String>.from(_bcc),
+      toUserIds: List<String>.from(_toUserIds),
+      ccUserIds: List<String>.from(_ccUserIds),
+      bccUserIds: List<String>.from(_bccUserIds),
       subject: _subject.text.trim(),
       body: _message.text.trim(),
+      projectId: (_projectId ?? '').trim(),
+      contractId: (_contractId ?? '').trim(),
+      contractShortName: _contractShortName.trim(),
       referenceId: _referenceId.trim(),
       category: _category,
       requiredResponse: _requiredResponse,
@@ -328,7 +384,14 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   }
 
   String? _validate({required bool forSend}) {
-    if (_to.isEmpty) {
+    if ((_projectId ?? '').trim().isEmpty) {
+      return 'Project is required.';
+    }
+    if ((_contractId ?? '').trim().isEmpty ||
+        _contractShortName.trim().isEmpty) {
+      return 'Contract is required.';
+    }
+    if (_toUserIds.isEmpty) {
       return 'Please add at least one recipient in To.';
     }
     if (_subject.text.trim().isEmpty) {
@@ -378,7 +441,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
     setState(() => _busy = true);
     try {
       final List<MailComposeAttachment> files = await _resolvedLocalFiles();
-      final String message = await mailSaveDraft(
+      final MailDraftSaveResult result = await mailSaveDraft(
         ref,
         payload: _buildPayload(),
         files: files,
@@ -386,11 +449,14 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       if (!mounted) {
         return;
       }
+      if (result.draftId != null) {
+        _savedDraftId = result.draftId;
+      }
       await AppDialog.show(
         context,
         variant: AppDialogVariant.success,
         title: 'Save Draft',
-        message: message,
+        message: result.message,
       );
       if (!mounted) {
         return;
@@ -435,6 +501,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
         ref,
         payload: _buildPayload(),
         files: files,
+        draftId: _savedDraftId ?? widget.draftId,
       );
       if (!mounted) {
         return;
@@ -503,44 +570,78 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
+                      _projectContractRow(),
+                      const SizedBox(height: 8),
                       _RecipientField(
                         key: _toFieldKey,
                         label: 'To *',
-                        hint: 'Search users or type an email...',
-                        helper: 'Example: user1@gmail.com, user2@gmail.com',
-                        selected: _to,
-                        onChanged: (List<String> value) =>
-                            setState(() {
-                              _to
-                                ..clear()
-                                ..addAll(value);
-                            }),
+                        hint: 'Enter name or email address...',
+                        helper:
+                            'Select recipients for the chosen contract (user IDs).',
+                        selectedUserIds: _toUserIds,
+                        directory: _recipientDirectory,
+                        contractShortName: _contractShortName,
+                        enabled: _contractShortName.isNotEmpty,
+                        onChanged: (List<String> value) => setState(() {
+                          _toUserIds
+                            ..clear()
+                            ..addAll(value);
+                        }),
+                        onRecipientPicked: _rememberRecipient,
                       ),
                       const SizedBox(height: 8),
-                      _RecipientField(
-                        key: _ccFieldKey,
-                        label: 'CC',
-                        hint: 'Search users or type an email...',
-                        selected: _cc,
-                        onChanged: (List<String> value) =>
-                            setState(() {
-                              _cc
+                      LayoutBuilder(
+                        builder:
+                            (BuildContext context, BoxConstraints constraints) {
+                          final bool narrow = constraints.maxWidth < 520;
+                          final Widget cc = _RecipientField(
+                            key: _ccFieldKey,
+                            label: 'CC',
+                            hint: 'Enter CC name or email address...',
+                            selectedUserIds: _ccUserIds,
+                            directory: _recipientDirectory,
+                            contractShortName: _contractShortName,
+                            enabled: _contractShortName.isNotEmpty,
+                            onChanged: (List<String> value) => setState(() {
+                              _ccUserIds
                                 ..clear()
                                 ..addAll(value);
                             }),
-                      ),
-                      const SizedBox(height: 8),
-                      _RecipientField(
-                        key: _bccFieldKey,
-                        label: 'BCC',
-                        hint: 'Search users or type an email...',
-                        selected: _bcc,
-                        onChanged: (List<String> value) =>
-                            setState(() {
-                              _bcc
+                            onRecipientPicked: _rememberRecipient,
+                          );
+                          final Widget bcc = _RecipientField(
+                            key: _bccFieldKey,
+                            label: 'BCC',
+                            hint: 'Enter BCC name or email address...',
+                            selectedUserIds: _bccUserIds,
+                            directory: _recipientDirectory,
+                            contractShortName: _contractShortName,
+                            enabled: _contractShortName.isNotEmpty,
+                            onChanged: (List<String> value) => setState(() {
+                              _bccUserIds
                                 ..clear()
                                 ..addAll(value);
                             }),
+                            onRecipientPicked: _rememberRecipient,
+                          );
+                          if (narrow) {
+                            return Column(
+                              children: <Widget>[
+                                cc,
+                                const SizedBox(height: 8),
+                                bcc,
+                              ],
+                            );
+                          }
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Expanded(child: cc),
+                              const SizedBox(width: 8),
+                              Expanded(child: bcc),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 8),
                       TextField(
@@ -550,41 +651,42 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                           hint: 'Enter subject...',
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       LayoutBuilder(
                         builder:
                             (BuildContext context, BoxConstraints constraints) {
-                          final bool narrow = constraints.maxWidth < 720;
-                          final Widget reference = _referenceCard();
+                          final bool narrow = constraints.maxWidth < 520;
                           final Widget correspondence = TextField(
                             controller: _correspondence,
                             decoration: _composeDecoration(
                               label: 'Correspondence Letter No',
+                              hint: 'Search or enter letter number...',
                             ),
                           );
                           if (narrow) {
                             return Column(
                               children: <Widget>[
-                                reference,
+                                _referenceCard(),
                                 const SizedBox(height: 8),
                                 correspondence,
                               ],
                             );
                           }
                           return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Expanded(child: reference),
-                              const SizedBox(width: 12),
+                              Expanded(child: _referenceCard()),
+                              const SizedBox(width: 8),
                               Expanded(child: correspondence),
                             ],
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       LayoutBuilder(
                         builder:
                             (BuildContext context, BoxConstraints constraints) {
-                          final bool narrow = constraints.maxWidth < 720;
+                          final bool narrow = constraints.maxWidth < 520;
                           if (narrow) {
                             return Column(
                               children: <Widget>[
@@ -598,34 +700,50 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
                               ],
                             );
                           }
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          return Column(
                             children: <Widget>[
-                              Expanded(child: _categoryBlock()),
-                              const SizedBox(width: 12),
-                              Expanded(child: _requiredBlock()),
-                              const SizedBox(width: 12),
-                              Expanded(child: _dateBlock()),
-                              const SizedBox(width: 12),
-                              Expanded(child: _priorityBlock()),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Expanded(child: _categoryBlock()),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: _requiredBlock()),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Expanded(child: _dateBlock()),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: _priorityBlock()),
+                                ],
+                              ),
                             ],
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      const SizedBox(height: 12),
+                      Row(
                         children: <Widget>[
-                          FilledButton.icon(
-                            onPressed: _busy ? null : _attachFile,
-                            icon: const Icon(Icons.attach_file),
-                            label: const Text('Attach File'),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _busy ? null : _attachFile,
+                              icon: const Icon(Icons.attach_file, size: 18),
+                              label: const Text('Attach File'),
+                            ),
                           ),
-                          OutlinedButton.icon(
-                            onPressed: _busy ? null : _attachFromRepository,
-                            icon: const Icon(Icons.folder_open_outlined),
-                            label: const Text('From Repository'),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed:
+                                  _busy ? null : _attachFromRepository,
+                              icon: const Icon(
+                                Icons.folder_open_outlined,
+                                size: 18,
+                              ),
+                              label: const Text('From Repository'),
+                            ),
                           ),
                         ],
                       ),
@@ -724,6 +842,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
               _composeSendBar(
                 busy: _busy,
                 success: _sendSuccess,
+                onSaveDraft: _saveDraft,
                 onSend: _send,
               ),
             ],
@@ -740,6 +859,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
   Widget _composeSendBar({
     required bool busy,
     required bool success,
+    required VoidCallback onSaveDraft,
     required VoidCallback onSend,
   }) {
     final AppPalette palette = AppPalette.of(context);
@@ -758,31 +878,41 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: MailTheme.composePrimaryButton(context),
-                foregroundColor: Colors.white,
-                // Hug width: theme Size.fromHeight is infinite min width.
-                minimumSize: const Size(0, AppTheme.fieldHeight),
-              ),
-              onPressed: busy || success ? null : onSend,
-              child: AppAsyncButtonChild(
-                phase: phase,
-                tone: AppButtonLottieTone.white,
-                height: 20,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Icon(Icons.send_rounded, size: 18),
-                    SizedBox(width: 8),
-                    Text('Send'),
-                  ],
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy || success ? null : onSaveDraft,
+                  icon: const Icon(Icons.save_outlined, size: 18),
+                  label: const Text('Save Draft'),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: MailTheme.composePrimaryButton(context),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, AppTheme.fieldHeight),
+                  ),
+                  onPressed: busy || success ? null : onSend,
+                  child: AppAsyncButtonChild(
+                    phase: phase,
+                    tone: AppButtonLottieTone.white,
+                    height: 20,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(Icons.send_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Send'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -857,7 +987,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
 
   Widget _fieldLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
         style: TextStyle(
@@ -867,6 +997,148 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
           letterSpacing: 0.1,
         ),
       ),
+    );
+  }
+
+  Widget _projectContractRow() {
+    final AsyncValue<List<MailComposeProject>> projectsAsync =
+        ref.watch(mailComposeProjectsProvider);
+    final AsyncValue<List<MailComposeContract>> contractsAsync =
+        ref.watch(mailComposeContractsProvider(_projectId ?? ''));
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: projectsAsync.when(
+            loading: () => _dropdownShell(
+              label: 'Project *',
+              child: const LinearProgressIndicator(minHeight: 2),
+            ),
+            error: (Object error, StackTrace _) => _dropdownShell(
+              label: 'Project *',
+              child: Text(
+                mailActionErrorMessage(error),
+                style: MailTheme.mutedStyle(context, fontSize: 12),
+              ),
+            ),
+            data: (List<MailComposeProject> projects) {
+              return _dropdownShell(
+                label: 'Project *',
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: projects.any(
+                      (MailComposeProject p) => p.projectId == _projectId,
+                    )
+                        ? _projectId
+                        : null,
+                    hint: Text(
+                      'Select Project',
+                      style: MailTheme.mutedStyle(context),
+                    ),
+                    items: <DropdownMenuItem<String>>[
+                      for (final MailComposeProject project in projects)
+                        DropdownMenuItem<String>(
+                          value: project.projectId,
+                          child: Text(
+                            project.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: _busy ? null : _onProjectChanged,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: contractsAsync.when(
+            loading: () => _dropdownShell(
+              label: 'Contract *',
+              child: const LinearProgressIndicator(minHeight: 2),
+            ),
+            error: (Object error, StackTrace _) => _dropdownShell(
+              label: 'Contract *',
+              child: Text(
+                mailActionErrorMessage(error),
+                style: MailTheme.mutedStyle(context, fontSize: 12),
+              ),
+            ),
+            data: (List<MailComposeContract> contracts) {
+              MailComposeContract? selected;
+              for (final MailComposeContract contract in contracts) {
+                if (contract.contractId == _contractId) {
+                  selected = contract;
+                  break;
+                }
+              }
+              return _dropdownShell(
+                label: 'Contract *',
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: selected?.contractId,
+                    hint: Text(
+                      (_projectId ?? '').isEmpty
+                          ? 'Select Project first'
+                          : 'Select Contract',
+                      style: MailTheme.mutedStyle(context),
+                    ),
+                    items: <DropdownMenuItem<String>>[
+                      for (final MailComposeContract contract in contracts)
+                        DropdownMenuItem<String>(
+                          value: contract.contractId,
+                          child: Text(
+                            contract.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: _busy || (_projectId ?? '').isEmpty
+                        ? null
+                        : (String? id) {
+                            MailComposeContract? match;
+                            for (final MailComposeContract c in contracts) {
+                              if (c.contractId == id) {
+                                match = c;
+                                break;
+                              }
+                            }
+                            _onContractChanged(match);
+                          },
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dropdownShell({required String label, required Widget child}) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final AppPalette palette = AppPalette.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _fieldLabel(label),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: palette.fieldFill,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.75),
+            ),
+          ),
+          child: child,
+        ),
+      ],
     );
   }
 
@@ -884,10 +1156,12 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
       child: Row(
         children: <Widget>[
           Icon(Icons.tag_rounded, size: 18, color: MailTheme.muted(context)),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Reference / Mail ID (Auto)',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: MailTheme.muted(context),
                 fontWeight: FontWeight.w600,
@@ -895,11 +1169,17 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
               ),
             ),
           ),
-          Text(
-            _referenceId.isEmpty ? '—' : _referenceId,
-            style: TextStyle(
-              color: MailTheme.pillForeground(context),
-              fontWeight: FontWeight.w800,
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              _referenceId.isEmpty ? '—' : _referenceId,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                color: MailTheme.pillForeground(context),
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -962,7 +1242,7 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
             borderRadius: BorderRadius.circular(12),
             onTap: _pickCategory,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
@@ -999,23 +1279,16 @@ class _MailComposePageState extends ConsumerState<MailComposePage> {
         _fieldLabel('Required Response *'),
         SegmentedButton<bool>(
           segments: const <ButtonSegment<bool>>[
-            ButtonSegment<bool>(
-              value: false,
-              label: Text('No'),
-              icon: Icon(Icons.close_rounded, size: 16),
-            ),
-            ButtonSegment<bool>(
-              value: true,
-              label: Text('Yes'),
-              icon: Icon(Icons.check_rounded, size: 16),
-            ),
+            ButtonSegment<bool>(value: false, label: Text('No')),
+            ButtonSegment<bool>(value: true, label: Text('Yes')),
           ],
           selected: <bool>{_requiredResponse},
           onSelectionChanged: (Set<bool> next) {
             setState(() => _requiredResponse = next.first);
           },
           style: ButtonStyle(
-            visualDensity: VisualDensity.comfortable,
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             shape: WidgetStatePropertyAll<OutlinedBorder>(
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -1098,16 +1371,24 @@ class _RecipientField extends ConsumerStatefulWidget {
     super.key,
     required this.label,
     required this.hint,
-    required this.selected,
+    required this.selectedUserIds,
+    required this.directory,
+    required this.contractShortName,
     required this.onChanged,
+    required this.onRecipientPicked,
+    this.enabled = true,
     this.helper,
   });
 
   final String label;
   final String hint;
   final String? helper;
-  final List<String> selected;
+  final bool enabled;
+  final List<String> selectedUserIds;
+  final Map<String, MailRecipient> directory;
+  final String contractShortName;
   final ValueChanged<List<String>> onChanged;
+  final ValueChanged<MailRecipient> onRecipientPicked;
 
   @override
   ConsumerState<_RecipientField> createState() => _RecipientFieldState();
@@ -1116,114 +1397,77 @@ class _RecipientField extends ConsumerStatefulWidget {
 class _RecipientFieldState extends ConsumerState<_RecipientField> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focus = FocusNode();
-  Timer? _debounce;
-  List<MailRecipient> _results = const <MailRecipient>[];
-  bool _searching = false;
   bool _showResults = false;
-  String? _emptyMessage;
 
   @override
   void initState() {
     super.initState();
     _focus.addListener(() {
-      if (mounted) {
-        setState(() {});
+      if (!mounted) {
+        return;
       }
+      setState(() {
+        _showResults = _focus.hasFocus && widget.enabled;
+      });
     });
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _controller.dispose();
     _focus.dispose();
     super.dispose();
   }
 
-  bool _looksLikeEmail(String value) {
-    final String email = value.trim();
-    return email.contains('@') && email.contains('.');
+  void commitPending() {
+    // Selection is from contract recipients only; nothing to commit from free text.
   }
 
-  void commitPending() => _commitTyped();
-
-  void _commitTyped() {
-    final String value = _controller.text.trim();
-    if (value.isEmpty) {
+  void _addRecipient(MailRecipient recipient) {
+    final String id = recipient.userId.trim();
+    if (id.isEmpty) {
       return;
     }
-    if (!_looksLikeEmail(value)) {
-      return;
-    }
-    _addEmail(value);
-  }
-
-  void _addEmail(String email) {
-    final String normalized = email.trim();
-    if (normalized.isEmpty) {
-      return;
-    }
-    final List<String> next = List<String>.from(widget.selected);
-    if (!next.contains(normalized)) {
-      next.add(normalized);
+    widget.onRecipientPicked(recipient);
+    final List<String> next = List<String>.from(widget.selectedUserIds);
+    if (!next.contains(id)) {
+      next.add(id);
       widget.onChanged(next);
     }
     _controller.clear();
-    setState(() {
-      _results = const <MailRecipient>[];
-      _showResults = false;
-      _emptyMessage = null;
-    });
+    setState(() => _showResults = false);
+    _focus.unfocus();
   }
 
-  void _removeEmail(String email) {
-    final List<String> next = List<String>.from(widget.selected)..remove(email);
+  void _removeUserId(String userId) {
+    final List<String> next = List<String>.from(widget.selectedUserIds)
+      ..remove(userId);
     widget.onChanged(next);
   }
 
-  void _onQueryChanged(String value) {
-    _debounce?.cancel();
-    final String query = value.trim();
-    if (query.isEmpty) {
-      setState(() {
-        _results = const <MailRecipient>[];
-        _showResults = false;
-        _emptyMessage = null;
-        _searching = false;
-      });
-      return;
+  String _chipLabel(String userId) {
+    final MailRecipient? known = widget.directory[userId];
+    if (known == null) {
+      return userId;
     }
-    _debounce = Timer(const Duration(milliseconds: 350), () async {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _searching = true;
-        _showResults = true;
-      });
-      try {
-        final List<MailRecipient> found =
-            await ref.read(mailRemoteDataSourceProvider).searchRecipients(query);
-        if (!mounted || _controller.text.trim() != query) {
-          return;
-        }
-        setState(() {
-          _results = found;
-          _emptyMessage =
-              found.isEmpty ? 'No matching users found' : null;
-          _searching = false;
-        });
-      } catch (_) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _results = const <MailRecipient>[];
-          _emptyMessage = 'No matching users found';
-          _searching = false;
-        });
-      }
-    });
+    return known.chipLabel;
+  }
+
+  List<MailRecipient> _filtered(List<MailRecipient> all) {
+    final String query = _controller.text.trim().toLowerCase();
+    final Iterable<MailRecipient> base = all.where(
+      (MailRecipient r) => !widget.selectedUserIds.contains(r.userId),
+    );
+    if (query.isEmpty) {
+      return base.toList(growable: false);
+    }
+    return base
+        .where((MailRecipient r) {
+          return r.displayName.toLowerCase().contains(query) ||
+              r.userId.toLowerCase().contains(query) ||
+              r.emailId.toLowerCase().contains(query);
+        })
+        .toList(growable: false);
   }
 
   @override
@@ -1232,12 +1476,15 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
     final AppPalette palette = AppPalette.of(context);
     final bool focused = _focus.hasFocus;
     final BorderRadius radius = BorderRadius.circular(12);
+    final AsyncValue<List<MailRecipient>> recipientsAsync = ref.watch(
+      mailComposeRecipientsProvider(widget.contractShortName),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 6),
           child: Text(
             widget.label,
             style: TextStyle(
@@ -1265,20 +1512,20 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              if (widget.selected.isNotEmpty)
+              if (widget.selectedUserIds.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6, left: 2, right: 2),
                   child: Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: widget.selected
+                    children: widget.selectedUserIds
                         .map(
-                          (String email) => InputChip(
-                            label: Text(email),
+                          (String userId) => InputChip(
+                            label: Text(_chipLabel(userId)),
                             visualDensity: VisualDensity.compact,
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,
-                            onDeleted: () => _removeEmail(email),
+                            onDeleted: () => _removeUserId(userId),
                           ),
                         )
                         .toList(growable: false),
@@ -1287,8 +1534,11 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
               TextField(
                 controller: _controller,
                 focusNode: _focus,
+                enabled: widget.enabled,
                 decoration: InputDecoration(
-                  hintText: widget.hint,
+                  hintText: widget.enabled
+                      ? widget.hint
+                      : 'Select Contract first',
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -1298,30 +1548,14 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
                     horizontal: 6,
                     vertical: 8,
                   ),
-                  suffixIcon: _looksLikeEmail(_controller.text)
-                      ? IconButton(
-                          tooltip: 'Add email',
-                          icon: Icon(
-                            Icons.add_circle_rounded,
-                            color: scheme.primary,
-                          ),
-                          onPressed: _commitTyped,
-                        )
-                      : Icon(
-                          Icons.person_search_rounded,
-                          size: 20,
-                          color: MailTheme.muted(context),
-                        ),
+                  suffixIcon: Icon(
+                    Icons.person_search_rounded,
+                    size: 20,
+                    color: MailTheme.muted(context),
+                  ),
                 ),
-                onChanged: (String value) {
-                  setState(() {});
-                  _onQueryChanged(value);
-                },
-                onSubmitted: (_) {
-                  if (_looksLikeEmail(_controller.text)) {
-                    _commitTyped();
-                  }
-                },
+                onChanged: (_) => setState(() => _showResults = true),
+                onTap: () => setState(() => _showResults = widget.enabled),
               ),
             ],
           ),
@@ -1334,7 +1568,7 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
               style: MailTheme.mutedStyle(context, fontSize: 11),
             ),
           ),
-        if (_showResults) ...<Widget>[
+        if (_showResults && widget.enabled) ...<Widget>[
           const SizedBox(height: 6),
           Material(
             elevation: 4,
@@ -1343,67 +1577,74 @@ class _RecipientFieldState extends ConsumerState<_RecipientField> {
             borderRadius: BorderRadius.circular(12),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220),
-              child: _searching
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+              child: recipientsAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+                error: (Object error, StackTrace _) => Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    mailActionErrorMessage(error),
+                    style: MailTheme.mutedStyle(context),
+                  ),
+                ),
+                data: (List<MailRecipient> all) {
+                  final List<MailRecipient> results = _filtered(all);
+                  if (results.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Text(
+                        all.isEmpty
+                            ? 'No recipients for this contract'
+                            : 'No matching users found',
+                        style: MailTheme.mutedStyle(context),
                       ),
-                    )
-                  : _results.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Text(
-                            _emptyMessage ?? 'No matching users found',
-                            style: MailTheme.mutedStyle(context),
-                          ),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: _results.length,
-                          separatorBuilder: (BuildContext context, int index) =>
-                              Divider(
-                            height: 1,
-                            color: scheme.outlineVariant.withValues(alpha: 0.5),
-                          ),
-                          itemBuilder: (BuildContext context, int index) {
-                            final MailRecipient recipient = _results[index];
-                            return ListTile(
-                              dense: true,
-                              leading: CircleAvatar(
-                                radius: 16,
-                                backgroundColor: MailTheme.pillBackground(
-                                  context,
-                                ),
-                                foregroundColor: MailTheme.pillForeground(
-                                  context,
-                                ),
-                                child: Text(recipient.initial),
-                              ),
-                              title: Text(
-                                recipient.username.isEmpty
-                                    ? recipient.emailId
-                                    : recipient.username,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                <String>[
-                                  if (recipient.userId.isNotEmpty)
-                                    recipient.userId,
-                                  recipient.emailId,
-                                ].join('\n'),
-                              ),
-                              isThreeLine: recipient.userId.isNotEmpty,
-                              onTap: () => _addEmail(recipient.emailId),
-                            );
-                          },
+                    );
+                  }
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: results.length,
+                    separatorBuilder: (BuildContext context, int index) =>
+                        Divider(
+                      height: 1,
+                      color: scheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                    itemBuilder: (BuildContext context, int index) {
+                      final MailRecipient recipient = results[index];
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: MailTheme.pillBackground(context),
+                          foregroundColor: MailTheme.pillForeground(context),
+                          child: Text(recipient.initial),
                         ),
+                        title: Text(
+                          recipient.displayName,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          <String>[
+                            if (recipient.userId.isNotEmpty) recipient.userId,
+                            if (recipient.emailId.isNotEmpty)
+                              recipient.emailId,
+                          ].join('\n'),
+                        ),
+                        isThreeLine: recipient.userId.isNotEmpty &&
+                            recipient.emailId.isNotEmpty,
+                        onTap: () => _addRecipient(recipient),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],

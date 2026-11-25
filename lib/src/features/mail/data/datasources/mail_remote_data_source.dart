@@ -107,6 +107,42 @@ class MailRemoteDataSource {
     return mailApiMessage(response.data) ?? 'Mail deleted permanently';
   }
 
+  Future<List<MailComposeProject>> fetchComposeProjects() async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.contractProjectsFilterPath,
+    );
+    return parseMailComposeProjects(response.data);
+  }
+
+  Future<List<MailComposeContract>> fetchComposeContracts(
+    String projectId,
+  ) async {
+    final String id = projectId.trim();
+    if (id.isEmpty) {
+      return const <MailComposeContract>[];
+    }
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      ApiConstants.contractListPath,
+      data: <String, dynamic>{'project_id_fk': id},
+      options: Options(contentType: Headers.formUrlEncodedContentType),
+    );
+    return parseMailComposeContracts(response.data);
+  }
+
+  Future<List<MailRecipient>> fetchRecipientsByContract(
+    String contractShortName,
+  ) async {
+    final String shortName = contractShortName.trim();
+    if (shortName.isEmpty) {
+      return const <MailRecipient>[];
+    }
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      ApiConstants.mailRecipientsByContractPath,
+      queryParameters: <String, dynamic>{'contractShortName': shortName},
+    );
+    return parseMailRecipients(response.data);
+  }
+
   Future<List<MailRecipient>> searchRecipients(String query) async {
     final String q = query.trim();
     if (q.isEmpty) {
@@ -128,7 +164,7 @@ class MailRemoteDataSource {
     return reference;
   }
 
-  Future<String> saveDraft({
+  Future<MailDraftSaveResult> saveDraft({
     required MailComposePayload payload,
     List<MailComposeAttachment> files = const <MailComposeAttachment>[],
   }) async {
@@ -138,15 +174,29 @@ class MailRemoteDataSource {
       options: Options(contentType: 'multipart/form-data'),
     );
     _throwIfMailError(response.data);
-    return mailApiMessage(response.data) ?? 'Draft saved successfully';
+    return MailDraftSaveResult(
+      draftId: parseMailDraftId(response.data),
+      message: mailApiMessage(response.data) ?? 'Draft saved successfully',
+    );
   }
 
+  /// Web flow: save draft (if needed) then `POST /api/mail/draft/{id}/send`.
   Future<String> sendMail({
     required MailComposePayload payload,
     List<MailComposeAttachment> files = const <MailComposeAttachment>[],
+    int? draftId,
   }) async {
+    int? id = draftId;
+    final MailDraftSaveResult saved = await saveDraft(
+      payload: payload,
+      files: files,
+    );
+    id = saved.draftId ?? id;
+    if (id == null) {
+      throw StateError('Draft id missing; cannot send mail.');
+    }
     final Response<dynamic> response = await _dio.post<dynamic>(
-      ApiConstants.mailSendPath,
+      ApiConstants.mailDraftSendPath(id),
       data: await _composeFormData(payload: payload, files: files),
       options: Options(contentType: 'multipart/form-data'),
     );

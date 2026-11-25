@@ -584,10 +584,15 @@ class ApiConstants {
   static const String mailDashboardPath = '/api/mail/dashboard';
   static const String mailLabelsPath = '/api/labels';
   static const String mailRecipientsSearchPath = '/api/mail/recipients/search';
+  static const String mailRecipientsByContractPath =
+      '/api/mail/recipients/by-contract';
   static const String mailGenerateReferencePath =
       '/api/mail/generate-reference';
   static const String mailDraftPath = '/api/mail/draft';
-  static const String mailSendPath = '/api/mail/send';
+
+  /// Send a previously saved draft: `POST /api/mail/draft/{id}/send`.
+  static String mailDraftSendPath(int draftId) =>
+      '/api/mail/draft/$draftId/send';
   static const String documentsRepositoryPath = '/api/documents/repository';
 
   static String mailLabelMailsPath(String labelName) =>

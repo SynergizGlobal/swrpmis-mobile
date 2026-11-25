@@ -96,4 +96,43 @@ void main() {
     expect(labels.single.name, 'development');
     expect(labels.single.colorHex, '#2563EB');
   });
+
+  test('compose projects/contracts/recipients/draft id parse', () {
+    final projects = parseMailComposeProjects(<dynamic>[
+      <String, dynamic>{
+        'project_id_fk': 'P03',
+        'project_name': 'Bagalkot—Kudachi New Railway Line',
+      },
+    ]);
+    expect(projects.single.projectId, 'P03');
+
+    final contracts = parseMailComposeContracts(<String, dynamic>{
+      'aaData': <dynamic>[
+        <String, dynamic>{
+          'contract_id': 'P03CN01',
+          'contract_short_name': 'BGK-KUD New Line: Yadwad–Jamkhandi',
+          'contract_name': 'Construction',
+        },
+      ],
+    });
+    expect(contracts.single.contractId, 'P03CN01');
+    expect(contracts.single.contractShortName, contains('BGK-KUD'));
+
+    final recipients = parseMailRecipients(<dynamic>[
+      <String, dynamic>{
+        'user_id': 'PMIS_RU_001',
+        'user_name': 'User One',
+      },
+    ]);
+    expect(recipients.single.userId, 'PMIS_RU_001');
+    expect(recipients.single.username, 'User One');
+
+    expect(parseMailDraftId(<String, dynamic>{'id': 77}), 77);
+    expect(
+      parseMailDraftId(<String, dynamic>{
+        'data': <String, dynamic>{'mailId': 88},
+      }),
+      88,
+    );
+  });
 }

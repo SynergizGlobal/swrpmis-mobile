@@ -149,28 +149,56 @@ Future<String> mailPermanentDeleteMessage(
   return message;
 }
 
-Future<String> mailSaveDraft(
+final mailComposeProjectsProvider =
+    FutureProvider.autoDispose<List<MailComposeProject>>((ref) async {
+  return ref.watch(mailRemoteDataSourceProvider).fetchComposeProjects();
+});
+
+final mailComposeContractsProvider = FutureProvider.autoDispose
+    .family<List<MailComposeContract>, String>((ref, String projectId) async {
+  final String id = projectId.trim();
+  if (id.isEmpty) {
+    return const <MailComposeContract>[];
+  }
+  return ref.watch(mailRemoteDataSourceProvider).fetchComposeContracts(id);
+});
+
+final mailComposeRecipientsProvider = FutureProvider.autoDispose
+    .family<List<MailRecipient>, String>((ref, String contractShortName) async {
+  final String shortName = contractShortName.trim();
+  if (shortName.isEmpty) {
+    return const <MailRecipient>[];
+  }
+  return ref
+      .watch(mailRemoteDataSourceProvider)
+      .fetchRecipientsByContract(shortName);
+});
+
+Future<MailDraftSaveResult> mailSaveDraft(
   WidgetRef ref, {
   required MailComposePayload payload,
   List<MailComposeAttachment> files = const <MailComposeAttachment>[],
 }) async {
-  final String message = await ref
+  final MailDraftSaveResult result = await ref
       .read(mailRemoteDataSourceProvider)
       .saveDraft(payload: payload, files: files);
   ref.invalidate(mailDraftsProvider);
   ref.invalidate(mailBadgeCountsProvider);
   ref.invalidate(mailDashboardProvider);
-  return message;
+  return result;
 }
 
 Future<String> mailSend(
   WidgetRef ref, {
   required MailComposePayload payload,
   List<MailComposeAttachment> files = const <MailComposeAttachment>[],
+  int? draftId,
 }) async {
-  final String message = await ref
-      .read(mailRemoteDataSourceProvider)
-      .sendMail(payload: payload, files: files);
+  final String message = await ref.read(mailRemoteDataSourceProvider).sendMail(
+        payload: payload,
+        files: files,
+        draftId: draftId,
+      );
   await mailRefreshAll(ref);
   return message;
 }

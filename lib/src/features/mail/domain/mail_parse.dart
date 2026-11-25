@@ -67,19 +67,89 @@ String? mailApiMessage(dynamic data) {
 List<MailRecipient> parseMailRecipients(dynamic data) {
   final List<MailRecipient> out = <MailRecipient>[];
   for (final Map<String, dynamic> json in _maps(data)) {
+    final String userId = _display(json['user_id'] ?? json['userId']);
     final String email = _display(json['emailId'] ?? json['email']);
-    if (email.isEmpty) {
+    final String username = _display(
+      json['user_name'] ?? json['username'] ?? json['name'],
+    );
+    if (userId.isEmpty && email.isEmpty) {
       continue;
     }
     out.add(
       MailRecipient(
         emailId: email,
-        userId: _display(json['userId']),
-        username: _display(json['username'] ?? json['name']),
+        userId: userId.isNotEmpty ? userId : email,
+        username: username,
       ),
     );
   }
   return out;
+}
+
+List<MailComposeProject> parseMailComposeProjects(dynamic data) {
+  final List<MailComposeProject> out = <MailComposeProject>[];
+  final Set<String> seen = <String>{};
+  for (final Map<String, dynamic> json in _maps(data)) {
+    final String projectId = _display(
+      json['project_id_fk'] ?? json['project_id'] ?? json['id'],
+    );
+    if (projectId.isEmpty || !seen.add(projectId)) {
+      continue;
+    }
+    out.add(
+      MailComposeProject(
+        projectId: projectId,
+        projectName: _display(json['project_name'] ?? json['name']),
+      ),
+    );
+  }
+  return out;
+}
+
+List<MailComposeContract> parseMailComposeContracts(dynamic data) {
+  final List<MailComposeContract> out = <MailComposeContract>[];
+  final Set<String> seen = <String>{};
+  for (final Map<String, dynamic> json in _maps(data)) {
+    final String contractId = _display(
+      json['contract_id'] ??
+          json['contract_id_fk'] ??
+          json['contractId'] ??
+          json['id'],
+    );
+    final String shortName = _display(
+      json['contract_short_name'] ?? json['contractShortName'],
+    );
+    final String name = _display(
+      json['contract_name'] ?? json['contractName'],
+    );
+    final String key =
+        contractId.isNotEmpty ? contractId : '$shortName|$name';
+    if (key.isEmpty || !seen.add(key)) {
+      continue;
+    }
+    out.add(
+      MailComposeContract(
+        contractId: contractId,
+        contractShortName: shortName,
+        contractName: name,
+      ),
+    );
+  }
+  return out;
+}
+
+int? parseMailDraftId(dynamic data) {
+  if (data is Map) {
+    final dynamic nested = data['data'];
+    final dynamic raw = data['id'] ??
+        data['mailId'] ??
+        data['draftId'] ??
+        (nested is Map
+            ? (nested['id'] ?? nested['mailId'] ?? nested['draftId'])
+            : null);
+    return _int(raw);
+  }
+  return _int(data);
 }
 
 String parseMailReference(dynamic data) {
@@ -393,8 +463,13 @@ bool _bool(dynamic value) {
 }
 
 Iterable<Map<String, dynamic>> _maps(dynamic data) sync* {
-  final dynamic list =
-      data is Map ? (data['items'] ?? data['data'] ?? data['mails'] ?? data) : data;
+  final dynamic list = data is Map
+      ? (data['items'] ??
+          data['data'] ??
+          data['mails'] ??
+          data['aaData'] ??
+          data)
+      : data;
   if (list is! List) {
     return;
   }

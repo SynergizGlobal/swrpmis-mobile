@@ -16,30 +16,62 @@ class _FakeMailDs extends MailRemoteDataSource {
 
   MailComposePayload? lastPayload;
   bool sendCalled = false;
+  int? lastSendDraftId;
 
   @override
   Future<String> generateReference() async => '#MAIL-TEST-1';
 
   @override
-  Future<List<MailRecipient>> searchRecipients(String query) async => const [];
+  Future<List<MailComposeProject>> fetchComposeProjects() async =>
+      const <MailComposeProject>[
+        MailComposeProject(projectId: 'P03', projectName: 'Project Three'),
+      ];
 
   @override
-  Future<List<MailMessage>> fetchDrafts() async => const [];
+  Future<List<MailComposeContract>> fetchComposeContracts(
+    String projectId,
+  ) async =>
+      const <MailComposeContract>[
+        MailComposeContract(
+          contractId: 'P03CN01',
+          contractShortName: 'BGK-KUD New Line: Yadwad–Jamkhandi',
+          contractName: 'Contract One',
+        ),
+      ];
 
   @override
-  Future<List<MailMessage>> fetchSent() async => const [];
+  Future<List<MailRecipient>> fetchRecipientsByContract(
+    String contractShortName,
+  ) async =>
+      const <MailRecipient>[
+        MailRecipient(
+          emailId: 'user1@gmail.com',
+          userId: 'PMIS_RU_001',
+          username: 'User One',
+        ),
+      ];
 
   @override
-  Future<List<MailMessage>> fetchInbox() async => const [];
+  Future<List<MailRecipient>> searchRecipients(String query) async =>
+      const <MailRecipient>[];
 
   @override
-  Future<List<MailMessage>> fetchTrash() async => const [];
+  Future<List<MailMessage>> fetchDrafts() async => const <MailMessage>[];
 
   @override
-  Future<List<MailMessage>> fetchStarred() async => const [];
+  Future<List<MailMessage>> fetchSent() async => const <MailMessage>[];
 
   @override
-  Future<List<MailLabel>> fetchLabels() async => const [];
+  Future<List<MailMessage>> fetchInbox() async => const <MailMessage>[];
+
+  @override
+  Future<List<MailMessage>> fetchTrash() async => const <MailMessage>[];
+
+  @override
+  Future<List<MailMessage>> fetchStarred() async => const <MailMessage>[];
+
+  @override
+  Future<List<MailLabel>> fetchLabels() async => const <MailLabel>[];
 
   @override
   Future<MailDashboardData> fetchDashboard() async =>
@@ -52,35 +84,38 @@ class _FakeMailDs extends MailRemoteDataSource {
           pendingWithOthers: 0,
           overdueMails: 0,
         ),
-        rows: [],
+        rows: <MailCorrespondenceRow>[],
       );
 
   @override
   Future<String> sendMail({
     required MailComposePayload payload,
-    List<MailComposeAttachment> files = const [],
+    List<MailComposeAttachment> files = const <MailComposeAttachment>[],
+    int? draftId,
   }) async {
     sendCalled = true;
     lastPayload = payload;
+    lastSendDraftId = draftId;
     return 'Mail sent successfully';
   }
 
   @override
-  Future<String> saveDraft({
+  Future<MailDraftSaveResult> saveDraft({
     required MailComposePayload payload,
-    List<MailComposeAttachment> files = const [],
-  }) async => 'Draft saved';
+    List<MailComposeAttachment> files = const <MailComposeAttachment>[],
+  }) async =>
+      const MailDraftSaveResult(draftId: 42, message: 'Draft saved');
 }
 
 void main() {
-  testWidgets('typed To email is committed on Send without pressing +', (tester) async {
-    final fake = _FakeMailDs();
+  testWidgets('contract recipient user id is sent in toUserIds', (tester) async {
+    final _FakeMailDs fake = _FakeMailDs();
     final GoRouter router = GoRouter(
       initialLocation: MailComposePage.routePath,
       routes: <RouteBase>[
         GoRoute(
           path: MailModulePage.routePath,
-          redirect: (_, state) =>
+          redirect: (_, GoRouterState state) =>
               state.uri.path == MailModulePage.routePath
                   ? MailModulePage.folderPath(MailFolder.dashboard)
                   : null,
@@ -106,27 +141,47 @@ void main() {
       ],
     );
 
-    await tester.binding.setSurfaceSize(const Size(400, 1400));
+    await tester.binding.setSurfaceSize(const Size(420, 1800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [mailRemoteDataSourceProvider.overrideWithValue(fake)],
+        overrides: <Override>[
+          mailRemoteDataSourceProvider.overrideWithValue(fake),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
 
-    // Type email into To without committing via + / Enter.
-    await tester.enterText(
-      find.byWidgetPredicate((w) {
-        return w is TextField &&
-            (w.decoration?.hintText?.contains('Search users') ?? false);
-      }).first,
-      'user1@gmail.com',
+    final Finder projectDropdown = find.byType(DropdownButton<String>).at(0);
+    await tester.ensureVisible(projectDropdown);
+    await tester.tap(projectDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Project Three').last);
+    await tester.pumpAndSettle();
+
+    final Finder contractDropdown = find.byType(DropdownButton<String>).at(1);
+    await tester.ensureVisible(contractDropdown);
+    await tester.tap(contractDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.text('BGK-KUD New Line: Yadwad–Jamkhandi').last,
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final Finder toField = find
+        .byWidgetPredicate((Widget w) {
+          return w is TextField &&
+              (w.decoration?.hintText?.contains('Enter name or email') ??
+                  false);
+        })
+        .first;
+    await tester.ensureVisible(toField);
+    await tester.tap(toField);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('User One'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
       find.widgetWithText(TextField, 'Enter subject...'),
@@ -138,25 +193,30 @@ void main() {
     );
     await tester.pump();
 
-    // Required response defaults to Yes — switch to No to skip date.
     await tester.ensureVisible(find.text('No'));
     await tester.tap(find.text('No'));
     await tester.pump();
 
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Send'));
     await tester.tap(find.widgetWithText(FilledButton, 'Send'));
-    await tester.pump(); // start send
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
 
-    expect(fake.sendCalled, isTrue, reason: 'pending typed To must bind before send');
-    expect(fake.lastPayload?.to, contains('user1@gmail.com'));
+    expect(fake.sendCalled, isTrue);
+    expect(fake.lastPayload?.toUserIds, contains('PMIS_RU_001'));
+    expect(fake.lastPayload?.projectId, 'P03');
+    expect(fake.lastPayload?.contractId, 'P03CN01');
+    expect(
+      fake.lastPayload?.contractShortName,
+      'BGK-KUD New Line: Yadwad–Jamkhandi',
+    );
+    expect(fake.lastPayload?.toJson().containsKey('toUserIds'), isTrue);
+    expect(fake.lastPayload?.toJson().containsKey('to'), isFalse);
 
-    // Dismiss success dialog
-    final ok = find.text('OK');
+    final Finder ok = find.text('OK');
     if (ok.evaluate().isNotEmpty) {
       await tester.tap(ok);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
     }
     expect(find.text('SENT_FOLDER'), findsOneWidget);
   });

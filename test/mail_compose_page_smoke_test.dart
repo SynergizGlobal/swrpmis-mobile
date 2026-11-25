@@ -19,9 +19,42 @@ class _FakeMailDs extends MailRemoteDataSource {
   Future<String> generateReference() async => '#MAIL-TEST-1';
 
   @override
+  Future<List<MailComposeProject>> fetchComposeProjects() async =>
+      const <MailComposeProject>[
+        MailComposeProject(
+          projectId: 'P03',
+          projectName: 'Bagalkot—Kudachi New Railway Line',
+        ),
+      ];
+
+  @override
+  Future<List<MailComposeContract>> fetchComposeContracts(
+    String projectId,
+  ) async =>
+      const <MailComposeContract>[
+        MailComposeContract(
+          contractId: 'P03CN01',
+          contractShortName: 'BGK-KUD New Line: Yadwad–Jamkhandi',
+          contractName: 'Construction of New Broad Gauge Railway Line',
+        ),
+      ];
+
+  @override
+  Future<List<MailRecipient>> fetchRecipientsByContract(
+    String contractShortName,
+  ) async =>
+      const <MailRecipient>[
+        MailRecipient(
+          emailId: 'saltaf.h@synergizglobal.com',
+          userId: 'PMIS_CO_036',
+          username: 'altaf con',
+        ),
+      ];
+
+  @override
   Future<List<MailRecipient>> searchRecipients(String query) async {
     if (query.contains('altaf')) {
-      return const [
+      return const <MailRecipient>[
         MailRecipient(
           emailId: 'saltaf.h@synergizglobal.com',
           userId: 'PMIS_CO_036',
@@ -29,16 +62,17 @@ class _FakeMailDs extends MailRemoteDataSource {
         ),
       ];
     }
-    return const [];
+    return const <MailRecipient>[];
   }
 
   @override
-  Future<List<MailMessage>> fetchDrafts() async => const [];
+  Future<List<MailMessage>> fetchDrafts() async => const <MailMessage>[];
 
   @override
   Future<String> sendMail({
     required MailComposePayload payload,
-    List<MailComposeAttachment> files = const [],
+    List<MailComposeAttachment> files = const <MailComposeAttachment>[],
+    int? draftId,
   }) async {
     sendCalled = true;
     lastPayload = payload;
@@ -46,10 +80,14 @@ class _FakeMailDs extends MailRemoteDataSource {
   }
 
   @override
-  Future<String> saveDraft({
+  Future<MailDraftSaveResult> saveDraft({
     required MailComposePayload payload,
-    List<MailComposeAttachment> files = const [],
-  }) async => 'Draft saved successfully';
+    List<MailComposeAttachment> files = const <MailComposeAttachment>[],
+  }) async =>
+      const MailDraftSaveResult(
+        draftId: 99,
+        message: 'Draft saved successfully',
+      );
 
   @override
   Future<MailDashboardData> fetchDashboard() async =>
@@ -62,24 +100,24 @@ class _FakeMailDs extends MailRemoteDataSource {
           pendingWithOthers: 0,
           overdueMails: 0,
         ),
-        rows: [],
+        rows: <MailCorrespondenceRow>[],
       );
 
   @override
-  Future<List<MailMessage>> fetchInbox() async => const [];
+  Future<List<MailMessage>> fetchInbox() async => const <MailMessage>[];
   @override
-  Future<List<MailMessage>> fetchSent() async => const [];
+  Future<List<MailMessage>> fetchSent() async => const <MailMessage>[];
   @override
-  Future<List<MailMessage>> fetchTrash() async => const [];
+  Future<List<MailMessage>> fetchTrash() async => const <MailMessage>[];
   @override
-  Future<List<MailMessage>> fetchStarred() async => const [];
+  Future<List<MailMessage>> fetchStarred() async => const <MailMessage>[];
   @override
-  Future<List<MailLabel>> fetchLabels() async => const [];
+  Future<List<MailLabel>> fetchLabels() async => const <MailLabel>[];
 }
 
 Widget _composeApp(Widget home) {
   return ProviderScope(
-    overrides: [
+    overrides: <Override>[
       mailRemoteDataSourceProvider.overrideWithValue(_FakeMailDs()),
     ],
     child: MaterialApp(
@@ -120,18 +158,17 @@ void main() {
       reason: 'FilledButton in Row must hug width under AppTheme',
     );
     expect(find.text('Compose Mail'), findsOneWidget);
+    expect(find.text('Project *'), findsOneWidget);
+    expect(find.text('Contract *'), findsOneWidget);
     expect(find.text('To *'), findsOneWidget);
     expect(find.text('Subject *'), findsOneWidget);
     expect(find.text('Attach File'), findsOneWidget);
     expect(find.text('Add tag'), findsOneWidget);
     expect(find.text('#Urgent'), findsNothing);
-    expect(find.text('Save Draft'), findsOneWidget);
+    expect(find.text('Save Draft'), findsWidgets);
     expect(find.text('Send'), findsOneWidget);
-    // Save Draft stays in AppBar only; sticky bar has Send alone.
-    expect(find.widgetWithText(TextButton, 'Save Draft'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Send'), findsOneWidget);
 
-    // Send remains visible without scrolling (sticky bottom bar).
     final Finder send = find.widgetWithText(FilledButton, 'Send');
     expect(tester.getRect(send).bottom, lessThanOrEqualTo(800));
   });
@@ -178,14 +215,16 @@ void main() {
     expect(find.text('#MAIL-TEST-1'), findsOneWidget);
   });
 
-  testWidgets('selecting search result reflects as chip', (tester) async {
-    final fake = _FakeMailDs();
-    await tester.binding.setSurfaceSize(const Size(400, 1200));
+  testWidgets('selecting contract recipient reflects as chip', (tester) async {
+    final _FakeMailDs fake = _FakeMailDs();
+    await tester.binding.setSurfaceSize(const Size(420, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [mailRemoteDataSourceProvider.overrideWithValue(fake)],
+        overrides: <Override>[
+          mailRemoteDataSourceProvider.overrideWithValue(fake),
+        ],
         child: MaterialApp(
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
@@ -195,28 +234,39 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find
-          .byWidgetPredicate((Widget w) {
-            return w is TextField &&
-                (w.decoration?.hintText?.contains('Search users') ?? false);
-          })
-          .first,
-      'altaf',
+    final Finder projectDropdown = find.byType(DropdownButton<String>).at(0);
+    await tester.ensureVisible(projectDropdown);
+    await tester.tap(projectDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bagalkot—Kudachi New Railway Line').last);
+    await tester.pumpAndSettle();
+
+    final Finder contractDropdown = find.byType(DropdownButton<String>).at(1);
+    await tester.ensureVisible(contractDropdown);
+    await tester.tap(contractDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.text('BGK-KUD New Line: Yadwad–Jamkhandi').last,
     );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
+
+    final Finder toField = find
+        .byWidgetPredicate((Widget w) {
+          return w is TextField &&
+              (w.decoration?.hintText?.contains('Enter name or email') ??
+                  false);
+        })
+        .first;
+    await tester.ensureVisible(toField);
+    await tester.tap(toField);
+    await tester.pumpAndSettle();
 
     expect(find.text('altaf con'), findsOneWidget);
     await tester.tap(find.text('altaf con'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(
-      find.widgetWithText(InputChip, 'saltaf.h@synergizglobal.com'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(InputChip, 'altaf con'), findsOneWidget);
   });
 }
