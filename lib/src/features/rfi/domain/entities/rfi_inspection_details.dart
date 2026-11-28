@@ -50,6 +50,9 @@ class RfiInspectionDetailRfi {
     required this.timeOfInspection,
     required this.nameOfRepresentative,
     required this.chainage,
+    this.chainageFrom = '',
+    this.chainageTo = '',
+    this.layer = '',
     required this.location,
     required this.inspectionMode,
     required this.testInSiteOrLab,
@@ -68,7 +71,24 @@ class RfiInspectionDetailRfi {
   /// PDF needs (contractorName, createdAt, isRfiRequired, testReport...).
   final Map<String, dynamic> raw;
 
-  String field(String key) => _text(raw[key]);
+  /// Exact key first, then Work-RFI aliases for chainage/layer so Part-I
+  /// still fills when rfi-details uses snake_case or from/to names.
+  String field(String key) {
+    final String direct = _text(raw[key]);
+    if (direct.isNotEmpty) {
+      return direct;
+    }
+    switch (key) {
+      case 'chainageFrom':
+        return chainageFrom;
+      case 'chainageTo':
+        return chainageTo;
+      case 'layer':
+        return layer;
+      default:
+        return '';
+    }
+  }
 
   final int? id;
   final String rfiId;
@@ -83,6 +103,15 @@ class RfiInspectionDetailRfi {
   final String timeOfInspection;
   final String nameOfRepresentative;
   final String chainage;
+
+  /// Work RFI Blanketing/Earthwork/Track Work From (metres).
+  final String chainageFrom;
+
+  /// Work RFI Blanketing/Earthwork/Track Work To (metres).
+  final String chainageTo;
+
+  /// Work RFI Blanketing/Earthwork layer (e.g. `Layer 3` or `3`).
+  final String layer;
   final String location;
   final String inspectionMode;
   final String testInSiteOrLab;
@@ -113,6 +142,17 @@ class RfiInspectionDetailRfi {
       timeOfInspection: _text(json['timeOfInspection']),
       nameOfRepresentative: _text(json['nameOfRepresentative']),
       chainage: _text(json['chainage']),
+      chainageFrom: _firstText(json, const <String>[
+        'chainageFrom',
+        'fromChainage',
+        'chainage_from',
+      ]),
+      chainageTo: _firstText(json, const <String>[
+        'chainageTo',
+        'toChainage',
+        'chainage_to',
+      ]),
+      layer: _text(json['layer']),
       location: _firstText(json, const <String>['location', 'conLocation']),
       inspectionMode: _text(json['inspectionMode']),
       testInSiteOrLab: _firstText(json, const <String>[

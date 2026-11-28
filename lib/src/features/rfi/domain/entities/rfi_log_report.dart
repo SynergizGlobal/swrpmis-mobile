@@ -118,6 +118,7 @@ class RfiLogReportDetails {
     required this.chainage,
     required this.chainageFrom,
     required this.chainageTo,
+    this.layer = '',
     required this.proposedDateOfInspection,
     required this.proposedInspectionTime,
     required this.conInspDate,
@@ -159,6 +160,9 @@ class RfiLogReportDetails {
   final String chainage;
   final String chainageFrom;
   final String chainageTo;
+
+  /// Work Blanketing/Earthwork layer when the log API returns it.
+  final String layer;
   final String proposedDateOfInspection;
   final String proposedInspectionTime;
   final String conInspDate;
@@ -203,7 +207,64 @@ class RfiLogReportDetails {
     if (chainageFrom.isNotEmpty && chainageTo.isNotEmpty) {
       return '$chainageFrom–$chainageTo';
     }
-    return '';
+    if (chainageFrom.isNotEmpty) {
+      return chainageFrom;
+    }
+    return chainageTo;
+  }
+
+  /// Part-I style Work location line when structure + chainage fields exist.
+  String get workLocationDetailsLine {
+    final String category = rfiCategory.trim().toUpperCase();
+    if (category != 'WORK' && category.isNotEmpty) {
+      return '';
+    }
+    final String key =
+        structureType.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+    final bool withChainage = key == 'earthwork' ||
+        key == 'blanketing' ||
+        key == 'tunnel' ||
+        key == 'trackwork';
+    if (!withChainage) {
+      return '';
+    }
+    final String layerPart = _displayedLayer(layer);
+    if (key == 'earthwork' || key == 'blanketing') {
+      return <String>[
+        structureType,
+        structure,
+        component,
+        element,
+        chainageFrom,
+        chainageTo,
+        layerPart,
+        rfiDescription,
+      ].join('/');
+    }
+    return <String>[
+      structureType,
+      structure,
+      component,
+      element,
+      chainageFrom,
+      chainageTo,
+      rfiDescription,
+    ].join('/');
+  }
+
+  static String _displayedLayer(String layer) {
+    final String text = layer.trim();
+    if (text.isEmpty) {
+      return '';
+    }
+    final RegExpMatch? labeled = RegExp(
+      r'^Layer\s+(\d+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (labeled != null) {
+      return labeled.group(1)!;
+    }
+    return text;
   }
 
   bool get selfieContractorIsUrl => RfiStoredFile.isHttpUrl(selfieContractor);
@@ -235,13 +296,16 @@ class RfiLogReportDetails {
       chainageFrom: _firstText(json, const <String>[
         'chainageFrom',
         'fromChainage',
+        'chainage_from',
         'from',
       ]),
       chainageTo: _firstText(json, const <String>[
         'chainageTo',
         'toChainage',
+        'chainage_to',
         'to',
       ]),
+      layer: _text(json['layer']),
       proposedDateOfInspection: _text(json['proposedDateOfInspection']),
       proposedInspectionTime: _text(json['proposedInspectionTime']),
       conInspDate: _text(json['conInspDate']),

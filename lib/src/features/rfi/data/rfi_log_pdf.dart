@@ -175,6 +175,11 @@ class RfiLogPdf {
       ('Element:', rfiLogPdfText(details.element)),
       ('Activity:', rfiLogPdfText(details.activity)),
       ('RFI Description:', rfiLogPdfText(details.rfiDescription)),
+      if (details.workLocationDetailsLine.isNotEmpty)
+        (
+          'Structure Type/Structure/Component/Element/Chainage…:',
+          rfiLogPdfText(details.workLocationDetailsLine),
+        ),
       ('RFI Category:', rfiLogPdfText(details.rfiCategory)),
       ('Type of RFI:', rfiLogPdfText(details.typeOfRfi)),
       ('Enclosures:', rfiLogPdfText(details.enclosures)),
@@ -185,6 +190,11 @@ class RfiLogPdf {
       ),
       ('Client Representative:', rfiLogPdfText(details.clientRepresentative)),
       ('Chainage:', rfiLogPdfText(details.chainageText)),
+      if (details.chainageFrom.isNotEmpty)
+        ('Chainage From:', rfiLogPdfText(details.chainageFrom)),
+      if (details.chainageTo.isNotEmpty)
+        ('Chainage To:', rfiLogPdfText(details.chainageTo)),
+      if (details.layer.isNotEmpty) ('Layer:', rfiLogPdfText(details.layer)),
       (
         'Proposed Inspection Date:',
         rfiLogPdfText(details.proposedDateOfInspection),

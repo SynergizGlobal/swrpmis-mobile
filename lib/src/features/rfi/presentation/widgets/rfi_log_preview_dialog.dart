@@ -316,6 +316,11 @@ class _RfiLogPreviewDialogState extends ConsumerState<RfiLogPreviewDialog> {
       _field('Element', rfiLogDialogText(details.element)),
       _field('Activity', rfiLogDialogText(details.activity)),
       _field('RFI Description', rfiLogDialogText(details.rfiDescription)),
+      if (details.workLocationDetailsLine.isNotEmpty)
+        _field(
+          'Structure Type/Structure/Component/Element/Chainage From/Chainage To/Layer/Rfi-Description',
+          rfiLogDialogText(details.workLocationDetailsLine),
+        ),
       _field('RFI Category', rfiLogDialogText(details.rfiCategory)),
       _field('Type of RFI', rfiLogDialogText(details.typeOfRfi)),
       _field('Enclosures', rfiLogDialogText(details.enclosures)),
@@ -341,6 +346,12 @@ class _RfiLogPreviewDialogState extends ConsumerState<RfiLogPreviewDialog> {
           empty: RfiLogLinks.dialogMissing,
         ),
       ),
+      if (details.chainageFrom.isNotEmpty)
+        _field('Chainage From', rfiLogDialogText(details.chainageFrom)),
+      if (details.chainageTo.isNotEmpty)
+        _field('Chainage To', rfiLogDialogText(details.chainageTo)),
+      if (details.layer.isNotEmpty)
+        _field('Layer', rfiLogDialogText(details.layer)),
       _field(
         'Proposed Inspection Date',
         rfiLogDialogText(details.proposedDateOfInspection),

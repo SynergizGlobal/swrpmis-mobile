@@ -91,6 +91,74 @@ void main() {
     );
   });
 
+  test('earthwork details line includes chainage and layer', () {
+    final RfiInspectionPdfData data = RfiInspectionPdfData(
+      rfiNo: 'RFI_W_EW_S2_EFIL_SS10_0552',
+      rfiCategory: 'WORK',
+      inspectionMode: 'ONLINE',
+      contract: 'Tumkur-Chitradurga-Davangere project',
+      contractor: 'KRC ALTIS JOINT VENTURE',
+      contractorRep: 'NA',
+      location: '',
+      conSubmittedOn: '09-09-2026 23:26',
+      enggSubmittedOn: '12/09/2026 18:36',
+      raisedOn: '09/09/2026 23:26',
+      rfiDescriptionSelected: 'Formation - Embankment',
+      rfiDescription: '',
+      structureType: 'Earthwork',
+      structure: 'CH 34000 to CH 55800',
+      component: 'Earthwork Filling',
+      element: 'CH 39000 to CH 40000',
+      activity: '',
+      chainageFrom: '39740',
+      chainageTo: '39920',
+      layer: 'Layer 3',
+    );
+    expect(
+      data.detailsLine.$1,
+      'Structure Type/Structure/Component/Element/Chainage From/Chainage To/Layer/Rfi-Description :',
+    );
+    expect(
+      data.detailsLine.$2,
+      'Earthwork/CH 34000 to CH 55800/Earthwork Filling/CH 39000 to CH 40000/39740/39920/3/Formation - Embankment',
+    );
+    expect(rfiPdfDisplayedLayer('Layer 3'), '3');
+    expect(rfiPdfDisplayedLayer('Subgrade Top Layer'), 'Subgrade Top Layer');
+  });
+
+  test('track work details line includes chainage without layer', () {
+    final RfiInspectionPdfData data = RfiInspectionPdfData(
+      rfiNo: 'RFI_W_TW_0001',
+      rfiCategory: 'WORK',
+      inspectionMode: 'ONLINE',
+      contract: 'Contract',
+      contractor: 'Contractor',
+      contractorRep: 'Rep',
+      location: '',
+      conSubmittedOn: '',
+      enggSubmittedOn: '',
+      raisedOn: '',
+      rfiDescriptionSelected: 'Track Linking',
+      rfiDescription: 'note',
+      structureType: 'Track Work',
+      structure: 'Main Line',
+      component: 'Rails',
+      element: 'Section A',
+      activity: '',
+      chainageFrom: '12500',
+      chainageTo: '13000',
+      layer: 'Layer 2',
+    );
+    expect(
+      data.detailsLine.$1,
+      'Structure Type/Structure/Component/Element/Chainage From/Chainage To/Rfi-Description :',
+    );
+    expect(
+      data.detailsLine.$2,
+      'Track Work/Main Line/Rails/Section A/12500/13000/Track Linking',
+    );
+  });
+
   test('duplicate and non-PDF files are not merged', () {
     final Uint8List pdf = Uint8List.fromList('%PDF-1.4 abc'.codeUnits);
     final Uint8List other = Uint8List.fromList('hello'.codeUnits);

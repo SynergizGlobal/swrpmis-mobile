@@ -121,6 +121,42 @@ void main() {
     expect(details.measurements.single.measurementType, 'Area');
   });
 
+  test('rfi-details parses work chainageFrom/To/layer aliases', () {
+    final RfiInspectionDetails details = RfiInspectionDetails.fromJson(
+      <String, dynamic>{
+        'rfi': <String, dynamic>{
+          'id': 552,
+          'rfiId': 'RFI_W_EW_S2_EFIL_SS10_0552',
+          'project': 'Tumkur',
+          'contract': 'Contract',
+          'structureType': 'Earthwork',
+          'structure': 'CH 34000 to CH 55800',
+          'component': 'Earthwork Filling',
+          'element': 'CH 39000 to CH 40000',
+          'description': '',
+          'rfiDescription': 'Formation - Embankment',
+          'rfiCategory': 'WORK',
+          'dateOfInspection': '09/09/2026',
+          'timeOfInspection': '11:26 PM',
+          'nameOfRepresentative': 'NA',
+          'chainage': '',
+          'fromChainage': '39740',
+          'toChainage': '39920',
+          'layer': 'Layer 3',
+          'inspectionMode': 'ONLINE',
+          'testInSiteOrLab': 'VISUAL',
+        },
+      },
+    );
+
+    expect(details.rfi.chainageFrom, '39740');
+    expect(details.rfi.chainageTo, '39920');
+    expect(details.rfi.layer, 'Layer 3');
+    expect(details.rfi.field('chainageFrom'), '39740');
+    expect(details.rfi.field('chainageTo'), '39920');
+    expect(details.rfi.field('layer'), 'Layer 3');
+  });
+
   test('checklist-items parse statuses and grade defensively', () {
     final List<RfiChecklistItem> items = parseRfiChecklistItems(
       <Map<String, dynamic>>[

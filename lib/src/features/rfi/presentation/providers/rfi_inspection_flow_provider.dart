@@ -955,9 +955,10 @@ class RfiInspectionFlowController
       component: rfi.component,
       element: rfi.element,
       activity: rfi.activity,
-      chainageFrom: chainageType ? rfi.field('chainageFrom') : '',
-      chainageTo: chainageType ? rfi.field('chainageTo') : '',
-      layer: layerType ? rfi.field('layer') : '',
+      // Work create posts chainageFrom/To/layer; Part-I concat reads them here.
+      chainageFrom: chainageType ? rfi.chainageFrom : '',
+      chainageTo: chainageType ? rfi.chainageTo : '',
+      layer: layerType ? rfi.layer : '',
       enclosures: enclosures,
       inspDescriptionCon: isEngineer
           ? rfi.field('conDescriptionEnclosure')

@@ -178,7 +178,7 @@ class RfiInspectionPdfData {
         (_structureKey == 'earthwork' || _structureKey == 'blanketing')) {
       return (
         'Structure Type/Structure/Component/Element/Chainage From/Chainage To/Layer/Rfi-Description :',
-        '$structureType/$structure/$component/$element/$chainageFrom/$chainageTo/$layer/$rfiDescriptionSelected',
+        '$structureType/$structure/$component/$element/$chainageFrom/$chainageTo/${rfiPdfDisplayedLayer(layer)}/$rfiDescriptionSelected',
       );
     }
     if (category == 'WORK' &&
@@ -193,6 +193,23 @@ class RfiInspectionPdfData {
       '$structureType/$structure/$component/$element/$activity/$rfiDescriptionSelected',
     );
   }
+}
+
+/// Part-I prints a bare layer number (`3`) when the Work form posted
+/// `Layer 3`; keeps labels like Subgrade Top Layer unchanged.
+String rfiPdfDisplayedLayer(String layer) {
+  final String text = layer.trim();
+  if (text.isEmpty) {
+    return '';
+  }
+  final RegExpMatch? labeled = RegExp(
+    r'^Layer\s+(\d+)$',
+    caseSensitive: false,
+  ).firstMatch(text);
+  if (labeled != null) {
+    return labeled.group(1)!;
+  }
+  return text;
 }
 
 class RfiInspectionPdfFonts {

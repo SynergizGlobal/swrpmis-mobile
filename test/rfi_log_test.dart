@@ -162,6 +162,31 @@ void main() {
     expect(report.hasEnclosures, isFalse);
   });
 
+  test('log report builds earthwork location line with chainage and layer', () {
+    final RfiLogReport report = RfiLogReport.fromJson(<String, dynamic>{
+      'reportDetails': <String, dynamic>{
+        'rfiId': 'RFI_W_EW_S2_EFIL_SS10_0552',
+        'structureType': 'Earthwork',
+        'structure': 'CH 34000 to CH 55800',
+        'component': 'Earthwork Filling',
+        'element': 'CH 39000 to CH 40000',
+        'rfiDescription': 'Formation - Embankment',
+        'rfiCategory': 'WORK',
+        'chainageFrom': '39740',
+        'chainageTo': '39920',
+        'layer': 'Layer 3',
+      },
+    });
+    final RfiLogReportDetails details = report.details;
+    expect(details.chainageFrom, '39740');
+    expect(details.chainageTo, '39920');
+    expect(details.layer, 'Layer 3');
+    expect(
+      details.workLocationDetailsLine,
+      'Earthwork/CH 34000 to CH 55800/Earthwork Filling/CH 39000 to CH 40000/39740/39920/3/Formation - Embankment',
+    );
+  });
+
   test('log report keeps all multi-element measurements with description', () {
     final RfiLogReport report = RfiLogReport.fromJson(<String, dynamic>{
       'reportDetails': <String, dynamic>{
